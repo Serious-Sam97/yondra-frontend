@@ -24,7 +24,7 @@ export function Board() {
         </div>
     )
 
-    function handleDragEnd(event) {
+    function handleDragEnd(event: any) {
         const {over} = event;
         setParent(over ? over.id : null);
     }
