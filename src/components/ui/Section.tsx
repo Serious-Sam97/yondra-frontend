@@ -7,11 +7,15 @@ interface sectionInterface {
 }
 
 export function Section(props: sectionInterface) {
+    const style = {
+        height: '100%'
+    }
+
     return (
         <div className="flex flex-col px-10 py-3">
             {props.id}
-            <Droppable key={props.id} id={props.id}>
-                {props.parent === props.id ? <Card/> : 'Drop here'}
+            <Droppable style={style} key={props.id} id={props.id}>
+                {props.parent === props.id ? <Card/> : ''}
             </Droppable>
             {props.parent === null && props.id === 'To Do' ? <Card/> : null}
         </div>
