@@ -1,7 +1,11 @@
+import { Draggable } from "../shared/Draggable";
+
 export function Card() {
     return (
-        <div>
-            HI, IM A CARD
-        </div>
+        <Draggable id="draggable">
+            <div className="bg-white rounded w-52 h-30">
+                <p className="text-black">Drag Me</p>
+            </div>
+        </Draggable>
     )
 }
