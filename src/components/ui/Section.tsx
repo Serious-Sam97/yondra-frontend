@@ -1,14 +1,9 @@
 import { CardInterface } from "@/interfaces/CardInterface"
 import { Droppable } from "../shared/Droppable"
 import { Card } from "./Card"
+import { SectionInterface } from "@/interfaces/SectionInterface"
 
-interface sectionInterface {
-    id: string
-    parent: any
-    cards: CardInterface[]
-}
-
-export function Section(props: sectionInterface) {
+export function Section({id, name, cards}: SectionInterface) {
     const style = {
         height: '100%',
         display: 'flex',
@@ -17,12 +12,12 @@ export function Section(props: sectionInterface) {
 
     return (
         <div className="flex flex-col px-10 py-3">
-            {props.id}
-            <Droppable style={style} key={props.id} id={props.id}>
+            <p className="font-bold text-md">{name}</p>
+            <Droppable style={style} key={id} id={name}>
                 {
-                    props.cards.map((card: CardInterface) => (
+                    cards.map((card: CardInterface) => (
                         <div className="pb-1">
-                            <Card id={card.id} section_id={card.section_id} name={card.name} description={card.description}/>
+                            <Card id={card.id} section_id={card.section_id} name={card.name} description={card.description} color="white"/>
                         </div>
                     ))
                 }

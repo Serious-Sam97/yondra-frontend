@@ -13,6 +13,8 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import FormGroup from '@mui/material/FormGroup';
 import MenuItem from '@mui/material/MenuItem';
 import Menu from '@mui/material/Menu';
+import YondraIcon from '../icons/yondra.png';
+import Image from 'next/image';
 
 export default function MenuAppBar() {
   const [auth, setAuth] = React.useState(true);
@@ -30,6 +32,10 @@ export default function MenuAppBar() {
     setAnchorEl(null);
   };
 
+  const goToDashboard = () => {
+    window.location.href = '/dashboard';
+  }
+
   return (
     <Box sx={{ flexGrow: 1 }}>
       <FormGroup>
@@ -44,7 +50,7 @@ export default function MenuAppBar() {
           label={auth ? 'Logout' : 'Login'}
         /> */}
       </FormGroup>
-      <AppBar position="static">
+      <AppBar enableColorOnDark color="secondary" position="static">
         <Toolbar>
           <IconButton
             size="large"
@@ -56,7 +62,7 @@ export default function MenuAppBar() {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Yondra
+            <Image onClick={() => goToDashboard()} className='rounded cursor-pointer' src={YondraIcon} alt='logo' width={45} height={20}/>
           </Typography>
           {auth && (
             <div>

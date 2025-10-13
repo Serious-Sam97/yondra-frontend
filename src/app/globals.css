@@ -6,6 +6,16 @@
 }
 
 @theme inline {
+  /* Paleta Yondra */
+  --color-yondra-bg:        #0B0F14;
+  --color-yondra-surface:   #111827;
+  --color-yondra-text:      #E5E7EB;
+  --color-yondra-text-muted:#9CA3AF;
+  --color-yondra-accent:    #57D9A3;
+  --color-yondra-hover:     #8BC34A;
+  --color-yondra-orange:    #FF9800;
+  --color-yondra-blue:      #2196F3;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);

@@ -4,8 +4,9 @@ import { useState } from "react";
 import { Draggable } from "../shared/Draggable";
 import { Card } from "../ui/Card";
 import { Section } from "../ui/Section";
+import { BoardInterface } from "@/interfaces/BoardInterface";
 
-export function Board() {
+export function Board({id, name, description, size}: BoardInterface & { size: string }) {
     const sections = [
         {
             id: 1,
@@ -61,11 +62,11 @@ export function Board() {
     };
 
     return (
-        <div className="min-h-[80dvh] w-[80dvw] bg-gray-400 bg-center rounded-xl flex justify-center space-x-7">
+        <div className={`min-h-[${size}dvh] w-[80dvw] bg-gray-400 bg-center rounded-xl flex justify-center space-x-7`}>
             <DndContext onDragEnd={handleDragEnd}>
                 <div className="flex justify-between w-full">
                     {sections.map((section) => (
-                        <Section cards={sectionCards(section.id)} key={section.name} id={section.name} parent={parent}/>
+                        <Section cards={sectionCards(section.id)} key={section.name} id={section.id} name={section.name} parent={parent}/>
                     ))}
                 </div>
             </DndContext>
