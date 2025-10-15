@@ -31,7 +31,7 @@ export default function DashboardPage () {
                                     id={project.id}
                                     name={project.name}
                                     description={project.description}
-                                    color="sky-500"
+                                    color="sky"
                                     section_id={0}
                                 />
                             </div>
