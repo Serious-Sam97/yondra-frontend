@@ -50,7 +50,7 @@ export default function MenuAppBar() {
           label={auth ? 'Logout' : 'Login'}
         /> */}
       </FormGroup>
-      <AppBar enableColorOnDark color="secondary" position="static">
+      <AppBar enableColorOnDark color="primary" position="static">
         <Toolbar>
           <IconButton
             size="large"
@@ -61,8 +61,10 @@ export default function MenuAppBar() {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            <Image onClick={() => goToDashboard()} className='rounded cursor-pointer' src={YondraIcon} alt='logo' width={45} height={20}/>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }} className='flex'>
+              <Image onClick={() => goToDashboard()} className='rounded cursor-pointer' src={YondraIcon} alt='logo' width={45} height={20}/>
+              <p className='self-center pl-3'>Yondra</p>
+            
           </Typography>
           {auth && (
             <div>

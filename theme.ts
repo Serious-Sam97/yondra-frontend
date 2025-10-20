@@ -6,10 +6,10 @@ export const theme = createTheme({
     mode: 'dark',
     background: {
       default: '#0B0F14', // page background
-      paper:   '#111827', // surfaces like Paper/Card/AppBar (if not colored)
+      paper:   '#050D16', // surfaces like Paper/Card/AppBar (if not colored)
     },
     primary: {
-        main: '#2196f3',
+        main: '#172554',
     },
     secondary: {
         main: '#57D9A3',

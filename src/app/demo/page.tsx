@@ -7,13 +7,13 @@ export default function DashboardPage () {
     const router = useRouter();
     const projects = [
         {
-            id: 1,
+            id: 'demo',
             name: 'Testing Board',
             description: 'This is a example board',
         },
     ]
 
-    const goToProject = (projectId: number) => {
+    const goToProject = (projectId: number|string) => {
         router.push(`/boards/${projectId}`)
     }
 

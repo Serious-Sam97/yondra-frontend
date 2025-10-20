@@ -17,7 +17,7 @@ export function Section({id, name, cards}: SectionInterface) {
                 {
                     cards.map((card: CardInterface) => (
                         <div className="pb-1">
-                            <Card id={card.id} section_id={card.section_id} name={card.name} description={card.description} color="white"/>
+                            <Card key={`${id}-${name}-${card.section_id}`} id={card.id} section_id={card.section_id} name={card.name} description={card.description} color="white"/>
                         </div>
                     ))
                 }

@@ -1,64 +1,26 @@
 import { DndContext } from "@dnd-kit/core";
 import { Droppable } from "../shared/Droppable";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Draggable } from "../shared/Draggable";
 import { Card } from "../ui/Card";
 import { Section } from "../ui/Section";
 import { BoardInterface } from "@/interfaces/BoardInterface";
 
-export function Board({id, name, description, size}: BoardInterface & { size: string }) {
-    const sections = [
-        {
-            id: 1,
-            name: 'To Do',
-        },
-        {
-            id: 2,
-            name: 'In Progress',
-        },
-        {
-            id: 3,
-            name: 'Done',
-        },
-    ];
-
+export function Board({id, name, description, size, cards, sections}: BoardInterface & { size: string }) {
     const [parent, setParent] = useState(null);
+    const [cardsProp, setCards] = useState(cards);
 
-    const [cards, setCards] = useState([
-        {
-            id: 1,
-            section_id: 1,
-            name: 'Card 012',
-            description: 'Here is a description space'
-        },
-        {
-            id: 2,
-            section_id: 1,
-            name: 'Card 013',
-            description: 'Here is a description space'
-        },
-        {
-            id: 3,
-            section_id: 1,
-            name: 'Card 014',
-            description: 'Here is a description space'
-        },
-        {
-            id: 4,
-            section_id: 1,
-            name: 'Card 015',
-            description: 'Here is a description space'
-        },
-        {
-            id: 5,
-            section_id: 1,
-            name: 'Card 016',
-            description: 'Here is a description space'
-        },
-    ]);
+    useEffect(() => {
+        setCards(cards);
+    }, [cards]);
+
+    useEffect(() => {
+        console.log(cardsProp);
+    }, [cardsProp])
 
     const sectionCards = (sectionId: any) => {
-        return cards.filter((card) => card.section_id === sectionId)
+        console.log('SECGTION LOGIC')
+        return cardsProp.filter((card) => card.section_id === sectionId)
     };
 
     return (
@@ -75,11 +37,13 @@ export function Board({id, name, description, size}: BoardInterface & { size: st
 
     function handleDragEnd(event: any) {
         const sectionSelected = sections.filter(section => section.name === event.over.id)[0];
+
         if (sectionSelected) {
             const selectedCardId = event.active.id.split('-')[1];
 
             if (selectedCardId) {
-                setCards(cards.map(card => {
+                console.log('Drag LOGIC')
+                setCards(cardsProp.map(card => {
                     if (card.id === Number(selectedCardId)) {
                         return {
                             ...card,
