@@ -1,7 +1,9 @@
 'use client'
 
 import { Card } from "@/components/ui/Card"
+import { fetchUser, login } from "@/lib/auth";
 import { useRouter } from 'next/navigation';
+import { useEffect } from "react";
 
 export default function DashboardPage () {
     const router = useRouter();
@@ -16,6 +18,14 @@ export default function DashboardPage () {
     const goToProject = (projectId: number) => {
         router.push(`/boards/${projectId}`)
     }
+
+    useEffect(() => {
+        const fetchData = async () => {
+            fetchUser();
+        }
+
+        fetchData();
+    }, []);
 
     return (
         <div className="mx-[20vw]">

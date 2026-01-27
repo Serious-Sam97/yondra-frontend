@@ -15,6 +15,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Menu from '@mui/material/Menu';
 import YondraIcon from '../icons/yondra.png';
 import Image from 'next/image';
+import { logout } from '@/lib/auth';
 
 export default function MenuAppBar() {
   const [auth, setAuth] = React.useState(true);
@@ -36,6 +37,10 @@ export default function MenuAppBar() {
     window.location.href = '/dashboard';
   }
 
+  const handleLogout = () => {
+    logout()
+  }
+
   return (
     <Box sx={{ flexGrow: 1 }}>
       <FormGroup>
@@ -52,7 +57,7 @@ export default function MenuAppBar() {
       </FormGroup>
       <AppBar enableColorOnDark color="primary" position="static">
         <Toolbar>
-          <IconButton
+          {/* <IconButton
             size="large"
             edge="start"
             color="inherit"
@@ -60,7 +65,7 @@ export default function MenuAppBar() {
             sx={{ mr: 2 }}
           >
             <MenuIcon />
-          </IconButton>
+          </IconButton> */}
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }} className='flex'>
               <Image onClick={() => goToDashboard()} className='rounded cursor-pointer' src={YondraIcon} alt='logo' width={45} height={20}/>
               <p className='self-center pl-3'>Yondra</p>
@@ -95,6 +100,7 @@ export default function MenuAppBar() {
               >
                 <MenuItem onClick={handleClose}>Profile</MenuItem>
                 <MenuItem onClick={handleClose}>My account</MenuItem>
+                <MenuItem onClick={handleLogout}>Logout</MenuItem>
               </Menu>
             </div>
           )}

@@ -1,11 +1,16 @@
 'use client'
 
+import { login } from "@/lib/auth";
 import { Button } from "@mui/material";
 import { useCallback, useState } from "react"
 
 export default function LoginPage () {
     const [username, setUsername] = useState<string>('');
     const [password, setPassword] = useState<string>('');
+
+    const loginAction = () => {
+        login(username, password)
+    }
 
     return (
         <div className="mx-[38vw] flex flex-col  justify-center min-h-[80vh]">
@@ -20,7 +25,7 @@ export default function LoginPage () {
                     <input className="bg-blue-950 p-2 rounded w-full" type="password" id="username" name="username" value={password} onChange={(e) => setPassword(e.target.value)}/>
                 </div>
                 <div className="flex justify-center w-full">
-                    <Button variant="contained" color="secondary">
+                    <Button variant="contained" color="secondary" onClick={loginAction}>
                         <p>You may enter</p>
                     </Button>
                 </div>

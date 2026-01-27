@@ -83,12 +83,20 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                 cards: demoCards,
                 sections: demoSections,
             }))
+            return;
         }
+
+        setBoard(prev => ({
+            ...prev,
+            cards: [],
+            sections: demoSections,
+        }
+        ))
     }, ['id'])
     
 
     return (
-        <div className="w-[100dvw] flex justify-center">
+        <div className="min-w-[100dvw] flex justify-center">
             <div>
                 <div className="mb-5 mt-2">
                     <p className="text-4xl text-yondra-text font-bold">{board.name}</p>

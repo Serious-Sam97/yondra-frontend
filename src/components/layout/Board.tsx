@@ -23,6 +23,28 @@ export function Board({id, name, description, size, cards, sections}: BoardInter
         return cardsProp.filter((card) => card.section_id === sectionId)
     };
 
+    useEffect(() => {
+        const handleGlobalEvent = (event: any) => {
+            if (event.key.toLowerCase() === 'c') {
+                setCards((prev) => [
+                    ...prev,
+                    {
+                        id: 5,
+                        section_id: 1,
+                        name: 'Card 016',
+                        description: 'Here is a description spa ce'
+                    },
+                ])
+            }
+        }
+
+        window.addEventListener('keydown', handleGlobalEvent)
+
+        return () => {
+            window.removeEventListener('keydown', handleGlobalEvent)
+        }
+    }, [])
+
     return (
         <div className={`min-h-[${size}dvh] w-[80dvw] bg-gray-400 bg-center rounded-xl flex justify-center space-x-7`}>
             <DndContext onDragEnd={handleDragEnd}>
