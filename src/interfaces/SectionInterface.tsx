@@ -5,4 +5,5 @@ export interface SectionInterface {
     name: string,
     parent?: any | null
     cards: CardInterface[]
+    handleClick: (card: any) => void
 }

@@ -1,19 +1,33 @@
-import {useState} from 'react'
+import {useEffect, useState} from 'react'
 
 interface CardEditProps {
     goBack: () => void
-    submit: (card: any) => void
+    submit: (card: any, isNew: boolean) => void
+    card: any | null
 }
 
-const CardEdit: React.FC<CardEditProps> = ({goBack, submit}) => {
-    const [title, setTitle] = useState<string>('')
+const CardEdit: React.FC<CardEditProps> = ({goBack, submit, card}) => {
+    const [id, setId] = useState(0)
+    const [name, setName] = useState<string>('')
     const [description, setDescription] = useState<string>('')
+    const [sectionId, setSectionId] = useState(1)
+
+    useEffect(() => {
+        if(card !== null) {
+            setId(card.id)
+            setName(card.name)
+            setDescription(card.description)
+            setSectionId(card.section_id)
+        }
+    }, [])
 
     const handleSubmit = () => {
         submit({
-            title,
-            description
-        })
+            id,
+            name,
+            description,
+            section_id: sectionId
+        }, card === null)
     }
 
     return (
@@ -21,7 +35,7 @@ const CardEdit: React.FC<CardEditProps> = ({goBack, submit}) => {
             <div>
                 <div className='flex flex-col pb-10'>
                     <label className='text-gray-700 font-bold'>Ticket Name</label>
-                    <input placeholder='Title Name' className='text-5xl text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-300' type='text' value={title} onChange={(event) => setTitle(event.target.value)}/>
+                    <input placeholder='Title Name' className='text-5xl text-black rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-300' type='text' value={name} onChange={(event) => setName(event.target.value)}/>
                 </div>
 
                 <div className='flex flex-col'>

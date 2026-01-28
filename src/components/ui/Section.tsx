@@ -3,7 +3,7 @@ import { Droppable } from "../shared/Droppable"
 import { Card } from "./Card"
 import { SectionInterface } from "@/interfaces/SectionInterface"
 
-export function Section({id, name, cards}: SectionInterface) {
+export function Section({id, name, cards, handleClick}: SectionInterface) {
     const style = {
         height: '100%',
         display: 'flex',
@@ -16,7 +16,7 @@ export function Section({id, name, cards}: SectionInterface) {
             <Droppable style={style} key={id} id={name}>
                 {
                     cards.map((card: CardInterface) => (
-                        <div className="pb-1">
+                        <div className="pb-1" onClick={() => handleClick(card)}>
                             <Card key={`${id}-${name}-${card.section_id}`} id={card.id} section_id={card.section_id} name={card.name} description={card.description} color="yellow"/>
                         </div>
                     ))

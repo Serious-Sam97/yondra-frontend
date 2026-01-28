@@ -1,4 +1,4 @@
-import { DndContext } from "@dnd-kit/core";
+import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { Droppable } from "../shared/Droppable";
 import { useEffect, useState } from "react";
 import { Draggable } from "../shared/Draggable";
@@ -12,6 +12,7 @@ export function Board({id, name, description, size, cards, sections}: BoardInter
     const [cardsProp, setCards] = useState(cards);
     const [lastIdUsed, setLastIdUsed] = useState(0);
     const [isCardVisible, setIsCardVisible] = useState<boolean>(false)
+    const [selectedCard, setSelectedCard] = useState(null)
 
     useEffect(() => {
         setCards(cards);
@@ -26,17 +27,41 @@ export function Board({id, name, description, size, cards, sections}: BoardInter
         return cardsProp.filter((card) => card.section_id === sectionId)
     };
 
-    const handleSubmit = (card: any) => {
-        setCards((prev) => [
-            ...prev,
-            {
-                id: Math.random(),
-                section_id: 1,
-                name: card.title,
-                description: card.description
-            },
-        ])
+    const handleClick = (card: any) => {
+        setSelectedCard(card)
+        setIsCardVisible(true)
+    }
+
+    const handleSubmit = (card: any, isNew: boolean) => {
+        if (isNew) {
+            setCards((prev) => [
+                ...prev,
+                {
+                    id: Math.random(),
+                    section_id: 1,
+                    name: card.name,
+                    description: card.description
+                },
+            ])
+        }
+        else {
+            console.log('HELLO')
+            console.log(card)
+            console.log(cardsProp.map(c => {
+                if (c.id === card.id) {
+                    return card
+                }
+                return c
+            }))
+            setCards(cardsProp.map(c => {
+                if (c.id === card.id) {
+                    return card
+                }
+                return c
+            }))
+        }
         setIsCardVisible(false)
+        setSelectedCard(null)
     }
 
     useEffect(() => {
@@ -53,13 +78,21 @@ export function Board({id, name, description, size, cards, sections}: BoardInter
         }
     }, [])
 
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+        activationConstraint: {
+            distance: 5, 
+        },
+        })
+    );
+
     return (
         <>
             <div className={`min-h-[${size}dvh] w-[80dvw] bg-gray-400 bg-center rounded-xl flex justify-center space-x-7`}>
-                <DndContext onDragEnd={handleDragEnd}>
+                <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
                     <div className="flex justify-between w-full">
                         {sections.map((section) => (
-                            <Section cards={sectionCards(section.id)} key={section.name} id={section.id} name={section.name} parent={parent}/>
+                            <Section handleClick={handleClick} cards={sectionCards(section.id)} key={section.name} id={section.id} name={section.name} parent={parent}/>
                         ))}
                     </div>
                 </DndContext>
@@ -68,7 +101,7 @@ export function Board({id, name, description, size, cards, sections}: BoardInter
                 isCardVisible && (
                     <div className="fixed inset-0 bg-black/60 items-center justify-center flex">
                         <div className="bg-amber-100 p-8 rounded-lg w-[60%] h-[60%]">
-                            <CardEdit goBack={() => setIsCardVisible(false)} submit={handleSubmit}/>
+                            <CardEdit card={selectedCard} goBack={() => setIsCardVisible(false)} submit={handleSubmit}/>
                         </div>
                     </div>
                 )
