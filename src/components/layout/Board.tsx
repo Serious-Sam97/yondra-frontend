@@ -5,10 +5,13 @@ import { Draggable } from "../shared/Draggable";
 import { Card } from "../ui/Card";
 import { Section } from "../ui/Section";
 import { BoardInterface } from "@/interfaces/BoardInterface";
+import CardEdit from "../ui/CardEdit";
 
 export function Board({id, name, description, size, cards, sections}: BoardInterface & { size: string }) {
     const [parent, setParent] = useState(null);
     const [cardsProp, setCards] = useState(cards);
+    const [lastIdUsed, setLastIdUsed] = useState(0);
+    const [isCardVisible, setIsCardVisible] = useState<boolean>(false)
 
     useEffect(() => {
         setCards(cards);
@@ -23,18 +26,23 @@ export function Board({id, name, description, size, cards, sections}: BoardInter
         return cardsProp.filter((card) => card.section_id === sectionId)
     };
 
+    const handleSubmit = (card: any) => {
+        setCards((prev) => [
+            ...prev,
+            {
+                id: Math.random(),
+                section_id: 1,
+                name: card.title,
+                description: card.description
+            },
+        ])
+        setIsCardVisible(false)
+    }
+
     useEffect(() => {
         const handleGlobalEvent = (event: any) => {
             if (event.key.toLowerCase() === 'c') {
-                setCards((prev) => [
-                    ...prev,
-                    {
-                        id: 5,
-                        section_id: 1,
-                        name: 'Card 016',
-                        description: 'Here is a description spa ce'
-                    },
-                ])
+                setIsCardVisible(true)
             }
         }
 
@@ -46,15 +54,26 @@ export function Board({id, name, description, size, cards, sections}: BoardInter
     }, [])
 
     return (
-        <div className={`min-h-[${size}dvh] w-[80dvw] bg-gray-400 bg-center rounded-xl flex justify-center space-x-7`}>
-            <DndContext onDragEnd={handleDragEnd}>
-                <div className="flex justify-between w-full">
-                    {sections.map((section) => (
-                        <Section cards={sectionCards(section.id)} key={section.name} id={section.id} name={section.name} parent={parent}/>
-                    ))}
-                </div>
-            </DndContext>
-        </div>
+        <>
+            <div className={`min-h-[${size}dvh] w-[80dvw] bg-gray-400 bg-center rounded-xl flex justify-center space-x-7`}>
+                <DndContext onDragEnd={handleDragEnd}>
+                    <div className="flex justify-between w-full">
+                        {sections.map((section) => (
+                            <Section cards={sectionCards(section.id)} key={section.name} id={section.id} name={section.name} parent={parent}/>
+                        ))}
+                    </div>
+                </DndContext>
+            </div>
+            {
+                isCardVisible && (
+                    <div className="fixed inset-0 bg-black/60 items-center justify-center flex">
+                        <div className="bg-amber-100 p-8 rounded-lg w-[60%] h-[60%]">
+                            <CardEdit goBack={() => setIsCardVisible(false)} submit={handleSubmit}/>
+                        </div>
+                    </div>
+                )
+            }
+        </>
     )
 
     function handleDragEnd(event: any) {
