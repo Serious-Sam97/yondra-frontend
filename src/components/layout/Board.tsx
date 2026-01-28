@@ -6,6 +6,7 @@ import { Card } from "../ui/Card";
 import { Section } from "../ui/Section";
 import { BoardInterface } from "@/interfaces/BoardInterface";
 import CardEdit from "../ui/CardEdit";
+import Modal from "../shared/Modal";
 
 export function Board({id, name, description, size, cards, sections}: BoardInterface & { size: string }) {
     const [parent, setParent] = useState(null);
@@ -45,14 +46,6 @@ export function Board({id, name, description, size, cards, sections}: BoardInter
             ])
         }
         else {
-            console.log('HELLO')
-            console.log(card)
-            console.log(cardsProp.map(c => {
-                if (c.id === card.id) {
-                    return card
-                }
-                return c
-            }))
             setCards(cardsProp.map(c => {
                 if (c.id === card.id) {
                     return card
@@ -88,7 +81,7 @@ export function Board({id, name, description, size, cards, sections}: BoardInter
 
     return (
         <>
-            <div className={`min-h-[${size}dvh] w-[80dvw] bg-gray-400 bg-center rounded-xl flex justify-center space-x-7`}>
+            <div className={`min-h-[${size}dvh] w-[80dvw] bg-gray-700 bg-center rounded-xl flex justify-center space-x-7`}>
                 <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
                     <div className="flex justify-between w-full">
                         {sections.map((section) => (
@@ -99,11 +92,11 @@ export function Board({id, name, description, size, cards, sections}: BoardInter
             </div>
             {
                 isCardVisible && (
-                    <div className="fixed inset-0 bg-black/60 items-center justify-center flex">
+                    <Modal>
                         <div className="bg-amber-100 p-8 rounded-lg w-[60%] h-[60%]">
                             <CardEdit card={selectedCard} goBack={() => setIsCardVisible(false)} submit={handleSubmit}/>
                         </div>
-                    </div>
+                    </Modal>
                 )
             }
         </>

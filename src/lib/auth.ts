@@ -27,6 +27,12 @@ export async function fetchUser() {
     })
 }
 
+export async function fetchBoards() {
+    return await apiFetch(`/api/boards`, {
+        method: 'GET'
+    })
+}
+
 export async function logout() {
     localStorage.setItem('isLogged', 'false');
 
