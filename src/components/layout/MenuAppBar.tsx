@@ -16,7 +16,7 @@ import { logout } from '@/lib/auth';
 import { useSystem } from '@/contexts/SystemContext';
 
 export default function MenuAppBar() {
-  const { isLogged } = useSystem();
+  const { isLogged, setIsLogged } = useSystem();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
@@ -31,8 +31,10 @@ export default function MenuAppBar() {
     window.location.href = '/dashboard';
   }
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout();
+    setIsLogged(false);
+    window.location.href = '/login';
   }
 
   return (
