@@ -7,4 +7,5 @@ export interface SectionInterface {
     parent?: any | null
     cards: CardInterface[]
     handleClick: (card: any) => void
+    onDelete?: () => void
 }

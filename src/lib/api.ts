@@ -20,6 +20,17 @@ export async function fetchBoard(id: number) {
   return apiFetch(`/api/boards/${id}`, { method: 'GET' });
 }
 
+export async function deleteSection(boardId: number, sectionId: number) {
+  return apiFetch(`/api/boards/${boardId}/sections/${sectionId}`, { method: 'DELETE' });
+}
+
+export async function createSection(boardId: number, name: string) {
+  return apiFetch(`/api/boards/${boardId}/sections`, {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  });
+}
+
 export async function createCard(boardId: number, data: { section_id: number; name: string; description: string }) {
   return apiFetch(`/api/boards/${boardId}/cards`, {
     method: 'POST',

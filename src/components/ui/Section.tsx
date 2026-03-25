@@ -3,7 +3,7 @@ import { Droppable } from "../shared/Droppable"
 import { Card } from "./Card"
 import { SectionInterface } from "@/interfaces/SectionInterface"
 
-export function Section({id, name, color, cards, handleClick}: SectionInterface) {
+export function Section({id, name, color, cards, handleClick, onDelete}: SectionInterface) {
     const style = {
         minHeight: '300px',
         display: 'flex',
@@ -12,7 +12,7 @@ export function Section({id, name, color, cards, handleClick}: SectionInterface)
     }
 
     return (
-        <div className="flex flex-col w-64 flex-shrink-0">
+        <div className="flex flex-col w-64 flex-shrink-0 group/section">
             {/* Column header */}
             <div className="flex items-center gap-2 mb-3 px-1">
                 <div style={{ backgroundColor: color }} className="w-2 h-2 rounded-full"/>
@@ -20,6 +20,15 @@ export function Section({id, name, color, cards, handleClick}: SectionInterface)
                 <span className="ml-auto text-xs text-gray-600 bg-gray-800 px-2 py-0.5 rounded-full">
                     {cards.length}
                 </span>
+                {onDelete && (
+                    <button
+                        onClick={onDelete}
+                        className="opacity-0 group-hover/section:opacity-100 text-gray-600 hover:text-red-400 text-xs cursor-pointer transition-all duration-150 leading-none ml-1"
+                        title="Delete section"
+                    >
+                        ✕
+                    </button>
+                )}
             </div>
 
             {/* Top color bar */}
