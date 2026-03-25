@@ -8,6 +8,19 @@ async function getCSRF(){
     })
 }
 
+export async function register(name: string, email: string, password: string, passwordConfirmation: string) {
+    await getCSRF()
+
+    await apiFetch(`/register`, {
+        method: 'POST',
+        body: JSON.stringify({ name, email, password, password_confirmation: passwordConfirmation })
+    })
+
+    localStorage.setItem('isLogged', 'true');
+
+    return
+}
+
 export async function login(email: string, password: string) {
     await getCSRF()
 

@@ -1,4 +1,6 @@
-import { createContext, ReactNode, useContext, useState } from "react";
+'use client'
+
+import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 
 type SystemContextType = {
     isLogged: boolean;
@@ -10,10 +12,11 @@ const SystemContext = createContext<SystemContextType | undefined>(undefined);
 export const SystemProvider = ({ children }: {children: ReactNode}) => {
     const [ isLogged, setIsLogged ] = useState<boolean>(false);
 
-    const tempIsLogged = localStorage.getItem('isLogged');
-    if (tempIsLogged === 'true') {
-        setIsLogged(true);
-    }
+    useEffect(() => {
+        if (localStorage.getItem('isLogged') === 'true') {
+            setIsLogged(true);
+        }
+    }, []);
 
     return (
         <SystemContext.Provider value={{isLogged, setIsLogged}}>
