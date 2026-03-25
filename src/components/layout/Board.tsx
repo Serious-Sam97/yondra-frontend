@@ -1,7 +1,7 @@
+'use client'
+
 import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { Droppable } from "../shared/Droppable";
 import { useEffect, useState } from "react";
-import { Draggable } from "../shared/Draggable";
 import { Card } from "../ui/Card";
 import { Section } from "../ui/Section";
 import { BoardInterface } from "@/interfaces/BoardInterface";
@@ -9,10 +9,10 @@ import CardEdit from "../ui/CardEdit";
 import Modal from "../shared/Modal";
 import { createCard, updateCard } from "@/lib/api";
 
+const SECTION_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107'];
+
 export function Board({id, name, description, size, cards, sections}: BoardInterface & { size: string }) {
-    const [parent, setParent] = useState(null);
     const [cardsProp, setCards] = useState(cards);
-    const [lastIdUsed, setLastIdUsed] = useState(0);
     const [isCardVisible, setIsCardVisible] = useState<boolean>(false)
     const [selectedCard, setSelectedCard] = useState(null)
 
@@ -20,12 +20,7 @@ export function Board({id, name, description, size, cards, sections}: BoardInter
         setCards(cards);
     }, [cards]);
 
-    useEffect(() => {
-        console.log(cardsProp);
-    }, [cardsProp])
-
     const sectionCards = (sectionId: any) => {
-        console.log('SECGTION LOGIC')
         return cardsProp.filter((card) => card.section_id === sectionId)
     };
 
@@ -56,65 +51,61 @@ export function Board({id, name, description, size, cards, sections}: BoardInter
 
     useEffect(() => {
         const handleGlobalEvent = (event: any) => {
-            if (event.key.toLowerCase() === 'c') {
+            if (event.key.toLowerCase() === 'c' && !isCardVisible) {
                 setIsCardVisible(true)
             }
         }
-
         window.addEventListener('keydown', handleGlobalEvent)
-
-        return () => {
-            window.removeEventListener('keydown', handleGlobalEvent)
-        }
-    }, [])
+        return () => window.removeEventListener('keydown', handleGlobalEvent)
+    }, [isCardVisible])
 
     const sensors = useSensors(
-        useSensor(PointerSensor, {
-        activationConstraint: {
-            distance: 5, 
-        },
-        })
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
     );
 
     return (
         <>
-            <div className={`min-h-[${size}dvh] w-[80dvw] bg-gray-700 bg-center rounded-xl flex justify-center space-x-7`}>
-                <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-                    <div className="flex justify-between w-full">
-                        {sections.map((section) => (
-                            <Section handleClick={handleClick} cards={sectionCards(section.id)} key={section.name} id={section.id} name={section.name} parent={parent}/>
-                        ))}
+            <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+                <div className="flex gap-5 items-start overflow-x-auto pb-4">
+                    {sections.map((section, i) => (
+                        <Section
+                            key={section.id}
+                            handleClick={handleClick}
+                            cards={sectionCards(section.id)}
+                            id={section.id}
+                            name={section.name}
+                            color={SECTION_COLORS[i % SECTION_COLORS.length]}
+                            parent={null}
+                        />
+                    ))}
+                </div>
+            </DndContext>
+
+            {isCardVisible && (
+                <Modal>
+                    <div>
+                        <CardEdit
+                            card={selectedCard}
+                            sections={sections}
+                            goBack={() => { setIsCardVisible(false); setSelectedCard(null); }}
+                            submit={handleSubmit}
+                        />
                     </div>
-                </DndContext>
-            </div>
-            {
-                isCardVisible && (
-                    <Modal>
-                        <div className="bg-amber-100 p-8 rounded-lg w-[60%] h-[60%]">
-                            <CardEdit card={selectedCard} goBack={() => setIsCardVisible(false)} submit={handleSubmit}/>
-                        </div>
-                    </Modal>
-                )
-            }
+                </Modal>
+            )}
         </>
     )
 
     function handleDragEnd(event: any) {
-        const sectionSelected = sections.filter(section => section.name === event.over.id)[0];
+        const sectionSelected = sections.find(section => section.name === event.over?.id);
+        if (!sectionSelected) return;
 
-        if (sectionSelected) {
-            const selectedCardId = Number(event.active.id.split('-')[1]);
+        const selectedCardId = Number(event.active.id.split('-')[1]);
+        if (!selectedCardId) return;
 
-            if (selectedCardId) {
-                setCards(cardsProp.map(card => {
-                    if (card.id === selectedCardId) {
-                        return { ...card, section_id: sectionSelected.id }
-                    }
-                    return card;
-                }))
-
-                updateCard(id, selectedCardId, { section_id: sectionSelected.id });
-            }
-        }
+        setCards(cardsProp.map(card =>
+            card.id === selectedCardId ? { ...card, section_id: sectionSelected.id } : card
+        ));
+        updateCard(id, selectedCardId, { section_id: sectionSelected.id });
     }
 }

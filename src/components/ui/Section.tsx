@@ -3,27 +3,41 @@ import { Droppable } from "../shared/Droppable"
 import { Card } from "./Card"
 import { SectionInterface } from "@/interfaces/SectionInterface"
 
-export function Section({id, name, cards, handleClick}: SectionInterface) {
+export function Section({id, name, color, cards, handleClick}: SectionInterface) {
     const style = {
-        height: '100%',
+        minHeight: '300px',
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'column' as const,
+        gap: '8px',
     }
 
     return (
-        <div className="flex flex-col px-10 py-3">
-            <p className="font-bold text-md">{name}</p>
-            <Droppable style={style} key={id} id={name}>
-                {
-                    cards.map((card: CardInterface) => (
-                        <div className="pb-1" onClick={() => handleClick(card)}>
-                            <Card key={`${id}-${name}-${card.section_id}`} id={card.id} section_id={card.section_id} name={card.name} description={card.description} color="yellow"/>
+        <div className="flex flex-col w-64 flex-shrink-0">
+            {/* Column header */}
+            <div className="flex items-center gap-2 mb-3 px-1">
+                <div style={{ backgroundColor: color }} className="w-2 h-2 rounded-full"/>
+                <p className="text-xs uppercase tracking-widest font-bold text-gray-300">{name}</p>
+                <span className="ml-auto text-xs text-gray-600 bg-gray-800 px-2 py-0.5 rounded-full">
+                    {cards.length}
+                </span>
+            </div>
+
+            {/* Top color bar */}
+            <div style={{ backgroundColor: color + '33', borderColor: color + '55' }} className="border rounded-xl p-2 flex-1">
+                <Droppable style={style} key={id} id={name}>
+                    {cards.map((card: CardInterface) => (
+                        <div key={card.id} onClick={() => handleClick(card)}>
+                            <Card
+                                id={card.id}
+                                section_id={card.section_id}
+                                name={card.name}
+                                description={card.description}
+                                color={color}
+                            />
                         </div>
-                    ))
-                }
-                {/* {props.parent === props.id ? <Card/> : ''} */}
-            </Droppable>
-            {/* {props.parent === null && props.id === 'To Do' ? <Card/> : null} */}
+                    ))}
+                </Droppable>
+            </div>
         </div>
     )
 }

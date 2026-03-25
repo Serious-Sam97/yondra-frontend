@@ -1,16 +1,25 @@
 'use client'
 
 import Modal from "@/components/shared/Modal";
-import { Card } from "@/components/ui/Card"
 import ProjectEdit from "@/components/ui/ProjectEdit";
 import { fetchBoards, fetchUser } from "@/lib/auth";
 import { createBoard, deleteBoard } from "@/lib/api";
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from "react";
 
+const STRIPE_COLORS = [
+    '#4CAF50',
+    '#FFC107',
+    '#FF9800',
+    '#F44336',
+    '#7B1FA2',
+    '#1976D2',
+];
+
 export default function DashboardPage () {
     const router = useRouter();
     const [projects, setProjects] = useState<any[]>([])
+    const [user, setUser] = useState<any>(null)
     const [modalIsVisibile, setModalIsVisible] = useState(false)
     const [projectSelected, setProjectSelected] = useState(null)
     const [editMode, setEditMode] = useState(false)
@@ -40,11 +49,10 @@ export default function DashboardPage () {
 
     useEffect(() => {
         const fetchData = async () => {
-            fetchUser();
-            const boards = await fetchBoards();
+            const [userData, boards] = await Promise.all([fetchUser(), fetchBoards()]);
+            if (userData) setUser(userData);
             if (boards) setProjects(boards);
         }
-
         fetchData();
     }, []);
 
@@ -58,50 +66,110 @@ export default function DashboardPage () {
     }
 
     return (
-        <div className="mx-[20vw]">
-            <p className="text-4xl mt-2 text-center">Hello Samir</p>
-            
-            <div className="mt-2">
-                <div className="flex justify-between items-center mb-3">
-                    <div className="flex items-center">
-                        <p className="text-lg text-yondra-text pr-2">Your Boards:</p>
-                        <button 
-                            onClick={() => setEditMode(!editMode)}
-                            type="button"
-                            className={`${editMode ? 'bg-white hover:bg-gray-200' : 'bg-sky-500 hover:bg-sky-700'} rounded-lg p-2 cursor-pointer focus:ring-amber-900 focus:ring-2 transition-colors duration-200`}
-                        >
-                            <p className="text-black">{editMode ? 'Normal Mode' : 'Edit Mode'}</p>
-                        </button>
-                    </div>
-                    <button onClick={() => setModalIsVisible(true)} type="button" className="bg-amber-700 hover:bg-amber-800 rounded-lg p-2 cursor-pointer focus:ring-amber-900 focus:ring-2 transition-colors duration-200">
-                        <p className="text-white">Create Board</p>
+        <div className="min-h-screen px-8 py-10 max-w-6xl mx-auto">
+
+            {/* Header */}
+            <div className="mb-10">
+                <div className="flex gap-1 mb-2">
+                    {STRIPE_COLORS.map(c => (
+                        <div key={c} style={{ backgroundColor: c }} className="h-1 flex-1 rounded-full"/>
+                    ))}
+                </div>
+                <p className="text-xs uppercase tracking-[0.3em] text-gray-500 mb-1">Welcome back</p>
+                <p className="text-5xl font-bold tracking-tight">
+                    {user?.name ?? 'Dashboard'}
+                </p>
+            </div>
+
+            {/* Toolbar */}
+            <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-3">
+                    <p className="text-xs uppercase tracking-widest text-gray-500">Your Boards</p>
+                    <button
+                        onClick={() => setEditMode(!editMode)}
+                        type="button"
+                        className={`text-xs uppercase tracking-widest px-3 py-1.5 rounded border cursor-pointer transition-all duration-200 ${
+                            editMode
+                                ? 'border-amber-400 text-amber-400 bg-amber-400/10'
+                                : 'border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-200'
+                        }`}
+                    >
+                        {editMode ? '⚙ Edit Mode' : '⚙ Edit Mode'}
                     </button>
                 </div>
-                <div className="bg-yondra-surface h-40 rounded flex px-5 space-x-3">
-                    {
-                        projects.map(project => (
-                            <div key={`project-${project.id}`} className="flex" onClick={() => handleOpenCard(project)}>
-                                <Card
-                                    id={project.id}
-                                    name={project.name}
-                                    description={project.description}
-                                    color="sky"
-                                    section_id={0}
-                                />
-                            </div>
-                        ))
-                    }
-                </div>
+                <button
+                    onClick={() => { setProjectSelected(null); setModalIsVisible(true); }}
+                    type="button"
+                    className="text-xs uppercase tracking-widest px-4 py-2 rounded border-2 border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-black font-bold cursor-pointer transition-all duration-200"
+                >
+                    + New Board
+                </button>
             </div>
-            {
-                modalIsVisibile && (
-                    <Modal>
-                        <div className="bg-sky-300 p-5 rounded-lg w-[60%] h-[60%]">
-                            <ProjectEdit cancel={() => setModalIsVisible(false)} submit={handleSubmitProject} onDelete={projectSelected ? () => handleDeleteProject((projectSelected as any).id) : undefined} project={projectSelected}/>
-                        </div>
-                    </Modal>
-                )
-            }
+
+            {/* Board Grid */}
+            {projects.length === 0 ? (
+                <div className="border-2 border-dashed border-gray-700 rounded-xl flex flex-col items-center justify-center py-24 text-center">
+                    <p className="text-4xl mb-3">▦</p>
+                    <p className="text-gray-500 text-sm uppercase tracking-widest">No boards yet</p>
+                    <p className="text-gray-600 text-xs mt-1">Click <span className="text-amber-400">+ New Board</span> to get started</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {projects.map((project, i) => {
+                        const color = STRIPE_COLORS[i % STRIPE_COLORS.length];
+                        return (
+                            <div
+                                key={`project-${project.id}`}
+                                onClick={() => handleOpenCard(project)}
+                                className={`group relative bg-gray-900 border border-gray-800 rounded-xl overflow-hidden cursor-pointer transition-all duration-200 hover:border-gray-600 hover:shadow-lg hover:-translate-y-0.5 ${editMode ? 'ring-2 ring-amber-400/40' : ''}`}
+                            >
+                                {/* Color stripe */}
+                                <div style={{ backgroundColor: color }} className="h-1.5 w-full"/>
+
+                                <div className="p-5">
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div
+                                            style={{ backgroundColor: color + '22', color }}
+                                            className="text-xs uppercase tracking-widest px-2 py-0.5 rounded font-bold"
+                                        >
+                                            Board
+                                        </div>
+                                        {editMode && (
+                                            <span className="text-xs text-amber-400 uppercase tracking-widest">edit</span>
+                                        )}
+                                    </div>
+
+                                    <p className="text-white font-bold text-lg leading-tight mb-2">{project.name}</p>
+                                    <p className="text-gray-500 text-sm line-clamp-2">{project.description}</p>
+                                </div>
+
+                                {/* Bottom bar */}
+                                <div className="px-5 pb-4 flex items-center gap-2">
+                                    <div style={{ backgroundColor: color }} className="w-1.5 h-1.5 rounded-full"/>
+                                    <span className="text-xs text-gray-600 uppercase tracking-widest">Active</span>
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+            )}
+
+            {/* Modal */}
+            {modalIsVisibile && (
+                <Modal>
+                    <div className="bg-gray-900 border border-gray-700 p-6 rounded-2xl w-[90%] max-w-lg">
+                        <p className="text-xs uppercase tracking-widest text-gray-500 mb-4">
+                            {projectSelected ? 'Edit Board' : 'New Board'}
+                        </p>
+                        <ProjectEdit
+                            cancel={() => { setModalIsVisible(false); setProjectSelected(null); }}
+                            submit={handleSubmitProject}
+                            onDelete={projectSelected ? () => handleDeleteProject((projectSelected as any).id) : undefined}
+                            project={projectSelected}
+                        />
+                    </div>
+                </Modal>
+            )}
         </div>
     )
 }
