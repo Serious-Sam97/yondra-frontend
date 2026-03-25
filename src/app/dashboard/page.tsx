@@ -4,18 +4,13 @@ import Modal from "@/components/shared/Modal";
 import { Card } from "@/components/ui/Card"
 import ProjectEdit from "@/components/ui/ProjectEdit";
 import { fetchBoards, fetchUser } from "@/lib/auth";
+import { createBoard } from "@/lib/api";
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from "react";
 
 export default function DashboardPage () {
     const router = useRouter();
-    const [projects, setProjects] = useState([
-        {
-            id: 1,
-            name: 'Testing Board',
-            description: 'This is a example board',
-        },
-    ])
+    const [projects, setProjects] = useState<any[]>([])
     const [modalIsVisibile, setModalIsVisible] = useState(false)
     const [projectSelected, setProjectSelected] = useState(null)
     const [editMode, setEditMode] = useState(false)
@@ -24,24 +19,12 @@ export default function DashboardPage () {
         router.push(`/boards/${projectId}`)
     }
 
-    const handleSubmitProject = (project: any) => {
+    const handleSubmitProject = async (project: any) => {
         if (project.id !== null) {
-            setProjects(projects.map(p => {
-                if (p.id === project.id) {
-                    return project
-                }
-                return p
-            }))
-        }
-        else {
-            setProjects(prev => [
-                ...prev,
-                {
-                    id: Math.random(),
-                    name: project.name,
-                    description: project.description,
-                }
-            ])
+            setProjects(projects.map(p => p.id === project.id ? project : p))
+        } else {
+            const saved = await createBoard({ name: project.name, description: project.description });
+            setProjects(prev => [...prev, saved]);
         }
 
         setModalIsVisible(false)
@@ -51,7 +34,8 @@ export default function DashboardPage () {
     useEffect(() => {
         const fetchData = async () => {
             fetchUser();
-            fetchBoards();
+            const boards = await fetchBoards();
+            if (boards) setProjects(boards);
         }
 
         fetchData();

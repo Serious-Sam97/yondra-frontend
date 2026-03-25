@@ -7,6 +7,7 @@ import { Section } from "../ui/Section";
 import { BoardInterface } from "@/interfaces/BoardInterface";
 import CardEdit from "../ui/CardEdit";
 import Modal from "../shared/Modal";
+import { createCard, updateCard } from "@/lib/api";
 
 export function Board({id, name, description, size, cards, sections}: BoardInterface & { size: string }) {
     const [parent, setParent] = useState(null);
@@ -33,25 +34,21 @@ export function Board({id, name, description, size, cards, sections}: BoardInter
         setIsCardVisible(true)
     }
 
-    const handleSubmit = (card: any, isNew: boolean) => {
+    const handleSubmit = async (card: any, isNew: boolean) => {
         if (isNew) {
-            setCards((prev) => [
-                ...prev,
-                {
-                    id: Math.random(),
-                    section_id: 1,
-                    name: card.name,
-                    description: card.description
-                },
-            ])
-        }
-        else {
-            setCards(cardsProp.map(c => {
-                if (c.id === card.id) {
-                    return card
-                }
-                return c
-            }))
+            const saved = await createCard(id, {
+                section_id: card.section_id,
+                name: card.name,
+                description: card.description,
+            });
+            setCards((prev) => [...prev, saved]);
+        } else {
+            const saved = await updateCard(id, card.id, {
+                section_id: card.section_id,
+                name: card.name,
+                description: card.description,
+            });
+            setCards(cardsProp.map(c => c.id === card.id ? saved : c));
         }
         setIsCardVisible(false)
         setSelectedCard(null)
