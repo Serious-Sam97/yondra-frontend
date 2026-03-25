@@ -5,6 +5,10 @@ function getCookie(name: string): string | null {
   return null;
 }
 
+export async function deleteBoard(id: number) {
+  return apiFetch(`/api/boards/${id}`, { method: 'DELETE' });
+}
+
 export async function createBoard(data: { name: string; description: string }) {
   return apiFetch('/api/boards', {
     method: 'POST',

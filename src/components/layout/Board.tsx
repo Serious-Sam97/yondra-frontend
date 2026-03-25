@@ -103,22 +103,17 @@ export function Board({id, name, description, size, cards, sections}: BoardInter
         const sectionSelected = sections.filter(section => section.name === event.over.id)[0];
 
         if (sectionSelected) {
-            const selectedCardId = event.active.id.split('-')[1];
+            const selectedCardId = Number(event.active.id.split('-')[1]);
 
             if (selectedCardId) {
-                console.log('Drag LOGIC')
                 setCards(cardsProp.map(card => {
-                    if (card.id === Number(selectedCardId)) {
-                        return {
-                            ...card,
-                            section_id: sectionSelected.id,
-                        }
+                    if (card.id === selectedCardId) {
+                        return { ...card, section_id: sectionSelected.id }
                     }
-
-                    return {
-                        ...card
-                    }
+                    return card;
                 }))
+
+                updateCard(id, selectedCardId, { section_id: sectionSelected.id });
             }
         }
     }

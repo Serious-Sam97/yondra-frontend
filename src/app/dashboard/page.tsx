@@ -4,7 +4,7 @@ import Modal from "@/components/shared/Modal";
 import { Card } from "@/components/ui/Card"
 import ProjectEdit from "@/components/ui/ProjectEdit";
 import { fetchBoards, fetchUser } from "@/lib/auth";
-import { createBoard } from "@/lib/api";
+import { createBoard, deleteBoard } from "@/lib/api";
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from "react";
 
@@ -29,6 +29,13 @@ export default function DashboardPage () {
 
         setModalIsVisible(false)
         setProjectSelected(null)
+    }
+
+    const handleDeleteProject = async (projectId: number) => {
+        await deleteBoard(projectId);
+        setProjects(prev => prev.filter(p => p.id !== projectId));
+        setModalIsVisible(false);
+        setProjectSelected(null);
     }
 
     useEffect(() => {
@@ -90,7 +97,7 @@ export default function DashboardPage () {
                 modalIsVisibile && (
                     <Modal>
                         <div className="bg-sky-300 p-5 rounded-lg w-[60%] h-[60%]">
-                            <ProjectEdit cancel={() => setModalIsVisible(false)} submit={handleSubmitProject} project={projectSelected}/>
+                            <ProjectEdit cancel={() => setModalIsVisible(false)} submit={handleSubmitProject} onDelete={projectSelected ? () => handleDeleteProject((projectSelected as any).id) : undefined} project={projectSelected}/>
                         </div>
                     </Modal>
                 )
