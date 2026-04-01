@@ -8,10 +8,11 @@ import { BoardInterface } from "@/interfaces/BoardInterface";
 import CardEdit from "../ui/CardEdit";
 import Modal from "../shared/Modal";
 import { createCard, updateCard, createSection, deleteSection } from "@/lib/api";
+import { demoCreateCard, demoUpdateCard, demoCreateSection, demoDeleteSection } from "@/lib/demoStorage";
 
 const SECTION_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107'];
 
-export function Board({id, name, description, size, cards, sections: initialSections}: BoardInterface & { size: string }) {
+export function Board({id, name, description, size, cards, sections: initialSections, isDemo = false}: BoardInterface & { size: string; isDemo?: boolean }) {
     const [cardsProp, setCards] = useState(cards);
     const [sections, setSections] = useState(initialSections);
     const [isCardVisible, setIsCardVisible] = useState<boolean>(false)
@@ -30,7 +31,11 @@ export function Board({id, name, description, size, cards, sections: initialSect
 
     const handleDeleteSection = async () => {
         if (!sectionToDelete) return;
-        await deleteSection(id, sectionToDelete.id);
+        if (isDemo) {
+            demoDeleteSection(sectionToDelete.id);
+        } else {
+            await deleteSection(id, sectionToDelete.id);
+        }
         setSections(prev => prev.filter(s => s.id !== sectionToDelete.id));
         setCards(prev => prev.filter(c => c.section_id !== sectionToDelete.id));
         setSectionToDelete(null);
@@ -39,7 +44,7 @@ export function Board({id, name, description, size, cards, sections: initialSect
     const handleAddSection = async () => {
         const trimmed = newSectionName.trim();
         if (!trimmed) return;
-        const saved = await createSection(id, trimmed);
+        const saved = isDemo ? demoCreateSection(trimmed) : await createSection(id, trimmed);
         setSections(prev => [...prev, saved]);
         setNewSectionName('');
         setIsAddingSection(false);
@@ -56,18 +61,14 @@ export function Board({id, name, description, size, cards, sections: initialSect
 
     const handleSubmit = async (card: any, isNew: boolean) => {
         if (isNew) {
-            const saved = await createCard(id, {
-                section_id: card.section_id,
-                name: card.name,
-                description: card.description,
-            });
+            const saved = isDemo
+                ? demoCreateCard({ section_id: card.section_id, name: card.name, description: card.description })
+                : await createCard(id, { section_id: card.section_id, name: card.name, description: card.description });
             setCards((prev) => [...prev, saved]);
         } else {
-            const saved = await updateCard(id, card.id, {
-                section_id: card.section_id,
-                name: card.name,
-                description: card.description,
-            });
+            const saved = isDemo
+                ? demoUpdateCard(card.id, { section_id: card.section_id, name: card.name, description: card.description })
+                : await updateCard(id, card.id, { section_id: card.section_id, name: card.name, description: card.description });
             setCards(cardsProp.map(c => c.id === card.id ? saved : c));
         }
         setIsCardVisible(false)
@@ -198,6 +199,10 @@ export function Board({id, name, description, size, cards, sections: initialSect
         setCards(cardsProp.map(card =>
             card.id === selectedCardId ? { ...card, section_id: sectionSelected.id } : card
         ));
-        updateCard(id, selectedCardId, { section_id: sectionSelected.id });
+        if (isDemo) {
+            demoUpdateCard(selectedCardId, { section_id: sectionSelected.id });
+        } else {
+            updateCard(id, selectedCardId, { section_id: sectionSelected.id });
+        }
     }
 }

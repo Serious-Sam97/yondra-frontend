@@ -49,9 +49,13 @@ export default function DashboardPage () {
 
     useEffect(() => {
         const fetchData = async () => {
-            const [userData, boards] = await Promise.all([fetchUser(), fetchBoards()]);
-            if (userData) setUser(userData);
-            if (boards) setProjects(boards);
+            try {
+                const [userData, boards] = await Promise.all([fetchUser(), fetchBoards()]);
+                if (userData) setUser(userData);
+                if (boards) setProjects(boards);
+            } catch {
+                router.push('/login');
+            }
         }
         fetchData();
     }, []);

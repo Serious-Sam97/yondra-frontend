@@ -85,6 +85,17 @@ export default function LoginPage () {
                         Don't have an account?{' '}
                         <a href="/register" className="text-blue-400 hover:underline">Register</a>
                     </p>
+
+                    <div className="mt-6 pt-6 border-t border-gray-700 text-center">
+                        <p className="text-gray-500 text-xs mb-3">Want to test the system first?</p>
+                        <button
+                            onClick={() => router.push('/demo')}
+                            type="button"
+                            className="w-full border border-gray-600 hover:border-gray-400 text-gray-400 hover:text-white py-2.5 rounded-lg text-sm transition-colors duration-200 cursor-pointer"
+                        >
+                            Try the Demo
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

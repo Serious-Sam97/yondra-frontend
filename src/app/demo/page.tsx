@@ -19,7 +19,7 @@ export default function DashboardPage () {
 
     return (
         <div className="mx-[20vw]">
-            <p className="text-4xl mt-2 text-center">Hello Samir</p>
+            <p className="text-4xl mt-2 text-center">Hello There</p>
             
             <div className="mt-2">
                 <p className="text-lg text-yondra-text">Your Boards:</p>
