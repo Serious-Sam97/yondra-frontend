@@ -1,10 +1,14 @@
 import { CardInterface } from "./CardInterface";
-import { SectionInterface } from "./SectionInterface";
+
+export interface SectionData {
+    id: number,
+    name: string,
+}
 
 export interface BoardInterface {
     id: number,
     name: string,
     description: string,
-    sections: SectionInterface[],
+    sections: SectionData[],
     cards: CardInterface[],
 }
