@@ -3,7 +3,7 @@
 import { Board } from "@/components/layout/Board"
 import { BoardInterface } from "@/interfaces/BoardInterface"
 import { fetchBoard } from "@/lib/api";
-import { loadDemoBoard } from "@/lib/demoStorage";
+import { loadDemoBoardData, loadDemoBoards } from "@/lib/demoStorage";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -23,13 +23,17 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
         sections: [],
     });
 
+    const isDemo = id === 'demo' || id.startsWith('demo-');
+
     useEffect(() => {
-        if (id === 'demo') {
-            const demo = loadDemoBoard();
+        if (isDemo) {
+            const boards = loadDemoBoards();
+            const boardMeta = boards.find(b => b.id === id);
+            const demo = loadDemoBoardData(id);
             setBoard({
                 id: 0,
-                name: 'Demo Board',
-                description: 'Try it out — everything is saved in your browser.',
+                name: boardMeta?.name ?? 'Demo Board',
+                description: boardMeta?.description ?? 'Try it out — everything is saved in your browser.',
                 sections: demo.sections,
                 cards: demo.cards,
             });
@@ -60,7 +64,7 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
             <div className="flex items-start justify-between mb-8">
                 <div>
                     <button
-                        onClick={() => router.push(id === 'demo' ? '/demo' : '/dashboard')}
+                        onClick={() => router.push(isDemo ? '/demo' : '/dashboard')}
                         className="text-xs uppercase tracking-widest text-gray-500 hover:text-gray-300 mb-3 flex items-center gap-1 cursor-pointer transition-colors duration-150"
                     >
                         ← Back to boards
@@ -85,7 +89,8 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                 cards={board.cards}
                 sections={board.sections}
                 size="75"
-                isDemo={id === 'demo'}
+                isDemo={isDemo}
+                demoId={id}
             />
         </div>
     )

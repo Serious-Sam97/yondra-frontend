@@ -8,7 +8,7 @@ interface ProjectEditProps {
 }
 
 const ProjectEdit: React.FC<ProjectEditProps> = ({cancel, submit, onDelete, project}) => {
-    const [id, setId] = useState<number | null>(null)
+    const [id, setId] = useState<number | string | null>(null)
     const [name, setName] = useState<string>('')
     const [description, setDescription] = useState<string>('')
     const [confirmDelete, setConfirmDelete] = useState(false)
