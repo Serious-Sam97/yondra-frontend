@@ -2,54 +2,36 @@
 
 import { apiFetch } from "./api";
 
-async function getCSRF(){
-    await apiFetch('/sanctum/csrf-cookie', {
-        method: 'GET'
-    })
-}
-
 export async function register(name: string, email: string, password: string, passwordConfirmation: string) {
-    await getCSRF()
-
-    await apiFetch(`/register`, {
+    const data = await apiFetch(`/api/register`, {
         method: 'POST',
         body: JSON.stringify({ name, email, password, password_confirmation: passwordConfirmation })
-    })
+    });
 
+    localStorage.setItem('token', data.token);
     localStorage.setItem('isLogged', 'true');
-
-    return
 }
 
 export async function login(email: string, password: string) {
-    await getCSRF()
-
-    await apiFetch(`/login`, {
+    const data = await apiFetch(`/api/login`, {
         method: 'POST',
-        body: JSON.stringify({email, password})
-    })
+        body: JSON.stringify({ email, password })
+    });
 
+    localStorage.setItem('token', data.token);
     localStorage.setItem('isLogged', 'true');
-
-    return 
 }
 
 export async function fetchUser() {
-    return await apiFetch(`/api/user`, {
-        method: 'GET'
-    })
+    return await apiFetch(`/api/user`, { method: 'GET' });
 }
 
 export async function fetchBoards() {
-    return await apiFetch(`/api/boards`, {
-        method: 'GET'
-    })
+    return await apiFetch(`/api/boards`, { method: 'GET' });
 }
 
 export async function logout() {
+    await apiFetch('/api/logout', { method: 'POST' });
+    localStorage.removeItem('token');
     localStorage.setItem('isLogged', 'false');
-
-    await apiFetch('/logout', {
-        method: 'POST'
-    })
 }
