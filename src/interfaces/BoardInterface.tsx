@@ -5,10 +5,18 @@ export interface SectionData {
     name: string,
 }
 
+export interface SharedUser {
+    id: number,
+    name: string,
+    email: string,
+}
+
 export interface BoardInterface {
     id: number,
     name: string,
     description: string,
     sections: SectionData[],
     cards: CardInterface[],
+    user_id?: number,
+    shared_with?: SharedUser[],
 }

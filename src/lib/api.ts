@@ -56,3 +56,16 @@ export async function updateCard(boardId: number, cardId: number, data: { sectio
     body: JSON.stringify(data),
   });
 }
+
+export async function shareBoard(boardId: number, email: string) {
+  return apiFetch(`/api/boards/${boardId}/share`, {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function unshareBoard(boardId: number, userId: number) {
+  return apiFetch(`/api/boards/${boardId}/share/${userId}`, {
+    method: 'DELETE',
+  });
+}

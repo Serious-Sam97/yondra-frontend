@@ -1,9 +1,11 @@
 'use client'
 
 import { Board } from "@/components/layout/Board"
-import { BoardInterface } from "@/interfaces/BoardInterface"
+import ShareModal from "@/components/ui/ShareModal";
+import { BoardInterface, SharedUser } from "@/interfaces/BoardInterface"
 import { fetchBoard } from "@/lib/api";
 import { loadDemoBoardData, loadDemoBoards } from "@/lib/demoStorage";
+import { fetchUser } from "@/lib/auth";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -21,9 +23,14 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
         description: '',
         cards: [],
         sections: [],
+        user_id: undefined,
+        shared_with: [],
     });
+    const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+    const [shareOpen, setShareOpen] = useState(false);
 
     const isDemo = id === 'demo' || id.startsWith('demo-');
+    const isOwner = board.user_id === currentUserId;
 
     useEffect(() => {
         if (isDemo) {
@@ -36,18 +43,22 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                 description: boardMeta?.description ?? 'Try it out — everything is saved in your browser.',
                 sections: demo.sections,
                 cards: demo.cards,
+                shared_with: [],
             });
             return;
         }
 
-        fetchBoard(Number(id)).then((data) => {
+        Promise.all([fetchBoard(Number(id)), fetchUser()]).then(([data, user]) => {
             setBoard({
                 id: data.id,
                 name: data.name,
                 description: data.description ?? '',
                 sections: data.sections ?? [],
                 cards: data.cards ?? [],
+                user_id: data.user_id,
+                shared_with: data.shared_with ?? [],
             });
+            setCurrentUserId(user?.id ?? null);
         });
     }, [id])
 
@@ -74,10 +85,20 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                         <p className="text-gray-500 mt-1">{board.description}</p>
                     )}
                 </div>
-                <div className="text-right">
-                    <p className="text-xs uppercase tracking-widest text-gray-600">Press</p>
-                    <kbd className="text-xs bg-gray-800 border border-gray-700 text-amber-400 px-2 py-1 rounded font-mono">C</kbd>
-                    <p className="text-xs uppercase tracking-widest text-gray-600">to add a ticket</p>
+                <div className="flex flex-col items-end gap-3">
+                    {isOwner && !isDemo && (
+                        <button
+                            onClick={() => setShareOpen(true)}
+                            className="text-xs uppercase tracking-widest px-3 py-1.5 rounded border border-gray-600 text-gray-400 hover:border-amber-400 hover:text-amber-400 cursor-pointer transition-all duration-200"
+                        >
+                            Share
+                        </button>
+                    )}
+                    <div className="text-right">
+                        <p className="text-xs uppercase tracking-widest text-gray-600">Press</p>
+                        <kbd className="text-xs bg-gray-800 border border-gray-700 text-amber-400 px-2 py-1 rounded font-mono">C</kbd>
+                        <p className="text-xs uppercase tracking-widest text-gray-600">to add a ticket</p>
+                    </div>
                 </div>
             </div>
 
@@ -92,6 +113,15 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                 isDemo={isDemo}
                 demoId={id}
             />
+
+            {shareOpen && (
+                <ShareModal
+                    boardId={board.id}
+                    sharedWith={board.shared_with ?? []}
+                    onClose={() => setShareOpen(false)}
+                    onUpdate={(users: SharedUser[]) => setBoard(b => ({ ...b, shared_with: users }))}
+                />
+            )}
         </div>
     )
 }

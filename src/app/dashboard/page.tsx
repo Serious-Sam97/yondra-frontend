@@ -24,6 +24,8 @@ export default function DashboardPage () {
     const [projectSelected, setProjectSelected] = useState(null)
     const [editMode, setEditMode] = useState(false)
 
+    const isShared = (project: any) => user && project.user_id !== user.id
+
     const goToProject = (projectId: number) => {
         router.push(`/boards/${projectId}`)
     }
@@ -61,7 +63,7 @@ export default function DashboardPage () {
     }, []);
 
     const handleOpenCard = (project: any) => {
-        if (editMode) {
+        if (editMode && !isShared(project)) {
             setProjectSelected(project)
             setModalIsVisible(true)
             return
@@ -132,13 +134,20 @@ export default function DashboardPage () {
 
                                 <div className="p-5">
                                     <div className="flex items-start justify-between mb-3">
-                                        <div
-                                            style={{ backgroundColor: color + '22', color }}
-                                            className="text-xs uppercase tracking-widest px-2 py-0.5 rounded font-bold"
-                                        >
-                                            Board
+                                        <div className="flex items-center gap-2">
+                                            <div
+                                                style={{ backgroundColor: color + '22', color }}
+                                                className="text-xs uppercase tracking-widest px-2 py-0.5 rounded font-bold"
+                                            >
+                                                Board
+                                            </div>
+                                            {isShared(project) && (
+                                                <div className="text-xs uppercase tracking-widest px-2 py-0.5 rounded font-bold bg-blue-500/20 text-blue-400">
+                                                    Shared
+                                                </div>
+                                            )}
                                         </div>
-                                        {editMode && (
+                                        {editMode && !isShared(project) && (
                                             <span className="text-xs text-amber-400 uppercase tracking-widest">edit</span>
                                         )}
                                     </div>
