@@ -7,8 +7,8 @@ import { Section } from "../ui/Section";
 import { BoardInterface } from "@/interfaces/BoardInterface";
 import CardEdit from "../ui/CardEdit";
 import Modal from "../shared/Modal";
-import { createCard, updateCard, createSection, deleteSection } from "@/lib/api";
-import { demoCreateCard, demoUpdateCard, demoCreateSection, demoDeleteSection } from "@/lib/demoStorage";
+import { createCard, updateCard, createSection, updateSection, deleteSection } from "@/lib/api";
+import { demoCreateCard, demoUpdateCard, demoCreateSection, demoUpdateSection, demoDeleteSection } from "@/lib/demoStorage";
 
 const SECTION_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107'];
 
@@ -28,6 +28,15 @@ export function Board({id, name, description, size, cards, sections: initialSect
     useEffect(() => {
         setSections(initialSections);
     }, [initialSections]);
+
+    const handleRenameSection = async (sectionId: number, newName: string) => {
+        setSections(prev => prev.map(s => s.id === sectionId ? { ...s, name: newName } : s));
+        if (isDemo) {
+            demoUpdateSection(demoId, sectionId, newName);
+        } else {
+            await updateSection(id, sectionId, newName);
+        }
+    };
 
     const handleDeleteSection = async () => {
         if (!sectionToDelete) return;
@@ -103,6 +112,7 @@ export function Board({id, name, description, size, cards, sections: initialSect
                             color={SECTION_COLORS[i % SECTION_COLORS.length]}
                             parent={null}
                             onDelete={() => setSectionToDelete({ id: section.id, name: section.name })}
+                            onRename={(newName) => handleRenameSection(section.id, newName)}
                         />
                     ))}
 

@@ -43,6 +43,13 @@ export async function createSection(boardId: number, name: string) {
   });
 }
 
+export async function updateSection(boardId: number, sectionId: number, name: string) {
+  return apiFetch(`/api/boards/${boardId}/sections/${sectionId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ name }),
+  });
+}
+
 export async function createCard(boardId: number, data: { section_id: number; name: string; description: string }) {
   return apiFetch(`/api/boards/${boardId}/cards`, {
     method: 'POST',

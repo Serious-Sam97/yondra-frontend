@@ -95,6 +95,15 @@ export function demoCreateSection(boardId: string, name: string): DemoSection {
     return section;
 }
 
+export function demoUpdateSection(boardId: string, sectionId: number, name: string): DemoSection | null {
+    const data = loadBoardData(boardId);
+    const idx = data.sections.findIndex(s => s.id === sectionId);
+    if (idx === -1) return null;
+    data.sections[idx] = { ...data.sections[idx], name };
+    saveBoardData(boardId, data);
+    return data.sections[idx];
+}
+
 export function demoDeleteSection(boardId: string, sectionId: number): void {
     const data = loadBoardData(boardId);
     data.sections = data.sections.filter(s => s.id !== sectionId);

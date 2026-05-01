@@ -8,4 +8,5 @@ export interface SectionInterface {
     cards: CardInterface[]
     handleClick: (card: any) => void
     onDelete?: () => void
+    onRename?: (newName: string) => void
 }
