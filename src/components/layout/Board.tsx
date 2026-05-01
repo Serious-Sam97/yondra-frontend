@@ -24,6 +24,18 @@ import {
 const SECTION_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107'];
 const AVATAR_COLORS  = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107', '#00BCD4', '#E91E63'];
 const TAG_PALETTE    = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'];
+const BG_OPTIONS = [
+    { label: 'Default',      value: '' },
+    { label: 'Deep Navy',    value: '#07090f' },
+    { label: 'Forest',       value: '#070f09' },
+    { label: 'Plum',         value: '#0d070f' },
+    { label: 'Warm Dark',    value: '#100a07' },
+    { label: 'Graphite',     value: '#0a0a0a' },
+    { label: 'Ocean',        value: 'linear-gradient(135deg,#060d1a 0%,#081525 100%)' },
+    { label: 'Dusk',         value: 'linear-gradient(135deg,#130d1a 0%,#07090f 100%)' },
+    { label: 'Deep Forest',  value: 'linear-gradient(135deg,#071309 0%,#07090f 100%)' },
+    { label: 'Sunset',       value: 'linear-gradient(135deg,#1a0707 0%,#100a07 100%)' },
+];
 
 function initials(name: string): string {
     return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -57,6 +69,30 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const [archivedCards, setArchivedCards] = useState<any[]>([]);
     const [newTagName, setNewTagName] = useState('');
     const [newTagColor, setNewTagColor] = useState(TAG_PALETTE[0]);
+
+    const storageKey = isDemo ? demoId : String(id);
+    const [wipLimits, setWipLimits] = useState<Record<number, number | null>>({});
+    const [boardBg, setBoardBg] = useState<string>('');
+    const [isBgOpen, setIsBgOpen] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined' || (!isDemo && id === 0)) return;
+        const raw = localStorage.getItem(`yondra_wip_${storageKey}`);
+        setWipLimits(raw ? JSON.parse(raw) : {});
+        setBoardBg(localStorage.getItem(`yondra_bg_${storageKey}`) ?? '');
+    }, [storageKey]);
+
+    const handleSetWipLimit = (sectionId: number, limit: number | null) => {
+        const next = { ...wipLimits, [sectionId]: limit };
+        setWipLimits(next);
+        localStorage.setItem(`yondra_wip_${storageKey}`, JSON.stringify(next));
+    };
+
+    const handleSetBg = (bg: string) => {
+        setBoardBg(bg);
+        localStorage.setItem(`yondra_bg_${storageKey}`, bg);
+        setIsBgOpen(false);
+    };
 
     useEffect(() => { setCards(cards); }, [cards]);
     useEffect(() => { setSections(initialSections); }, [initialSections]);
@@ -186,13 +222,13 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
     useEffect(() => {
         const handleGlobalEvent = (event: any) => {
-            if (event.key.toLowerCase() === 'c' && !isCardVisible && !isTagsOpen && !isActivityOpen && !isArchivedOpen) {
+            if (event.key.toLowerCase() === 'c' && !isCardVisible && !isTagsOpen && !isActivityOpen && !isArchivedOpen && !isBgOpen) {
                 setIsCardVisible(true);
             }
         };
         window.addEventListener('keydown', handleGlobalEvent);
         return () => window.removeEventListener('keydown', handleGlobalEvent);
-    }, [isCardVisible, isTagsOpen, isActivityOpen, isArchivedOpen]);
+    }, [isCardVisible, isTagsOpen, isActivityOpen, isArchivedOpen, isBgOpen]);
 
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -203,6 +239,11 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
     return (
         <>
+            {/* Board background overlay */}
+            {boardBg && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: -1, background: boardBg }} />
+            )}
+
             {/* Top bar: search + shortcuts */}
             <div className="flex items-center gap-3 mb-4 flex-wrap">
                 <div className="relative flex-1 min-w-[160px] max-w-xs">
@@ -306,6 +347,14 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                 >
                     🗂 Archived
                 </button>
+
+                {/* Background button */}
+                <button
+                    onClick={() => setIsBgOpen(true)}
+                    className="text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border border-gray-700 text-gray-500 hover:border-gray-400 hover:text-gray-300 font-bold cursor-pointer transition-all duration-150 flex items-center gap-1.5"
+                >
+                    🎨 Background
+                </button>
             </div>
 
             {/* Board columns */}
@@ -322,6 +371,8 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                             parent={null}
                             onDelete={() => setSectionToDelete({ id: section.id, name: section.name })}
                             onRename={(newName) => handleRenameSection(section.id, newName)}
+                            wipLimit={wipLimits[section.id] ?? null}
+                            onSetWipLimit={(limit) => handleSetWipLimit(section.id, limit)}
                         />
                     ))}
 
@@ -492,6 +543,33 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                                         Restore
                                     </button>
                                 </div>
+                            ))}
+                        </div>
+                    </div>
+                </Modal>
+            )}
+
+            {/* Background picker modal */}
+            {isBgOpen && (
+                <Modal>
+                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-[95vw] max-w-sm flex flex-col gap-5">
+                        <div className="flex items-center justify-between">
+                            <p className="text-xs uppercase tracking-widest text-gray-400">Board Background</p>
+                            <button onClick={() => setIsBgOpen(false)} className="text-gray-500 hover:text-white cursor-pointer transition-colors">✕</button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            {BG_OPTIONS.map(opt => (
+                                <button
+                                    key={opt.value}
+                                    onClick={() => handleSetBg(opt.value)}
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all duration-150 text-left ${boardBg === opt.value ? 'border-amber-400 text-amber-400' : 'border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200'}`}
+                                >
+                                    <div
+                                        style={{ background: opt.value || '#111827' }}
+                                        className="w-5 h-5 rounded flex-shrink-0 border border-gray-600"
+                                    />
+                                    <span className="text-xs font-bold uppercase tracking-wide truncate">{opt.label}</span>
+                                </button>
                             ))}
                         </div>
                     </div>

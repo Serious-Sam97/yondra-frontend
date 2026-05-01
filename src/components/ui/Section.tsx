@@ -1,12 +1,15 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { CardInterface } from "@/interfaces/CardInterface"
 import { Droppable } from "../shared/Droppable"
 import { Card } from "./Card"
 import { SectionInterface } from "@/interfaces/SectionInterface"
 
-export function Section({id, name, color, cards, handleClick, onDelete, onRename}: SectionInterface) {
+export function Section({id, name, color, cards, handleClick, onDelete, onRename, wipLimit, onSetWipLimit}: SectionInterface) {
     const [editing, setEditing] = useState(false)
     const [editValue, setEditValue] = useState(name)
+    const [editingWip, setEditingWip] = useState(false)
+    const [wipInput, setWipInput] = useState('')
+    const wipInputRef = useRef<HTMLInputElement>(null)
 
     const commitRename = () => {
         const trimmed = editValue.trim()
@@ -17,6 +20,24 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
         }
         setEditing(false)
     }
+
+    const openWipEdit = () => {
+        setWipInput(wipLimit != null ? String(wipLimit) : '')
+        setEditingWip(true)
+        setTimeout(() => wipInputRef.current?.focus(), 0)
+    }
+
+    const commitWip = () => {
+        const n = parseInt(wipInput)
+        onSetWipLimit?.(isNaN(n) || n <= 0 ? null : n)
+        setEditingWip(false)
+    }
+
+    const count = cards.length
+    const atLimit  = wipLimit != null && count === wipLimit
+    const overLimit = wipLimit != null && count > wipLimit
+    const countColor = overLimit ? '#ef4444' : atLimit ? '#f97316' : '#6b7280'
+    const countBg    = overLimit ? '#ef444422' : atLimit ? '#f9731622' : '#1f2937'
 
     const style = {
         minHeight: '300px',
@@ -53,9 +74,26 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
                     </p>
                 )}
 
-                <span className="ml-auto text-xs text-gray-600 bg-gray-800 px-2 py-0.5 rounded-full flex-shrink-0">
-                    {cards.length}
+                {/* Count / WIP badge */}
+                <span
+                    style={{ color: countColor, backgroundColor: countBg, borderColor: countColor + '44' }}
+                    className="ml-auto text-xs px-2 py-0.5 rounded-full flex-shrink-0 border font-bold"
+                    title={wipLimit != null ? `${count} / ${wipLimit} WIP limit` : `${count} cards`}
+                >
+                    {wipLimit != null ? `${count}/${wipLimit}` : count}
                 </span>
+
+                {/* WIP edit trigger */}
+                {onSetWipLimit && (
+                    <button
+                        onClick={openWipEdit}
+                        className="opacity-0 group-hover/section:opacity-100 text-gray-600 hover:text-amber-400 text-xs cursor-pointer transition-all duration-150 leading-none flex-shrink-0"
+                        title="Set WIP limit"
+                    >
+                        ⚙
+                    </button>
+                )}
+
                 {onDelete && (
                     <button
                         onClick={onDelete}
@@ -66,6 +104,39 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
                     </button>
                 )}
             </div>
+
+            {/* WIP limit inline editor */}
+            {editingWip && (
+                <div className="flex items-center gap-2 mb-2 px-1">
+                    <input
+                        ref={wipInputRef}
+                        type="number"
+                        min="1"
+                        value={wipInput}
+                        onChange={e => setWipInput(e.target.value)}
+                        onKeyDown={e => {
+                            if (e.key === 'Enter') commitWip()
+                            if (e.key === 'Escape') setEditingWip(false)
+                        }}
+                        placeholder="Limit..."
+                        className="w-20 bg-gray-800 border border-gray-600 text-white text-xs px-2 py-1 rounded focus:outline-none focus:border-amber-400"
+                    />
+                    <button onClick={commitWip} className="text-xs text-amber-400 font-bold cursor-pointer hover:text-amber-300">Set</button>
+                    <button onClick={() => { onSetWipLimit?.(null); setEditingWip(false); }} className="text-xs text-gray-500 cursor-pointer hover:text-gray-300">Clear</button>
+                </div>
+            )}
+
+            {/* WIP warning banner */}
+            {overLimit && (
+                <div className="mb-2 px-2 py-1 bg-red-900/40 border border-red-700/50 rounded-lg text-xs text-red-400 font-bold uppercase tracking-widest">
+                    ⚠ WIP limit exceeded
+                </div>
+            )}
+            {atLimit && (
+                <div className="mb-2 px-2 py-1 bg-orange-900/40 border border-orange-700/50 rounded-lg text-xs text-orange-400 font-bold uppercase tracking-widest">
+                    WIP limit reached
+                </div>
+            )}
 
             {/* Card list */}
             <div style={{ backgroundColor: color + '33', borderColor: color + '55' }} className="border rounded-xl p-2 flex-1 max-h-[50vh] md:max-h-[calc(100vh-320px)] overflow-y-auto">

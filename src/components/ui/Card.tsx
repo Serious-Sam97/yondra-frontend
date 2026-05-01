@@ -50,6 +50,15 @@ function DueDateBadge({ dueDate }: { dueDate: string }) {
     );
 }
 
+function cardAgeOpacity(updatedAt?: string | null): number {
+    if (!updatedAt) return 1;
+    const days = (Date.now() - new Date(updatedAt).getTime()) / 86400000;
+    if (days < 3) return 1;
+    if (days < 7) return 0.82;
+    if (days < 14) return 0.65;
+    return 0.48;
+}
+
 function blendWithCream(hex: string, amount = 0.18): string {
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
@@ -60,12 +69,13 @@ function blendWithCream(hex: string, amount = 0.18): string {
     return `rgb(${nr},${ng},${nb})`;
 }
 
-export function Card({ id, name, description, assigned_user, created_by, tags, due_date, priority, checklist_items }: CardInterface & { color: string }) {
+export function Card({ id, name, description, assigned_user, created_by, tags, due_date, priority, checklist_items, updated_at }: CardInterface & { color: string }) {
     const showBottom = assigned_user || created_by;
     const priorityColor = priority ? PRIORITY_COLORS[priority] : null;
     const doneItems = (checklist_items ?? []).filter(i => i.is_done).length;
     const totalItems = (checklist_items ?? []).length;
     const primaryTagColor = tags?.[0]?.color ?? null;
+    const opacity = cardAgeOpacity(updated_at);
 
     const cardBackground = primaryTagColor
         ? blendWithCream(primaryTagColor)
@@ -84,6 +94,7 @@ export function Card({ id, name, description, assigned_user, created_by, tags, d
                     minHeight: '120px',
                     position: 'relative',
                     borderLeft: priorityColor ? `3px solid ${priorityColor}` : undefined,
+                    opacity,
                 }}
                 className="cursor-pointer hover:-translate-y-1 hover:shadow-xl transition-all duration-150 rounded-sm flex flex-col"
             >

@@ -9,4 +9,6 @@ export interface SectionInterface {
     handleClick: (card: any) => void
     onDelete?: () => void
     onRename?: (newName: string) => void
+    wipLimit?: number | null
+    onSetWipLimit?: (limit: number | null) => void
 }
