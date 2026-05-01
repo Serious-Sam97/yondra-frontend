@@ -45,6 +45,16 @@ function getSectionColor(name: string, index: number): string {
     return SECTION_COLORS[name] ?? DEFAULT_COLORS[index % DEFAULT_COLORS.length]
 }
 
+function blendWithCream(hex: string, amount = 0.18): string {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const nr = Math.round(254 + (r - 254) * amount);
+    const ng = Math.round(249 + (g - 249) * amount);
+    const nb = Math.round(195 + (b - 195) * amount);
+    return `rgb(${nr},${ng},${nb})`;
+}
+
 function initials(name: string): string {
     return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
@@ -172,10 +182,10 @@ const CardEdit: React.FC<CardEditProps> = ({
         ? (tags.find(t => t.id === selectedTagIds[0])?.color ?? null)
         : null;
     const cardBackground = primaryTagColor
-        ? `linear-gradient(to bottom, ${primaryTagColor} 0%, ${primaryTagColor}22 8%, ${primaryTagColor}0d 8%)`
+        ? blendWithCream(primaryTagColor)
         : 'linear-gradient(to bottom, #f5e642 0%, #fef08a 6%, #fef9c3 6%)';
     const glueBackground = primaryTagColor
-        ? `linear-gradient(to bottom, ${primaryTagColor}cc, ${primaryTagColor})`
+        ? primaryTagColor
         : 'linear-gradient(to bottom, #e6d800, #f5e642)';
     const glueTextColor = primaryTagColor ? 'rgba(255,255,255,0.85)' : '#a89800';
 
@@ -218,7 +228,7 @@ const CardEdit: React.FC<CardEditProps> = ({
 
             {/* Tabs (only for existing cards) */}
             {!isNew && (
-                <div className="flex border-b border-yellow-300/40 px-4 pt-2 gap-4 flex-shrink-0" style={{ backgroundColor: '#fef9c3' }}>
+                <div className="flex border-b border-yellow-300/40 px-4 pt-2 gap-4 flex-shrink-0" style={{ backgroundColor: cardBackground as string }}>
                     {(['details', 'checklist', 'comments'] as const).map(tab => (
                         <button
                             key={tab}

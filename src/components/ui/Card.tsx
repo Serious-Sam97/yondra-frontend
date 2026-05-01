@@ -50,6 +50,16 @@ function DueDateBadge({ dueDate }: { dueDate: string }) {
     );
 }
 
+function blendWithCream(hex: string, amount = 0.18): string {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const nr = Math.round(254 + (r - 254) * amount);
+    const ng = Math.round(249 + (g - 249) * amount);
+    const nb = Math.round(195 + (b - 195) * amount);
+    return `rgb(${nr},${ng},${nb})`;
+}
+
 export function Card({ id, name, description, assigned_user, created_by, tags, due_date, priority, checklist_items }: CardInterface & { color: string }) {
     const showBottom = assigned_user || created_by;
     const priorityColor = priority ? PRIORITY_COLORS[priority] : null;
@@ -58,10 +68,10 @@ export function Card({ id, name, description, assigned_user, created_by, tags, d
     const primaryTagColor = tags?.[0]?.color ?? null;
 
     const cardBackground = primaryTagColor
-        ? `linear-gradient(to bottom, ${primaryTagColor} 0%, ${primaryTagColor}22 8%, ${primaryTagColor}0d 8%)`
+        ? blendWithCream(primaryTagColor)
         : 'linear-gradient(to bottom, #f5e642 0%, #fef08a 5%, #fef9c3 5%)';
     const glueBackground = primaryTagColor
-        ? `linear-gradient(to bottom, ${primaryTagColor}cc, ${primaryTagColor})`
+        ? primaryTagColor
         : 'linear-gradient(to bottom, #e6d800, #f5e642)';
 
     return (
