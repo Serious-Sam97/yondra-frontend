@@ -101,11 +101,6 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                             Share
                         </button>
                     )}
-                    <div className="text-right hidden md:block">
-                        <p className="text-xs uppercase tracking-widest text-gray-600">Press</p>
-                        <kbd className="text-xs bg-gray-800 border border-gray-700 text-amber-400 px-2 py-1 rounded font-mono">C</kbd>
-                        <p className="text-xs uppercase tracking-widest text-gray-600">to add a ticket</p>
-                    </div>
                 </div>
             </div>
 

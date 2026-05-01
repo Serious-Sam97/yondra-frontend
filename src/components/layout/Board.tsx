@@ -110,41 +110,51 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
     return (
         <>
-            {/* User filter strip */}
-            {boardUsers.length > 0 && (
-                <div className="flex items-center gap-2 mb-5 flex-wrap">
-                    <button
-                        onClick={() => setFilterUserId(null)}
-                        className={`text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border font-bold cursor-pointer transition-all duration-150 ${
-                            filterUserId === null
-                                ? 'bg-white text-gray-900 border-white'
-                                : 'text-gray-500 border-gray-700 hover:border-gray-400 hover:text-gray-300'
-                        }`}
-                    >
-                        All
-                    </button>
-                    {boardUsers.map((user) => {
-                        const color = AVATAR_COLORS[user.id % AVATAR_COLORS.length]
-                        const isActive = filterUserId === user.id
-                        return (
+            {/* Filter strip + Press C hint */}
+            <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
+                    {boardUsers.length > 0 && (
+                        <>
                             <button
-                                key={user.id}
-                                onClick={() => setFilterUserId(isActive ? null : user.id)}
-                                style={{ borderColor: color, backgroundColor: isActive ? color : 'transparent', color: isActive ? '#fff' : color }}
-                                className="text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border font-bold cursor-pointer transition-all duration-150 flex items-center gap-1.5"
+                                onClick={() => setFilterUserId(null)}
+                                className={`text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border font-bold cursor-pointer transition-all duration-150 ${
+                                    filterUserId === null
+                                        ? 'bg-white text-gray-900 border-white'
+                                        : 'text-gray-500 border-gray-700 hover:border-gray-400 hover:text-gray-300'
+                                }`}
                             >
-                                <span
-                                    style={{ backgroundColor: isActive ? 'rgba(255,255,255,0.3)' : color, fontSize: '9px', width: '16px', height: '16px' }}
-                                    className="rounded-full flex items-center justify-center text-white font-bold flex-shrink-0"
-                                >
-                                    {initials(user.name)}
-                                </span>
-                                {user.name.split(' ')[0]}
+                                All
                             </button>
-                        )
-                    })}
+                            {boardUsers.map((user) => {
+                                const color = AVATAR_COLORS[user.id % AVATAR_COLORS.length]
+                                const isActive = filterUserId === user.id
+                                return (
+                                    <button
+                                        key={user.id}
+                                        onClick={() => setFilterUserId(isActive ? null : user.id)}
+                                        style={{ borderColor: color, backgroundColor: isActive ? color : 'transparent', color: isActive ? '#fff' : color }}
+                                        className="text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border font-bold cursor-pointer transition-all duration-150 flex items-center gap-1.5"
+                                    >
+                                        <span
+                                            style={{ backgroundColor: isActive ? 'rgba(255,255,255,0.3)' : color, fontSize: '9px', width: '16px', height: '16px' }}
+                                            className="rounded-full flex items-center justify-center text-white font-bold flex-shrink-0"
+                                        >
+                                            {initials(user.name)}
+                                        </span>
+                                        {user.name.split(' ')[0]}
+                                    </button>
+                                )
+                            })}
+                        </>
+                    )}
                 </div>
-            )}
+
+                <div className="hidden md:flex items-center gap-2 text-gray-600 flex-shrink-0">
+                    <p className="text-xs uppercase tracking-widest">Press</p>
+                    <kbd className="text-xs bg-gray-800 border border-gray-700 text-amber-400 px-2 py-1 rounded font-mono">C</kbd>
+                    <p className="text-xs uppercase tracking-widest">to add a ticket</p>
+                </div>
+            </div>
 
             <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
                 <div className="flex gap-5 items-start overflow-x-auto pb-4">
