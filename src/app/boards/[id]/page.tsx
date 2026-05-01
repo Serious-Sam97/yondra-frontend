@@ -49,6 +49,7 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                 description: boardMeta?.description ?? 'Try it out — everything is saved in your browser.',
                 sections: demo.sections,
                 cards: demo.cards,
+                tags: demo.tags,
                 shared_with: [],
             });
             return;
@@ -61,6 +62,7 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                 description: data.description ?? '',
                 sections: data.sections ?? [],
                 cards: data.cards ?? [],
+                tags: data.tags ?? [],
                 user_id: data.user_id,
                 owner: data.owner,
                 shared_with: data.shared_with ?? [],
@@ -115,6 +117,7 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                 isDemo={isDemo}
                 demoId={id}
                 boardUsers={boardUsers}
+                tags={board.tags ?? []}
             />
 
             {shareOpen && (

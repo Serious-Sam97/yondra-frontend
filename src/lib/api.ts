@@ -50,14 +50,25 @@ export async function updateSection(boardId: number, sectionId: number, name: st
   });
 }
 
-export async function createCard(boardId: number, data: { section_id: number; assigned_user_id?: number | null; name: string; description: string }) {
+export async function createTag(boardId: number, data: { name: string; color: string }) {
+  return apiFetch(`/api/boards/${boardId}/tags`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteTag(boardId: number, tagId: number) {
+  return apiFetch(`/api/boards/${boardId}/tags/${tagId}`, { method: 'DELETE' });
+}
+
+export async function createCard(boardId: number, data: { section_id: number; assigned_user_id?: number | null; tag_ids?: number[]; name: string; description: string }) {
   return apiFetch(`/api/boards/${boardId}/cards`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
-export async function updateCard(boardId: number, cardId: number, data: { section_id?: number; assigned_user_id?: number | null; name?: string; description?: string }) {
+export async function updateCard(boardId: number, cardId: number, data: { section_id?: number; assigned_user_id?: number | null; tag_ids?: number[]; name?: string; description?: string }) {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}`, {
     method: 'PUT',
     body: JSON.stringify(data),

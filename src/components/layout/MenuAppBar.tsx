@@ -31,6 +31,11 @@ export default function MenuAppBar() {
     window.location.href = '/dashboard';
   }
 
+  const goToProfile = () => {
+    handleClose();
+    window.location.href = '/profile';
+  }
+
   const handleLogout = async () => {
     await logout();
     setIsLogged(false);
@@ -82,8 +87,7 @@ export default function MenuAppBar() {
               onClose={handleClose}
             >
               {isLogged ? [
-                <MenuItem key="profile" onClick={handleClose}>Profile</MenuItem>,
-                <MenuItem key="account" onClick={handleClose}>My account</MenuItem>,
+                <MenuItem key="profile" onClick={goToProfile}>Profile</MenuItem>,
                 <MenuItem key="logout" onClick={handleLogout}>Logout</MenuItem>,
               ] : [
                 <MenuItem key="login" onClick={() => { handleClose(); window.location.href = '/login'; }}>Login</MenuItem>,

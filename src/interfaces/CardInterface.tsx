@@ -1,8 +1,13 @@
+import { TagInterface } from "./TagInterface"
+
 export interface CardInterface {
     id: number|string,
     section_id: number,
     assigned_user_id?: number | null,
     assigned_user?: { id: number; name: string } | null,
+    created_by_user_id?: number | null,
+    created_by?: { id: number; name: string } | null,
+    tags?: TagInterface[],
     name: string,
     description: string
 }

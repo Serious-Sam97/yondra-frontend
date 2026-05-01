@@ -1,4 +1,5 @@
 import { CardInterface } from "./CardInterface"
+import { TagInterface } from "./TagInterface"
 
 export interface SectionData {
     id: number,
@@ -17,6 +18,7 @@ export interface BoardInterface {
     description: string,
     sections: SectionData[],
     cards: CardInterface[],
+    tags?: TagInterface[],
     user_id?: number,
     owner?: SharedUser,
     shared_with?: SharedUser[],

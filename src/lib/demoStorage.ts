@@ -2,9 +2,10 @@ const DEMO_BOARDS_KEY = 'yondra_demo_boards';
 const boardDataKey = (id: string) => `yondra_demo_data_${id}`;
 const LEGACY_KEY = 'yondra_demo';
 
+export type DemoTag     = { id: number; name: string; color: string };
 export type DemoSection = { id: number; name: string };
-export type DemoCard = { id: number; section_id: number; assigned_user_id?: number | null; name: string; description: string };
-export type DemoBoardData = { sections: DemoSection[]; cards: DemoCard[] };
+export type DemoCard    = { id: number; section_id: number; assigned_user_id?: number | null; tag_ids?: number[]; name: string; description: string };
+export type DemoBoardData = { sections: DemoSection[]; cards: DemoCard[]; tags: DemoTag[] };
 export type DemoBoard = { id: string; name: string; description: string };
 
 const DEFAULT_DATA: DemoBoardData = {
@@ -18,17 +19,24 @@ const DEFAULT_DATA: DemoBoardData = {
         { id: 2, section_id: 1, name: 'Try creating a card', description: 'Press C to add a new card.' },
         { id: 3, section_id: 2, name: 'Drag me to another column', description: '' },
     ],
+    tags: [],
 };
+
+function resolveCardTags(card: DemoCard, allTags: DemoTag[]): DemoCard & { tags: DemoTag[] } {
+    const tags = (card.tag_ids ?? []).map(id => allTags.find(t => t.id === id)).filter(Boolean) as DemoTag[];
+    return { ...card, tags };
+}
 
 function loadBoardData(boardId: string): DemoBoardData {
     if (typeof window === 'undefined') return structuredClone(DEFAULT_DATA);
-    // Migrate legacy single-board key
     if (boardId === 'demo') {
         const legacyRaw = localStorage.getItem(LEGACY_KEY);
         if (legacyRaw) {
-            localStorage.setItem(boardDataKey('demo'), legacyRaw);
+            const parsed = JSON.parse(legacyRaw);
+            const migrated = { ...DEFAULT_DATA, ...parsed, tags: parsed.tags ?? [] };
+            localStorage.setItem(boardDataKey('demo'), JSON.stringify(migrated));
             localStorage.removeItem(LEGACY_KEY);
-            return JSON.parse(legacyRaw);
+            return migrated;
         }
     }
     const raw = localStorage.getItem(boardDataKey(boardId));
@@ -37,7 +45,8 @@ function loadBoardData(boardId: string): DemoBoardData {
         localStorage.setItem(boardDataKey(boardId), JSON.stringify(data));
         return data;
     }
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    return { ...DEFAULT_DATA, ...parsed, tags: parsed.tags ?? [] };
 }
 
 function saveBoardData(boardId: string, data: DemoBoardData) {
@@ -83,8 +92,32 @@ export function deleteDemoBoard(id: string): void {
 // --- Board data ---
 
 export function loadDemoBoardData(boardId: string): DemoBoardData {
-    return loadBoardData(boardId);
+    const data = loadBoardData(boardId);
+    return {
+        ...data,
+        cards: data.cards.map(c => resolveCardTags(c, data.tags)),
+    };
 }
+
+// --- Tags ---
+
+export function demoCreateTag(boardId: string, name: string, color: string): DemoTag {
+    const data = loadBoardData(boardId);
+    const newId = data.tags.length > 0 ? Math.max(...data.tags.map(t => t.id)) + 1 : 1;
+    const tag: DemoTag = { id: newId, name, color };
+    data.tags.push(tag);
+    saveBoardData(boardId, data);
+    return tag;
+}
+
+export function demoDeleteTag(boardId: string, tagId: number): void {
+    const data = loadBoardData(boardId);
+    data.tags = data.tags.filter(t => t.id !== tagId);
+    data.cards = data.cards.map(c => ({ ...c, tag_ids: (c.tag_ids ?? []).filter(id => id !== tagId) }));
+    saveBoardData(boardId, data);
+}
+
+// --- Sections ---
 
 export function demoCreateSection(boardId: string, name: string): DemoSection {
     const data = loadBoardData(boardId);
@@ -111,20 +144,22 @@ export function demoDeleteSection(boardId: string, sectionId: number): void {
     saveBoardData(boardId, data);
 }
 
-export function demoCreateCard(boardId: string, cardData: { section_id: number; name: string; description: string }): DemoCard {
+// --- Cards ---
+
+export function demoCreateCard(boardId: string, cardData: { section_id: number; name: string; description: string; tag_ids?: number[] }): DemoCard & { tags: DemoTag[] } {
     const data = loadBoardData(boardId);
     const newId = data.cards.length > 0 ? Math.max(...data.cards.map(c => c.id)) + 1 : 1;
-    const card: DemoCard = { id: newId, ...cardData };
+    const card: DemoCard = { id: newId, ...cardData, tag_ids: cardData.tag_ids ?? [] };
     data.cards.push(card);
     saveBoardData(boardId, data);
-    return card;
+    return resolveCardTags(card, data.tags);
 }
 
-export function demoUpdateCard(boardId: string, cardId: number, cardData: { section_id?: number; name?: string; description?: string }): DemoCard | null {
+export function demoUpdateCard(boardId: string, cardId: number, cardData: { section_id?: number; name?: string; description?: string; tag_ids?: number[] }): (DemoCard & { tags: DemoTag[] }) | null {
     const data = loadBoardData(boardId);
     const idx = data.cards.findIndex(c => c.id === cardId);
     if (idx === -1) return null;
     data.cards[idx] = { ...data.cards[idx], ...cardData };
     saveBoardData(boardId, data);
-    return data.cards[idx];
+    return resolveCardTags(data.cards[idx], data.tags);
 }

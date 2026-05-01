@@ -7,7 +7,6 @@ export async function register(name: string, email: string, password: string, pa
         method: 'POST',
         body: JSON.stringify({ name, email, password, password_confirmation: passwordConfirmation })
     });
-
     localStorage.setItem('token', data.token);
     localStorage.setItem('isLogged', 'true');
 }
@@ -17,7 +16,6 @@ export async function login(email: string, password: string) {
         method: 'POST',
         body: JSON.stringify({ email, password })
     });
-
     localStorage.setItem('token', data.token);
     localStorage.setItem('isLogged', 'true');
 }
@@ -28,6 +26,14 @@ export async function fetchUser() {
 
 export async function fetchBoards() {
     return await apiFetch(`/api/boards`, { method: 'GET' });
+}
+
+export async function updateProfile(data: { name: string; email: string }) {
+    return await apiFetch('/api/user', { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export async function updatePassword(data: { current_password: string; password: string; password_confirmation: string }) {
+    return await apiFetch('/api/user/password', { method: 'PUT', body: JSON.stringify(data) });
 }
 
 export async function logout() {

@@ -1,11 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { TagInterface } from '@/interfaces/TagInterface'
 
-interface BoardUser {
-    id: number
-    name: string
-}
+interface BoardUser { id: number; name: string }
 
 interface CardEditProps {
     goBack: () => void
@@ -13,6 +11,7 @@ interface CardEditProps {
     card: any | null
     sections: { id: number; name: string }[]
     users?: BoardUser[]
+    tags?: TagInterface[]
 }
 
 const SECTION_COLORS: Record<string, string> = {
@@ -31,12 +30,13 @@ function initials(name: string): string {
     return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
-const CardEdit: React.FC<CardEditProps> = ({goBack, submit, card, sections, users = []}) => {
+const CardEdit: React.FC<CardEditProps> = ({ goBack, submit, card, sections, users = [], tags = [] }) => {
     const [id, setId] = useState(0)
     const [name, setName] = useState<string>('')
     const [description, setDescription] = useState<string>('')
     const [sectionId, setSectionId] = useState<number>(sections[0]?.id ?? 1)
     const [assignedUserId, setAssignedUserId] = useState<number | null>(null)
+    const [selectedTagIds, setSelectedTagIds] = useState<number[]>([])
 
     const isNew = card === null
 
@@ -47,11 +47,18 @@ const CardEdit: React.FC<CardEditProps> = ({goBack, submit, card, sections, user
             setDescription(card.description)
             setSectionId(card.section_id)
             setAssignedUserId(card.assigned_user_id ?? null)
+            setSelectedTagIds((card.tags ?? []).map((t: TagInterface) => t.id))
         }
     }, [])
 
+    const toggleTag = (tagId: number) => {
+        setSelectedTagIds(prev =>
+            prev.includes(tagId) ? prev.filter(id => id !== tagId) : [...prev, tagId]
+        )
+    }
+
     const handleSubmit = () => {
-        submit({ id, name, description, section_id: sectionId, assigned_user_id: assignedUserId }, isNew)
+        submit({ id, name, description, section_id: sectionId, assigned_user_id: assignedUserId, tag_ids: selectedTagIds }, isNew)
     }
 
     const currentSection = sections.find(s => s.id === sectionId)
@@ -70,24 +77,19 @@ const CardEdit: React.FC<CardEditProps> = ({goBack, submit, card, sections, user
             {/* Glue strip */}
             <div
                 style={{ background: 'linear-gradient(to bottom, #e6d800, #f5e642)' }}
-                className="h-8 w-full rounded-t-sm flex items-center justify-between px-4"
+                className="h-8 w-full rounded-t-sm flex items-center justify-between px-4 flex-shrink-0"
             >
                 <span style={{ color: '#a89800', fontFamily: 'monospace', fontSize: '11px', letterSpacing: '0.15em' }}>
                     {isNew ? 'NEW' : `#${String(id).padStart(4, '0')}`}
                 </span>
-                <button
-                    onClick={goBack}
-                    style={{ color: '#a89800' }}
-                    className="text-sm hover:opacity-60 cursor-pointer transition-opacity leading-none"
-                >
+                <button onClick={goBack} style={{ color: '#a89800' }} className="text-sm hover:opacity-60 cursor-pointer transition-opacity leading-none">
                     ✕
                 </button>
             </div>
 
             {/* Paper body */}
-            <div className="flex flex-col flex-1 px-6 pt-5 pb-6 gap-4">
+            <div className="flex flex-col flex-1 px-6 pt-5 pb-6 gap-3 overflow-y-auto">
 
-                {/* Title */}
                 <textarea
                     autoFocus
                     placeholder="What needs to be done?"
@@ -100,9 +102,8 @@ const CardEdit: React.FC<CardEditProps> = ({goBack, submit, card, sections, user
 
                 <div style={{ borderColor: '#d4c200', opacity: 0.5 }} className="border-t"/>
 
-                {/* Description */}
                 <textarea
-                    rows={5}
+                    rows={4}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Add some notes..."
@@ -110,7 +111,7 @@ const CardEdit: React.FC<CardEditProps> = ({goBack, submit, card, sections, user
                     className="w-full bg-transparent text-sm placeholder-yellow-700/40 focus:outline-none resize-none leading-relaxed"
                 />
 
-                {/* Section pills */}
+                {/* Section */}
                 <div className="flex gap-2 flex-wrap">
                     {sections.map((s, i) => {
                         const color = getSectionColor(s.name, i)
@@ -119,12 +120,7 @@ const CardEdit: React.FC<CardEditProps> = ({goBack, submit, card, sections, user
                             <button
                                 key={s.id}
                                 onClick={() => setSectionId(s.id)}
-                                style={{
-                                    borderColor: color,
-                                    backgroundColor: isActive ? color : 'transparent',
-                                    color: isActive ? '#fff' : color,
-                                    fontSize: '10px',
-                                }}
+                                style={{ borderColor: color, backgroundColor: isActive ? color : 'transparent', color: isActive ? '#fff' : color, fontSize: '10px' }}
                                 className="uppercase tracking-widest px-3 py-2 rounded-full border cursor-pointer transition-all duration-150 font-bold"
                             >
                                 {s.name}
@@ -132,6 +128,25 @@ const CardEdit: React.FC<CardEditProps> = ({goBack, submit, card, sections, user
                         )
                     })}
                 </div>
+
+                {/* Tags */}
+                {tags.length > 0 && (
+                    <div className="flex gap-1.5 flex-wrap">
+                        {tags.map(tag => {
+                            const isActive = selectedTagIds.includes(tag.id)
+                            return (
+                                <button
+                                    key={tag.id}
+                                    onClick={() => toggleTag(tag.id)}
+                                    style={{ borderColor: tag.color, backgroundColor: isActive ? tag.color : 'transparent', color: isActive ? '#fff' : tag.color, fontSize: '10px' }}
+                                    className="uppercase tracking-widest px-2.5 py-1.5 rounded-full border cursor-pointer transition-all duration-150 font-bold"
+                                >
+                                    {tag.name}
+                                </button>
+                            )
+                        })}
+                    </div>
+                )}
 
                 {/* Assign user */}
                 {users.length > 0 && (
@@ -143,7 +158,7 @@ const CardEdit: React.FC<CardEditProps> = ({goBack, submit, card, sections, user
                         >
                             Unassigned
                         </button>
-                        {users.map((u, i) => {
+                        {users.map((u) => {
                             const color = AVATAR_COLORS[u.id % AVATAR_COLORS.length]
                             const isActive = assignedUserId === u.id
                             return (
@@ -163,32 +178,14 @@ const CardEdit: React.FC<CardEditProps> = ({goBack, submit, card, sections, user
                 {/* Save */}
                 <button
                     onClick={handleSubmit}
-                    style={{
-                        backgroundColor: currentColor,
-                        color: '#fff',
-                        fontFamily: 'monospace',
-                        letterSpacing: '0.1em',
-                        fontSize: '11px',
-                    }}
-                    className="w-full py-2.5 rounded font-bold uppercase cursor-pointer hover:opacity-90 transition-opacity duration-150 mt-auto"
+                    style={{ backgroundColor: currentColor, color: '#fff', fontFamily: 'monospace', letterSpacing: '0.1em', fontSize: '11px' }}
+                    className="w-full py-2.5 rounded font-bold uppercase cursor-pointer hover:opacity-90 transition-opacity duration-150 mt-auto flex-shrink-0"
                 >
                     {isNew ? 'Pin it' : 'Save'}
                 </button>
             </div>
 
-            {/* Bottom-right dog-ear shadow */}
-            <div
-                style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    right: 0,
-                    width: 0,
-                    height: 0,
-                    borderStyle: 'solid',
-                    borderWidth: '0 0 20px 20px',
-                    borderColor: 'transparent transparent rgba(0,0,0,0.15) transparent',
-                }}
-            />
+            <div style={{ position: 'absolute', bottom: 0, right: 0, width: 0, height: 0, borderStyle: 'solid', borderWidth: '0 0 20px 20px', borderColor: 'transparent transparent rgba(0,0,0,0.15) transparent' }}/>
         </div>
     )
 }
