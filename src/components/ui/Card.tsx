@@ -69,21 +69,21 @@ export function Card({ id, name, description, assigned_user, created_by, tags }:
                         </div>
                     )}
 
-                    {/* Bottom row: assignee left, creator right */}
+                    {/* Bottom row: creator left, assignee right */}
                     {showBottom && (
                         <div className="mt-auto pt-1 flex items-center justify-between">
-                            {assigned_user ? (
-                                <div className="flex items-center gap-1">
-                                    <Avatar user={assigned_user} />
+                            {created_by ? (
+                                <div className="flex items-center gap-1" title={`Created by ${created_by.name}`}>
+                                    <Avatar user={created_by} />
                                     <span style={{ color: '#666', fontSize: '10px' }} className="truncate">
-                                        {assigned_user.name.split(' ')[0]}
+                                        {created_by.name.split(' ')[0]}
                                     </span>
                                 </div>
                             ) : <div />}
 
-                            {created_by && (
-                                <div title={`Created by ${created_by.name}`} style={{ marginRight: '16px' }}>
-                                    <Avatar user={created_by} size={16} />
+                            {assigned_user && (
+                                <div title={`Assigned to ${assigned_user.name}`} style={{ marginRight: '16px' }}>
+                                    <Avatar user={assigned_user} size={16} />
                                 </div>
                             )}
                         </div>
