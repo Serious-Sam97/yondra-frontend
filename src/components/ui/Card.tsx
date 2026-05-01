@@ -55,12 +55,20 @@ export function Card({ id, name, description, assigned_user, created_by, tags, d
     const priorityColor = priority ? PRIORITY_COLORS[priority] : null;
     const doneItems = (checklist_items ?? []).filter(i => i.is_done).length;
     const totalItems = (checklist_items ?? []).length;
+    const primaryTagColor = tags?.[0]?.color ?? null;
+
+    const cardBackground = primaryTagColor
+        ? `linear-gradient(to bottom, ${primaryTagColor} 0%, ${primaryTagColor}22 8%, ${primaryTagColor}0d 8%)`
+        : 'linear-gradient(to bottom, #f5e642 0%, #fef08a 5%, #fef9c3 5%)';
+    const glueBackground = primaryTagColor
+        ? `linear-gradient(to bottom, ${primaryTagColor}cc, ${primaryTagColor})`
+        : 'linear-gradient(to bottom, #e6d800, #f5e642)';
 
     return (
         <Draggable id={`draggable-${id}`}>
             <div
                 style={{
-                    background: 'linear-gradient(to bottom, #f5e642 0%, #fef08a 5%, #fef9c3 5%)',
+                    background: cardBackground,
                     boxShadow: '3px 3px 8px rgba(0,0,0,0.35)',
                     fontFamily: 'Georgia, serif',
                     minHeight: '120px',
@@ -70,7 +78,7 @@ export function Card({ id, name, description, assigned_user, created_by, tags, d
                 className="cursor-pointer hover:-translate-y-1 hover:shadow-xl transition-all duration-150 rounded-sm flex flex-col"
             >
                 {/* Glue strip */}
-                <div style={{ background: 'linear-gradient(to bottom, #e6d800, #f5e642)', height: '10px' }} className="rounded-t-sm w-full flex-shrink-0" />
+                <div style={{ background: glueBackground, height: '10px' }} className="rounded-t-sm w-full flex-shrink-0" />
 
                 {/* Body */}
                 <div className="px-3 pt-2 pb-4 flex flex-col gap-1 flex-1">

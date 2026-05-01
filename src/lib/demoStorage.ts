@@ -15,6 +15,7 @@ export type DemoCard           = {
     due_date?: string | null;
     priority?: 'low' | 'medium' | 'high' | null;
     position?: number;
+    archived_at?: string | null;
     checklist_items?: DemoChecklistItem[];
 };
 export type DemoBoardData = { sections: DemoSection[]; cards: DemoCard[]; tags: DemoTag[] };
@@ -107,8 +108,17 @@ export function loadDemoBoardData(boardId: string): DemoBoardData {
     const data = loadBoardData(boardId);
     return {
         ...data,
-        cards: data.cards.map(c => resolveCardTags(c, data.tags)),
+        cards: data.cards
+            .filter(c => !c.archived_at)
+            .map(c => resolveCardTags(c, data.tags)),
     };
+}
+
+export function loadDemoArchivedCards(boardId: string): (DemoCard & { tags: DemoTag[] })[] {
+    const data = loadBoardData(boardId);
+    return data.cards
+        .filter(c => !!c.archived_at)
+        .map(c => resolveCardTags(c, data.tags));
 }
 
 // --- Tags ---
@@ -202,6 +212,22 @@ export function demoUpdateCard(boardId: string, cardId: number, cardData: {
 export function demoDeleteCard(boardId: string, cardId: number): void {
     const data = loadBoardData(boardId);
     data.cards = data.cards.filter(c => c.id !== cardId);
+    saveBoardData(boardId, data);
+}
+
+export function demoArchiveCard(boardId: string, cardId: number): void {
+    const data = loadBoardData(boardId);
+    const idx = data.cards.findIndex(c => c.id === cardId);
+    if (idx === -1) return;
+    data.cards[idx] = { ...data.cards[idx], archived_at: new Date().toISOString() };
+    saveBoardData(boardId, data);
+}
+
+export function demoRestoreCard(boardId: string, cardId: number): void {
+    const data = loadBoardData(boardId);
+    const idx = data.cards.findIndex(c => c.id === cardId);
+    if (idx === -1) return;
+    data.cards[idx] = { ...data.cards[idx], archived_at: null };
     saveBoardData(boardId, data);
 }
 

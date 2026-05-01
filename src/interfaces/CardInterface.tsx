@@ -21,4 +21,6 @@ export interface CardInterface {
     priority?: 'low' | 'medium' | 'high' | null,
     position?: number,
     checklist_items?: ChecklistItem[],
+    created_at?: string | null,
+    archived_at?: string | null,
 }

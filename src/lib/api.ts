@@ -86,6 +86,14 @@ export async function deleteCard(boardId: number, cardId: number | string) {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}`, { method: 'DELETE' });
 }
 
+export async function restoreCard(boardId: number, cardId: number | string) {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/restore`, { method: 'PUT' });
+}
+
+export async function getArchivedCards(boardId: number) {
+  return apiFetch(`/api/boards/${boardId}/cards/archived`);
+}
+
 // --- Checklist ---
 
 export async function createChecklistItem(boardId: number, cardId: number | string, text: string) {

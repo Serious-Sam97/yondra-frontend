@@ -168,11 +168,21 @@ const CardEdit: React.FC<CardEditProps> = ({
     const currentSectionIndex = sections.findIndex(s => s.id === sectionId)
     const currentColor = getSectionColor(currentSection?.name ?? '', currentSectionIndex)
     const doneCount = checklistItems.filter(i => i.is_done).length
+    const primaryTagColor = selectedTagIds.length > 0
+        ? (tags.find(t => t.id === selectedTagIds[0])?.color ?? null)
+        : null;
+    const cardBackground = primaryTagColor
+        ? `linear-gradient(to bottom, ${primaryTagColor} 0%, ${primaryTagColor}22 8%, ${primaryTagColor}0d 8%)`
+        : 'linear-gradient(to bottom, #f5e642 0%, #fef08a 6%, #fef9c3 6%)';
+    const glueBackground = primaryTagColor
+        ? `linear-gradient(to bottom, ${primaryTagColor}cc, ${primaryTagColor})`
+        : 'linear-gradient(to bottom, #e6d800, #f5e642)';
+    const glueTextColor = primaryTagColor ? 'rgba(255,255,255,0.85)' : '#a89800';
 
     return (
         <div
             style={{
-                background: 'linear-gradient(to bottom, #f5e642 0%, #fef08a 6%, #fef9c3 6%)',
+                background: cardBackground,
                 boxShadow: '4px 4px 12px rgba(0,0,0,0.4), 2px 2px 4px rgba(0,0,0,0.2)',
                 fontFamily: 'Georgia, serif',
                 maxHeight: '90vh',
@@ -181,19 +191,26 @@ const CardEdit: React.FC<CardEditProps> = ({
         >
             {/* Glue strip */}
             <div
-                style={{ background: 'linear-gradient(to bottom, #e6d800, #f5e642)' }}
+                style={{ background: glueBackground }}
                 className="h-8 w-full rounded-t-sm flex items-center justify-between px-4 flex-shrink-0"
             >
-                <span style={{ color: '#a89800', fontFamily: 'monospace', fontSize: '11px', letterSpacing: '0.15em' }}>
-                    {isNew ? 'NEW' : `#${String(id).padStart(4, '0')}`}
-                </span>
+                <div className="flex items-center gap-2">
+                    <span style={{ color: glueTextColor, fontFamily: 'monospace', fontSize: '11px', letterSpacing: '0.15em' }}>
+                        {isNew ? 'NEW' : `#${String(id).padStart(4, '0')}`}
+                    </span>
+                    {!isNew && card?.created_at && (
+                        <span style={{ color: glueTextColor, fontFamily: 'monospace', fontSize: '10px', opacity: 0.7 }}>
+                            · {new Date(card.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                    )}
+                </div>
                 <div className="flex items-center gap-3">
                     {!isNew && onDelete && (
-                        <button onClick={onDelete} style={{ color: '#cc0000' }} className="text-xs hover:opacity-60 cursor-pointer transition-opacity" title="Delete card">
+                        <button onClick={onDelete} style={{ color: primaryTagColor ? 'rgba(255,200,200,0.9)' : '#cc0000' }} className="text-xs hover:opacity-60 cursor-pointer transition-opacity" title="Archive card">
                             🗑
                         </button>
                     )}
-                    <button onClick={goBack} style={{ color: '#a89800' }} className="text-sm hover:opacity-60 cursor-pointer transition-opacity leading-none">
+                    <button onClick={goBack} style={{ color: glueTextColor }} className="text-sm hover:opacity-60 cursor-pointer transition-opacity leading-none">
                         ✕
                     </button>
                 </div>

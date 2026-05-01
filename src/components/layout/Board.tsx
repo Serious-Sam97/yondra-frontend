@@ -12,12 +12,13 @@ import {
     createCard, updateCard, deleteCard,
     createSection, updateSection, deleteSection,
     createTag, deleteTag,
-    getActivity,
+    getActivity, restoreCard, getArchivedCards,
 } from "@/lib/api";
 import {
-    demoCreateCard, demoUpdateCard, demoDeleteCard,
+    demoCreateCard, demoUpdateCard,
     demoCreateSection, demoUpdateSection, demoDeleteSection,
     demoCreateTag, demoDeleteTag,
+    demoArchiveCard, demoRestoreCard, loadDemoArchivedCards,
 } from "@/lib/demoStorage";
 
 const SECTION_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107'];
@@ -52,6 +53,8 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const [isTagsOpen, setIsTagsOpen] = useState(false);
     const [isActivityOpen, setIsActivityOpen] = useState(false);
     const [activityLog, setActivityLog] = useState<any[]>([]);
+    const [isArchivedOpen, setIsArchivedOpen] = useState(false);
+    const [archivedCards, setArchivedCards] = useState<any[]>([]);
     const [newTagName, setNewTagName] = useState('');
     const [newTagColor, setNewTagColor] = useState(TAG_PALETTE[0]);
 
@@ -146,14 +149,31 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         setSelectedCard(null);
     };
 
-    const handleDeleteCard = async () => {
+    const handleArchiveCard = async () => {
         if (!cardToDelete) return;
-        if (isDemo) demoDeleteCard(demoId, cardToDelete.id);
+        if (isDemo) demoArchiveCard(demoId, cardToDelete.id);
         else await deleteCard(id, cardToDelete.id);
         setCards(prev => prev.filter(c => c.id !== cardToDelete.id));
         setCardToDelete(null);
         setIsCardVisible(false);
         setSelectedCard(null);
+    };
+
+    const handleOpenArchived = async () => {
+        setIsArchivedOpen(true);
+        if (isDemo) {
+            setArchivedCards(loadDemoArchivedCards(demoId));
+        } else {
+            const data = await getArchivedCards(id).catch(() => []);
+            setArchivedCards(Array.isArray(data) ? data : []);
+        }
+    };
+
+    const handleRestoreCard = async (card: any) => {
+        if (isDemo) demoRestoreCard(demoId, card.id);
+        else await restoreCard(id, card.id);
+        setArchivedCards(prev => prev.filter(c => c.id !== card.id));
+        setCards(prev => [...prev, { ...card, archived_at: null }]);
     };
 
     const handleOpenActivity = async () => {
@@ -166,13 +186,13 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
     useEffect(() => {
         const handleGlobalEvent = (event: any) => {
-            if (event.key.toLowerCase() === 'c' && !isCardVisible && !isTagsOpen && !isActivityOpen) {
+            if (event.key.toLowerCase() === 'c' && !isCardVisible && !isTagsOpen && !isActivityOpen && !isArchivedOpen) {
                 setIsCardVisible(true);
             }
         };
         window.addEventListener('keydown', handleGlobalEvent);
         return () => window.removeEventListener('keydown', handleGlobalEvent);
-    }, [isCardVisible, isTagsOpen, isActivityOpen]);
+    }, [isCardVisible, isTagsOpen, isActivityOpen, isArchivedOpen]);
 
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -278,6 +298,14 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                         📋 Activity
                     </button>
                 )}
+
+                {/* Archived button */}
+                <button
+                    onClick={handleOpenArchived}
+                    className="text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border border-gray-700 text-gray-500 hover:border-gray-400 hover:text-gray-300 font-bold cursor-pointer transition-all duration-150 flex items-center gap-1.5"
+                >
+                    🗂 Archived
+                </button>
             </div>
 
             {/* Board columns */}
@@ -435,6 +463,41 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                 </Modal>
             )}
 
+            {/* Archived cards modal */}
+            {isArchivedOpen && (
+                <Modal>
+                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-[95vw] max-w-md flex flex-col gap-4" style={{ maxHeight: '80vh' }}>
+                        <div className="flex items-center justify-between flex-shrink-0">
+                            <p className="text-xs uppercase tracking-widest text-gray-400">Archived Cards</p>
+                            <button onClick={() => setIsArchivedOpen(false)} className="text-gray-500 hover:text-white cursor-pointer transition-colors">✕</button>
+                        </div>
+                        <div className="flex flex-col gap-3 overflow-y-auto">
+                            {archivedCards.length === 0 && (
+                                <p className="text-gray-600 text-xs text-center py-6">No archived cards.</p>
+                            )}
+                            {archivedCards.map((card: any) => (
+                                <div key={card.id} className="flex items-center justify-between bg-gray-800 rounded-lg px-4 py-3 gap-3">
+                                    <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                                        <p className="text-white text-sm font-semibold truncate">{card.name}</p>
+                                        {card.archived_at && (
+                                            <p className="text-gray-500 text-xs">
+                                                Archived {new Date(card.archived_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={() => handleRestoreCard(card)}
+                                        className="text-xs uppercase tracking-widest font-bold text-amber-400 border border-amber-700 hover:bg-amber-400 hover:text-black px-3 py-1.5 rounded-lg cursor-pointer transition-all duration-150 flex-shrink-0"
+                                    >
+                                        Restore
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </Modal>
+            )}
+
             {/* Delete section modal */}
             {sectionToDelete && (
                 <Modal>
@@ -452,18 +515,18 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                 </Modal>
             )}
 
-            {/* Delete card confirm modal */}
+            {/* Archive card confirm modal */}
             {cardToDelete && (
                 <Modal>
                     <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-[90%] max-w-sm flex flex-col gap-6">
                         <div className="flex flex-col items-center text-center gap-3">
-                            <p className="text-3xl">⚠</p>
-                            <p className="text-white font-bold text-lg">Delete this card?</p>
-                            <p className="text-gray-500 text-sm">"{cardToDelete.name}" will be permanently deleted.</p>
+                            <p className="text-3xl">🗂</p>
+                            <p className="text-white font-bold text-lg">Archive this card?</p>
+                            <p className="text-gray-500 text-sm">"{cardToDelete.name}" will be moved to the archive. You can restore it later.</p>
                         </div>
                         <div className="flex justify-between">
                             <button onClick={() => setCardToDelete(null)} className="text-xs uppercase tracking-widest text-gray-400 hover:text-white border border-gray-700 hover:border-gray-400 px-4 py-2 rounded-lg cursor-pointer transition-all duration-200">Go back</button>
-                            <button onClick={handleDeleteCard} className="text-xs uppercase tracking-widest font-bold text-white bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg cursor-pointer transition-all duration-200">Yes, delete</button>
+                            <button onClick={handleArchiveCard} className="text-xs uppercase tracking-widest font-bold text-white bg-amber-600 hover:bg-amber-500 px-4 py-2 rounded-lg cursor-pointer transition-all duration-200">Archive it</button>
                         </div>
                     </div>
                 </Modal>
