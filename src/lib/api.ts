@@ -17,73 +17,138 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
   return res.json().catch(() => ({}));
 }
 
+// --- Boards ---
+
 export async function deleteBoard(id: number) {
   return apiFetch(`/api/boards/${id}`, { method: 'DELETE' });
 }
 
 export async function createBoard(data: { name: string; description: string }) {
-  return apiFetch('/api/boards', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  return apiFetch('/api/boards', { method: 'POST', body: JSON.stringify(data) });
 }
 
 export async function fetchBoard(id: number) {
   return apiFetch(`/api/boards/${id}`, { method: 'GET' });
 }
 
+// --- Sections ---
+
 export async function deleteSection(boardId: number, sectionId: number) {
   return apiFetch(`/api/boards/${boardId}/sections/${sectionId}`, { method: 'DELETE' });
 }
 
 export async function createSection(boardId: number, name: string) {
-  return apiFetch(`/api/boards/${boardId}/sections`, {
-    method: 'POST',
-    body: JSON.stringify({ name }),
-  });
+  return apiFetch(`/api/boards/${boardId}/sections`, { method: 'POST', body: JSON.stringify({ name }) });
 }
 
 export async function updateSection(boardId: number, sectionId: number, name: string) {
-  return apiFetch(`/api/boards/${boardId}/sections/${sectionId}`, {
-    method: 'PUT',
-    body: JSON.stringify({ name }),
-  });
+  return apiFetch(`/api/boards/${boardId}/sections/${sectionId}`, { method: 'PUT', body: JSON.stringify({ name }) });
 }
 
+// --- Tags ---
+
 export async function createTag(boardId: number, data: { name: string; color: string }) {
-  return apiFetch(`/api/boards/${boardId}/tags`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
+  return apiFetch(`/api/boards/${boardId}/tags`, { method: 'POST', body: JSON.stringify(data) });
 }
 
 export async function deleteTag(boardId: number, tagId: number) {
   return apiFetch(`/api/boards/${boardId}/tags/${tagId}`, { method: 'DELETE' });
 }
 
-export async function createCard(boardId: number, data: { section_id: number; assigned_user_id?: number | null; tag_ids?: number[]; name: string; description: string }) {
-  return apiFetch(`/api/boards/${boardId}/cards`, {
+// --- Cards ---
+
+export async function createCard(boardId: number, data: {
+  section_id: number;
+  assigned_user_id?: number | null;
+  tag_ids?: number[];
+  name: string;
+  description: string;
+  due_date?: string | null;
+  priority?: string | null;
+}) {
+  return apiFetch(`/api/boards/${boardId}/cards`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateCard(boardId: number, cardId: number | string, data: {
+  section_id?: number;
+  assigned_user_id?: number | null;
+  tag_ids?: number[];
+  name?: string;
+  description?: string;
+  due_date?: string | null;
+  priority?: string | null;
+  position?: number;
+}) {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export async function deleteCard(boardId: number, cardId: number | string) {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}`, { method: 'DELETE' });
+}
+
+// --- Checklist ---
+
+export async function createChecklistItem(boardId: number, cardId: number | string, text: string) {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/checklist`, {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify({ text }),
   });
 }
 
-export async function updateCard(boardId: number, cardId: number, data: { section_id?: number; assigned_user_id?: number | null; tag_ids?: number[]; name?: string; description?: string }) {
-  return apiFetch(`/api/boards/${boardId}/cards/${cardId}`, {
+export async function updateChecklistItem(boardId: number, cardId: number | string, itemId: number, data: { text?: string; is_done?: boolean }) {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/checklist/${itemId}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   });
 }
 
-export async function shareBoard(boardId: number, email: string) {
-  return apiFetch(`/api/boards/${boardId}/share`, {
+export async function deleteChecklistItem(boardId: number, cardId: number | string, itemId: number) {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/checklist/${itemId}`, { method: 'DELETE' });
+}
+
+// --- Comments ---
+
+export async function getComments(boardId: number, cardId: number | string) {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/comments`);
+}
+
+export async function createComment(boardId: number, cardId: number | string, body: string) {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/comments`, {
     method: 'POST',
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ body }),
   });
 }
 
+export async function deleteComment(boardId: number, cardId: number | string, commentId: number) {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/comments/${commentId}`, { method: 'DELETE' });
+}
+
+// --- Activity ---
+
+export async function getActivity(boardId: number) {
+  return apiFetch(`/api/boards/${boardId}/activity`);
+}
+
+// --- Notifications ---
+
+export async function getNotifications() {
+  return apiFetch('/api/notifications');
+}
+
+export async function markNotificationRead(id: number) {
+  return apiFetch(`/api/notifications/${id}/read`, { method: 'PUT' });
+}
+
+export async function markAllNotificationsRead() {
+  return apiFetch('/api/notifications/read-all', { method: 'PUT' });
+}
+
+// --- Sharing ---
+
+export async function shareBoard(boardId: number, email: string) {
+  return apiFetch(`/api/boards/${boardId}/share`, { method: 'POST', body: JSON.stringify({ email }) });
+}
+
 export async function unshareBoard(boardId: number, userId: number) {
-  return apiFetch(`/api/boards/${boardId}/share/${userId}`, {
-    method: 'DELETE',
-  });
+  return apiFetch(`/api/boards/${boardId}/share/${userId}`, { method: 'DELETE' });
 }

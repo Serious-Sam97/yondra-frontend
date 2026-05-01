@@ -2,14 +2,22 @@
 
 import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { useEffect, useState } from "react";
-import { Card } from "../ui/Card";
 import { Section } from "../ui/Section";
 import { BoardInterface, SharedUser } from "@/interfaces/BoardInterface";
 import { TagInterface } from "@/interfaces/TagInterface";
 import CardEdit from "../ui/CardEdit";
 import Modal from "../shared/Modal";
-import { createCard, updateCard, createSection, updateSection, deleteSection, createTag, deleteTag } from "@/lib/api";
-import { demoCreateCard, demoUpdateCard, demoCreateSection, demoUpdateSection, demoDeleteSection, demoCreateTag, demoDeleteTag } from "@/lib/demoStorage";
+import {
+    createCard, updateCard, deleteCard,
+    createSection, updateSection, deleteSection,
+    createTag, deleteTag,
+    getActivity,
+} from "@/lib/api";
+import {
+    demoCreateCard, demoUpdateCard, demoDeleteCard,
+    demoCreateSection, demoUpdateSection, demoDeleteSection,
+    demoCreateTag, demoDeleteTag,
+} from "@/lib/demoStorage";
 
 const SECTION_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107'];
 const AVATAR_COLORS  = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107', '#00BCD4', '#E91E63'];
@@ -30,15 +38,20 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const [cardsProp, setCards] = useState(cards);
     const [sections, setSections] = useState(initialSections);
     const [tags, setTags] = useState<TagInterface[]>(initialTags);
-    const [isCardVisible, setIsCardVisible] = useState<boolean>(false)
-    const [selectedCard, setSelectedCard] = useState(null)
-    const [isAddingSection, setIsAddingSection] = useState(false)
-    const [newSectionName, setNewSectionName] = useState('')
-    const [sectionToDelete, setSectionToDelete] = useState<{id: number, name: string} | null>(null)
-    const [filterUserId, setFilterUserId] = useState<number | null>(null)
-    const [isTagsOpen, setIsTagsOpen] = useState(false)
-    const [newTagName, setNewTagName] = useState('')
-    const [newTagColor, setNewTagColor] = useState(TAG_PALETTE[0])
+    const [isCardVisible, setIsCardVisible] = useState(false);
+    const [selectedCard, setSelectedCard] = useState<any>(null);
+    const [isAddingSection, setIsAddingSection] = useState(false);
+    const [newSectionName, setNewSectionName] = useState('');
+    const [sectionToDelete, setSectionToDelete] = useState<{id: number, name: string} | null>(null);
+    const [cardToDelete, setCardToDelete] = useState<any>(null);
+    const [filterUserId, setFilterUserId] = useState<number | null>(null);
+    const [filterTagId, setFilterTagId] = useState<number | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isTagsOpen, setIsTagsOpen] = useState(false);
+    const [isActivityOpen, setIsActivityOpen] = useState(false);
+    const [activityLog, setActivityLog] = useState<any[]>([]);
+    const [newTagName, setNewTagName] = useState('');
+    const [newTagColor, setNewTagColor] = useState(TAG_PALETTE[0]);
 
     useEffect(() => { setCards(cards); }, [cards]);
     useEffect(() => { setSections(initialSections); }, [initialSections]);
@@ -58,13 +71,11 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     };
 
     const handleDeleteTag = async (tagId: number) => {
-        if (isDemo) {
-            demoDeleteTag(demoId, tagId);
-        } else {
-            await deleteTag(id, tagId);
-        }
+        if (isDemo) demoDeleteTag(demoId, tagId);
+        else await deleteTag(id, tagId);
         setTags(prev => prev.filter(t => t.id !== tagId));
-        setCards(prev => prev.map(c => ({ ...c, tags: (c.tags ?? []).filter(t => t.id !== tagId) })));
+        setCards(prev => prev.map(c => ({ ...c, tags: (c.tags ?? []).filter((t: any) => t.id !== tagId) })));
+        if (filterTagId === tagId) setFilterTagId(null);
     };
 
     // --- Section management ---
@@ -93,13 +104,24 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         setIsAddingSection(false);
     };
 
-    // --- Card management ---
+    // --- Card filtering ---
 
     const sectionCards = (sectionId: any) => {
-        const filtered = cardsProp.filter(card => card.section_id === sectionId);
-        if (filterUserId === null) return filtered;
-        return filtered.filter(card => card.assigned_user_id === filterUserId);
+        let filtered = cardsProp.filter(card => card.section_id === sectionId);
+        if (filterUserId !== null) filtered = filtered.filter(card => card.assigned_user_id === filterUserId);
+        if (filterTagId !== null) filtered = filtered.filter(card => (card.tags ?? []).some((t: any) => t.id === filterTagId));
+        if (searchQuery.trim()) {
+            const q = searchQuery.trim().toLowerCase();
+            filtered = filtered.filter(card => card.name.toLowerCase().includes(q) || (card.description ?? '').toLowerCase().includes(q));
+        }
+        return filtered;
     };
+
+    const totalCards = cardsProp.length;
+    const doneSection = sections.find(s => s.name.toLowerCase() === 'done');
+    const doneCards = doneSection ? cardsProp.filter(c => c.section_id === doneSection.id).length : 0;
+
+    // --- Card management ---
 
     const handleClick = (card: any) => {
         setSelectedCard(card);
@@ -109,85 +131,146 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const handleSubmit = async (card: any, isNew: boolean) => {
         if (isNew) {
             const saved = isDemo
-                ? demoCreateCard(demoId, { section_id: card.section_id, name: card.name, description: card.description, tag_ids: card.tag_ids })
-                : await createCard(id, { section_id: card.section_id, assigned_user_id: card.assigned_user_id, tag_ids: card.tag_ids, name: card.name, description: card.description });
+                ? demoCreateCard(demoId, { section_id: card.section_id, name: card.name, description: card.description, tag_ids: card.tag_ids, due_date: card.due_date, priority: card.priority })
+                : await createCard(id, { section_id: card.section_id, assigned_user_id: card.assigned_user_id, tag_ids: card.tag_ids, name: card.name, description: card.description, due_date: card.due_date, priority: card.priority });
             setCards(prev => [...prev, saved]);
         } else {
             const saved = isDemo
-                ? demoUpdateCard(demoId, card.id, { section_id: card.section_id, name: card.name, description: card.description, tag_ids: card.tag_ids })
-                : await updateCard(id, card.id, { section_id: card.section_id, assigned_user_id: card.assigned_user_id, tag_ids: card.tag_ids, name: card.name, description: card.description });
-            setCards(cardsProp.map(c => c.id === card.id ? saved : c));
+                ? demoUpdateCard(demoId, card.id, { section_id: card.section_id, name: card.name, description: card.description, tag_ids: card.tag_ids, due_date: card.due_date, priority: card.priority })
+                : await updateCard(id, card.id, { section_id: card.section_id, assigned_user_id: card.assigned_user_id, tag_ids: card.tag_ids, name: card.name, description: card.description, due_date: card.due_date, priority: card.priority });
+            setCards(prev => prev.map(c => c.id === card.id ? { ...saved, checklist_items: card.checklist_items } : c));
         }
         setIsCardVisible(false);
         setSelectedCard(null);
     };
 
+    const handleDeleteCard = async () => {
+        if (!cardToDelete) return;
+        if (isDemo) demoDeleteCard(demoId, cardToDelete.id);
+        else await deleteCard(id, cardToDelete.id);
+        setCards(prev => prev.filter(c => c.id !== cardToDelete.id));
+        setCardToDelete(null);
+        setIsCardVisible(false);
+        setSelectedCard(null);
+    };
+
+    const handleOpenActivity = async () => {
+        setIsActivityOpen(true);
+        if (!isDemo) {
+            const data = await getActivity(id).catch(() => []);
+            setActivityLog(Array.isArray(data) ? data : []);
+        }
+    };
+
     useEffect(() => {
         const handleGlobalEvent = (event: any) => {
-            if (event.key.toLowerCase() === 'c' && !isCardVisible && !isTagsOpen) {
+            if (event.key.toLowerCase() === 'c' && !isCardVisible && !isTagsOpen && !isActivityOpen) {
                 setIsCardVisible(true);
             }
         };
         window.addEventListener('keydown', handleGlobalEvent);
         return () => window.removeEventListener('keydown', handleGlobalEvent);
-    }, [isCardVisible, isTagsOpen]);
+    }, [isCardVisible, isTagsOpen, isActivityOpen]);
 
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
     return (
         <>
-            {/* Filter strip + shortcuts row */}
-            <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
-                <div className="flex items-center gap-2 flex-wrap">
-                    {boardUsers.length > 0 && (
-                        <>
-                            <button
-                                onClick={() => setFilterUserId(null)}
-                                className={`text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border font-bold cursor-pointer transition-all duration-150 ${
-                                    filterUserId === null
-                                        ? 'bg-white text-gray-900 border-white'
-                                        : 'text-gray-500 border-gray-700 hover:border-gray-400 hover:text-gray-300'
-                                }`}
-                            >
-                                All
-                            </button>
-                            {boardUsers.map((user) => {
-                                const color = AVATAR_COLORS[user.id % AVATAR_COLORS.length];
-                                const isActive = filterUserId === user.id;
-                                return (
-                                    <button
-                                        key={user.id}
-                                        onClick={() => setFilterUserId(isActive ? null : user.id)}
-                                        style={{ borderColor: color, backgroundColor: isActive ? color : 'transparent', color: isActive ? '#fff' : color }}
-                                        className="text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border font-bold cursor-pointer transition-all duration-150 flex items-center gap-1.5"
-                                    >
-                                        <span
-                                            style={{ backgroundColor: isActive ? 'rgba(255,255,255,0.3)' : color, fontSize: '9px', width: '16px', height: '16px' }}
-                                            className="rounded-full flex items-center justify-center text-white font-bold flex-shrink-0"
-                                        >
-                                            {initials(user.name)}
-                                        </span>
-                                        {user.name.split(' ')[0]}
-                                    </button>
-                                );
-                            })}
-                        </>
-                    )}
-
-                    {/* Tags button */}
-                    <button
-                        onClick={() => setIsTagsOpen(true)}
-                        className="text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border border-gray-700 text-gray-500 hover:border-gray-400 hover:text-gray-300 font-bold cursor-pointer transition-all duration-150 flex items-center gap-1.5"
-                    >
-                        <span>🏷</span> Tags {tags.length > 0 && <span className="text-gray-600">({tags.length})</span>}
-                    </button>
+            {/* Top bar: search + shortcuts */}
+            <div className="flex items-center gap-3 mb-4 flex-wrap">
+                <div className="relative flex-1 min-w-[160px] max-w-xs">
+                    <input
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        placeholder="Search cards..."
+                        className="w-full bg-gray-800 border border-gray-700 text-white text-xs px-3 py-2 pl-8 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-400 placeholder-gray-600"
+                    />
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-600 text-xs pointer-events-none">🔍</span>
                 </div>
 
-                <div className="hidden md:flex items-center gap-2 text-gray-600 flex-shrink-0">
+                {/* Progress counter */}
+                {totalCards > 0 && (
+                    <span className="text-xs text-gray-500 flex-shrink-0">
+                        {doneCards}/{totalCards} done
+                    </span>
+                )}
+
+                <div className="hidden md:flex items-center gap-2 text-gray-600 flex-shrink-0 ml-auto">
                     <p className="text-xs uppercase tracking-widest">Press</p>
                     <kbd className="text-xs bg-gray-800 border border-gray-700 text-amber-400 px-2 py-1 rounded font-mono">C</kbd>
                     <p className="text-xs uppercase tracking-widest">to add a ticket</p>
                 </div>
+            </div>
+
+            {/* Filter strip */}
+            <div className="flex items-center gap-2 mb-5 flex-wrap">
+                {boardUsers.length > 0 && (
+                    <>
+                        <button
+                            onClick={() => { setFilterUserId(null); setFilterTagId(null); }}
+                            className={`text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border font-bold cursor-pointer transition-all duration-150 ${
+                                filterUserId === null && filterTagId === null
+                                    ? 'bg-white text-gray-900 border-white'
+                                    : 'text-gray-500 border-gray-700 hover:border-gray-400 hover:text-gray-300'
+                            }`}
+                        >
+                            All
+                        </button>
+                        {boardUsers.map((user) => {
+                            const color = AVATAR_COLORS[user.id % AVATAR_COLORS.length];
+                            const isActive = filterUserId === user.id;
+                            return (
+                                <button
+                                    key={user.id}
+                                    onClick={() => setFilterUserId(isActive ? null : user.id)}
+                                    style={{ borderColor: color, backgroundColor: isActive ? color : 'transparent', color: isActive ? '#fff' : color }}
+                                    className="text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border font-bold cursor-pointer transition-all duration-150 flex items-center gap-1.5"
+                                >
+                                    <span
+                                        style={{ backgroundColor: isActive ? 'rgba(255,255,255,0.3)' : color, fontSize: '9px', width: '16px', height: '16px' }}
+                                        className="rounded-full flex items-center justify-center text-white font-bold flex-shrink-0"
+                                    >
+                                        {initials(user.name)}
+                                    </span>
+                                    {user.name.split(' ')[0]}
+                                </button>
+                            );
+                        })}
+                    </>
+                )}
+
+                {/* Tag filters */}
+                {tags.map(tag => {
+                    const isActive = filterTagId === tag.id;
+                    return (
+                        <button
+                            key={tag.id}
+                            onClick={() => setFilterTagId(isActive ? null : tag.id)}
+                            style={{ borderColor: tag.color, backgroundColor: isActive ? tag.color : 'transparent', color: isActive ? '#fff' : tag.color, fontSize: '10px' }}
+                            className="uppercase tracking-widest px-2.5 py-1.5 rounded-full border cursor-pointer transition-all duration-150 font-bold"
+                        >
+                            {tag.name}
+                        </button>
+                    );
+                })}
+
+                {/* Tags manage button */}
+                <button
+                    onClick={() => setIsTagsOpen(true)}
+                    className="text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border border-gray-700 text-gray-500 hover:border-gray-400 hover:text-gray-300 font-bold cursor-pointer transition-all duration-150 flex items-center gap-1.5"
+                >
+                    🏷 Tags
+                </button>
+
+                {/* Activity button */}
+                {!isDemo && (
+                    <button
+                        onClick={handleOpenActivity}
+                        className="text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border border-gray-700 text-gray-500 hover:border-gray-400 hover:text-gray-300 font-bold cursor-pointer transition-all duration-150 flex items-center gap-1.5"
+                    >
+                        📋 Activity
+                    </button>
+                )}
             </div>
 
             {/* Board columns */}
@@ -256,7 +339,6 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                             <button onClick={() => setIsTagsOpen(false)} className="text-gray-500 hover:text-white cursor-pointer transition-colors">✕</button>
                         </div>
 
-                        {/* Existing tags */}
                         <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
                             {tags.length === 0 && (
                                 <p className="text-gray-600 text-xs text-center py-3">No tags yet. Create one below.</p>
@@ -277,7 +359,6 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                             ))}
                         </div>
 
-                        {/* Create tag form */}
                         <div className="flex flex-col gap-3 border-t border-gray-800 pt-4">
                             <input
                                 value={newTagName}
@@ -308,6 +389,34 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                 </Modal>
             )}
 
+            {/* Activity modal */}
+            {isActivityOpen && (
+                <Modal>
+                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-[95vw] max-w-md flex flex-col gap-4" style={{ maxHeight: '80vh' }}>
+                        <div className="flex items-center justify-between flex-shrink-0">
+                            <p className="text-xs uppercase tracking-widest text-gray-400">Activity Log</p>
+                            <button onClick={() => setIsActivityOpen(false)} className="text-gray-500 hover:text-white cursor-pointer transition-colors">✕</button>
+                        </div>
+                        <div className="flex flex-col gap-3 overflow-y-auto">
+                            {activityLog.length === 0 && (
+                                <p className="text-gray-600 text-xs text-center py-6">No activity yet.</p>
+                            )}
+                            {activityLog.map((entry: any) => (
+                                <div key={entry.id} className="flex items-start gap-3">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0 mt-1.5"/>
+                                    <div className="flex flex-col gap-0.5">
+                                        <p className="text-gray-300 text-xs">{entry.description}</p>
+                                        <p className="text-gray-600 text-xs">
+                                            {new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </Modal>
+            )}
+
             {/* Delete section modal */}
             {sectionToDelete && (
                 <Modal>
@@ -325,6 +434,23 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                 </Modal>
             )}
 
+            {/* Delete card confirm modal */}
+            {cardToDelete && (
+                <Modal>
+                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-[90%] max-w-sm flex flex-col gap-6">
+                        <div className="flex flex-col items-center text-center gap-3">
+                            <p className="text-3xl">⚠</p>
+                            <p className="text-white font-bold text-lg">Delete this card?</p>
+                            <p className="text-gray-500 text-sm">"{cardToDelete.name}" will be permanently deleted.</p>
+                        </div>
+                        <div className="flex justify-between">
+                            <button onClick={() => setCardToDelete(null)} className="text-xs uppercase tracking-widest text-gray-400 hover:text-white border border-gray-700 hover:border-gray-400 px-4 py-2 rounded-lg cursor-pointer transition-all duration-200">Go back</button>
+                            <button onClick={handleDeleteCard} className="text-xs uppercase tracking-widest font-bold text-white bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg cursor-pointer transition-all duration-200">Yes, delete</button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+
             {/* Card edit modal */}
             {isCardVisible && (
                 <Modal>
@@ -334,8 +460,12 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                             sections={sections}
                             users={boardUsers}
                             tags={tags}
+                            boardId={isDemo ? undefined : id}
+                            isDemo={isDemo}
+                            demoId={demoId}
                             goBack={() => { setIsCardVisible(false); setSelectedCard(null); }}
                             submit={handleSubmit}
+                            onDelete={selectedCard ? () => { setCardToDelete(selectedCard); setIsCardVisible(false); } : undefined}
                         />
                     </div>
                 </Modal>

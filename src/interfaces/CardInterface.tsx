@@ -1,5 +1,12 @@
 import { TagInterface } from "./TagInterface"
 
+export interface ChecklistItem {
+    id: number;
+    text: string;
+    is_done: boolean;
+    position: number;
+}
+
 export interface CardInterface {
     id: number|string,
     section_id: number,
@@ -9,5 +16,9 @@ export interface CardInterface {
     created_by?: { id: number; name: string } | null,
     tags?: TagInterface[],
     name: string,
-    description: string
+    description: string,
+    due_date?: string | null,
+    priority?: 'low' | 'medium' | 'high' | null,
+    position?: number,
+    checklist_items?: ChecklistItem[],
 }

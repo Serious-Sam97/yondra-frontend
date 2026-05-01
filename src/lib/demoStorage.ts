@@ -2,9 +2,21 @@ const DEMO_BOARDS_KEY = 'yondra_demo_boards';
 const boardDataKey = (id: string) => `yondra_demo_data_${id}`;
 const LEGACY_KEY = 'yondra_demo';
 
-export type DemoTag     = { id: number; name: string; color: string };
-export type DemoSection = { id: number; name: string };
-export type DemoCard    = { id: number; section_id: number; assigned_user_id?: number | null; tag_ids?: number[]; name: string; description: string };
+export type DemoTag            = { id: number; name: string; color: string };
+export type DemoSection        = { id: number; name: string };
+export type DemoChecklistItem  = { id: number; text: string; is_done: boolean; position: number };
+export type DemoCard           = {
+    id: number;
+    section_id: number;
+    assigned_user_id?: number | null;
+    tag_ids?: number[];
+    name: string;
+    description: string;
+    due_date?: string | null;
+    priority?: 'low' | 'medium' | 'high' | null;
+    position?: number;
+    checklist_items?: DemoChecklistItem[];
+};
 export type DemoBoardData = { sections: DemoSection[]; cards: DemoCard[]; tags: DemoTag[] };
 export type DemoBoard = { id: string; name: string; description: string };
 
@@ -15,9 +27,9 @@ const DEFAULT_DATA: DemoBoardData = {
         { id: 3, name: 'Done' },
     ],
     cards: [
-        { id: 1, section_id: 1, name: 'Welcome to Yondra!', description: 'This is a demo board. Everything is saved in your browser.' },
-        { id: 2, section_id: 1, name: 'Try creating a card', description: 'Press C to add a new card.' },
-        { id: 3, section_id: 2, name: 'Drag me to another column', description: '' },
+        { id: 1, section_id: 1, name: 'Welcome to Yondra!', description: 'This is a demo board. Everything is saved in your browser.', position: 0, checklist_items: [] },
+        { id: 2, section_id: 1, name: 'Try creating a card', description: 'Press C to add a new card.', position: 1, checklist_items: [] },
+        { id: 3, section_id: 2, name: 'Drag me to another column', description: '', position: 0, checklist_items: [] },
     ],
     tags: [],
 };
@@ -146,20 +158,82 @@ export function demoDeleteSection(boardId: string, sectionId: number): void {
 
 // --- Cards ---
 
-export function demoCreateCard(boardId: string, cardData: { section_id: number; name: string; description: string; tag_ids?: number[] }): DemoCard & { tags: DemoTag[] } {
+export function demoCreateCard(boardId: string, cardData: {
+    section_id: number;
+    name: string;
+    description: string;
+    tag_ids?: number[];
+    assigned_user_id?: number | null;
+    due_date?: string | null;
+    priority?: 'low' | 'medium' | 'high' | null;
+}): DemoCard & { tags: DemoTag[] } {
     const data = loadBoardData(boardId);
     const newId = data.cards.length > 0 ? Math.max(...data.cards.map(c => c.id)) + 1 : 1;
-    const card: DemoCard = { id: newId, ...cardData, tag_ids: cardData.tag_ids ?? [] };
+    const position = data.cards.filter(c => c.section_id === cardData.section_id).length;
+    const card: DemoCard = {
+        id: newId,
+        ...cardData,
+        tag_ids: cardData.tag_ids ?? [],
+        position,
+        checklist_items: [],
+    };
     data.cards.push(card);
     saveBoardData(boardId, data);
     return resolveCardTags(card, data.tags);
 }
 
-export function demoUpdateCard(boardId: string, cardId: number, cardData: { section_id?: number; name?: string; description?: string; tag_ids?: number[] }): (DemoCard & { tags: DemoTag[] }) | null {
+export function demoUpdateCard(boardId: string, cardId: number, cardData: {
+    section_id?: number;
+    name?: string;
+    description?: string;
+    tag_ids?: number[];
+    assigned_user_id?: number | null;
+    due_date?: string | null;
+    priority?: 'low' | 'medium' | 'high' | null;
+}): (DemoCard & { tags: DemoTag[] }) | null {
     const data = loadBoardData(boardId);
     const idx = data.cards.findIndex(c => c.id === cardId);
     if (idx === -1) return null;
     data.cards[idx] = { ...data.cards[idx], ...cardData };
     saveBoardData(boardId, data);
     return resolveCardTags(data.cards[idx], data.tags);
+}
+
+export function demoDeleteCard(boardId: string, cardId: number): void {
+    const data = loadBoardData(boardId);
+    data.cards = data.cards.filter(c => c.id !== cardId);
+    saveBoardData(boardId, data);
+}
+
+// --- Checklist ---
+
+export function demoCreateChecklistItem(boardId: string, cardId: number, text: string): DemoChecklistItem {
+    const data = loadBoardData(boardId);
+    const card = data.cards.find(c => c.id === cardId);
+    if (!card) throw new Error('Card not found');
+    if (!card.checklist_items) card.checklist_items = [];
+    const newId = card.checklist_items.length > 0 ? Math.max(...card.checklist_items.map(i => i.id)) + 1 : 1;
+    const item: DemoChecklistItem = { id: newId, text, is_done: false, position: card.checklist_items.length };
+    card.checklist_items.push(item);
+    saveBoardData(boardId, data);
+    return item;
+}
+
+export function demoUpdateChecklistItem(boardId: string, cardId: number, itemId: number, patch: { text?: string; is_done?: boolean }): DemoChecklistItem | null {
+    const data = loadBoardData(boardId);
+    const card = data.cards.find(c => c.id === cardId);
+    if (!card || !card.checklist_items) return null;
+    const idx = card.checklist_items.findIndex(i => i.id === itemId);
+    if (idx === -1) return null;
+    card.checklist_items[idx] = { ...card.checklist_items[idx], ...patch };
+    saveBoardData(boardId, data);
+    return card.checklist_items[idx];
+}
+
+export function demoDeleteChecklistItem(boardId: string, cardId: number, itemId: number): void {
+    const data = loadBoardData(boardId);
+    const card = data.cards.find(c => c.id === cardId);
+    if (!card || !card.checklist_items) return;
+    card.checklist_items = card.checklist_items.filter(i => i.id !== itemId);
+    saveBoardData(boardId, data);
 }
