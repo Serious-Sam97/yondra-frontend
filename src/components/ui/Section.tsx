@@ -72,13 +72,7 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
                 <Droppable style={style} key={id} id={name}>
                     {cards.map((card: CardInterface) => (
                         <div key={card.id} onClick={() => handleClick(card)}>
-                            <Card
-                                id={card.id}
-                                section_id={card.section_id}
-                                name={card.name}
-                                description={card.description}
-                                color={color}
-                            />
+                            <Card {...card} color={color} />
                         </div>
                     ))}
                 </Droppable>
