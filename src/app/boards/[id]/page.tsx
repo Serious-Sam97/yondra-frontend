@@ -24,6 +24,7 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
         cards: [],
         sections: [],
         user_id: undefined,
+        owner: undefined,
         shared_with: [],
     });
     const [currentUserId, setCurrentUserId] = useState<number | null>(null);
@@ -31,6 +32,11 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
 
     const isDemo = id === 'demo' || id.startsWith('demo-');
     const isOwner = board.user_id === currentUserId;
+
+    const boardUsers = isDemo ? [] : [
+        board.owner,
+        ...(board.shared_with ?? []),
+    ].filter((u): u is NonNullable<typeof u> => !!u);
 
     useEffect(() => {
         if (isDemo) {
@@ -56,6 +62,7 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                 sections: data.sections ?? [],
                 cards: data.cards ?? [],
                 user_id: data.user_id,
+                owner: data.owner,
                 shared_with: data.shared_with ?? [],
             });
             setCurrentUserId(user?.id ?? null);
@@ -112,6 +119,7 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                 size="75"
                 isDemo={isDemo}
                 demoId={id}
+                boardUsers={boardUsers}
             />
 
             {shareOpen && (

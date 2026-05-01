@@ -1,4 +1,4 @@
-import { CardInterface } from "./CardInterface";
+import { CardInterface } from "./CardInterface"
 
 export interface SectionData {
     id: number,
@@ -18,5 +18,6 @@ export interface BoardInterface {
     sections: SectionData[],
     cards: CardInterface[],
     user_id?: number,
+    owner?: SharedUser,
     shared_with?: SharedUser[],
 }

@@ -50,14 +50,14 @@ export async function updateSection(boardId: number, sectionId: number, name: st
   });
 }
 
-export async function createCard(boardId: number, data: { section_id: number; name: string; description: string }) {
+export async function createCard(boardId: number, data: { section_id: number; assigned_user_id?: number | null; name: string; description: string }) {
   return apiFetch(`/api/boards/${boardId}/cards`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
-export async function updateCard(boardId: number, cardId: number, data: { section_id?: number; name?: string; description?: string }) {
+export async function updateCard(boardId: number, cardId: number, data: { section_id?: number; assigned_user_id?: number | null; name?: string; description?: string }) {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}`, {
     method: 'PUT',
     body: JSON.stringify(data),

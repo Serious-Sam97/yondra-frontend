@@ -2,11 +2,17 @@
 
 import { useEffect, useState } from 'react'
 
+interface BoardUser {
+    id: number
+    name: string
+}
+
 interface CardEditProps {
     goBack: () => void
     submit: (card: any, isNew: boolean) => void
     card: any | null
     sections: { id: number; name: string }[]
+    users?: BoardUser[]
 }
 
 const SECTION_COLORS: Record<string, string> = {
@@ -15,16 +21,22 @@ const SECTION_COLORS: Record<string, string> = {
     'Done':        '#1976D2',
 }
 const DEFAULT_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107']
+const AVATAR_COLORS  = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107', '#00BCD4', '#E91E63']
 
 function getSectionColor(name: string, index: number): string {
     return SECTION_COLORS[name] ?? DEFAULT_COLORS[index % DEFAULT_COLORS.length]
 }
 
-const CardEdit: React.FC<CardEditProps> = ({goBack, submit, card, sections}) => {
+function initials(name: string): string {
+    return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+}
+
+const CardEdit: React.FC<CardEditProps> = ({goBack, submit, card, sections, users = []}) => {
     const [id, setId] = useState(0)
     const [name, setName] = useState<string>('')
     const [description, setDescription] = useState<string>('')
     const [sectionId, setSectionId] = useState<number>(sections[0]?.id ?? 1)
+    const [assignedUserId, setAssignedUserId] = useState<number | null>(null)
 
     const isNew = card === null
 
@@ -34,11 +46,12 @@ const CardEdit: React.FC<CardEditProps> = ({goBack, submit, card, sections}) => 
             setName(card.name)
             setDescription(card.description)
             setSectionId(card.section_id)
+            setAssignedUserId(card.assigned_user_id ?? null)
         }
     }, [])
 
     const handleSubmit = () => {
-        submit({ id, name, description, section_id: sectionId }, isNew)
+        submit({ id, name, description, section_id: sectionId, assigned_user_id: assignedUserId }, isNew)
     }
 
     const currentSection = sections.find(s => s.id === sectionId)
@@ -85,12 +98,11 @@ const CardEdit: React.FC<CardEditProps> = ({goBack, submit, card, sections}) => 
                     onChange={(e) => setName(e.target.value)}
                 />
 
-                {/* Divider - like a pencil line */}
                 <div style={{ borderColor: '#d4c200', opacity: 0.5 }} className="border-t"/>
 
                 {/* Description */}
                 <textarea
-                    rows={7}
+                    rows={5}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Add some notes..."
@@ -98,8 +110,8 @@ const CardEdit: React.FC<CardEditProps> = ({goBack, submit, card, sections}) => 
                     className="w-full bg-transparent text-sm placeholder-yellow-700/40 focus:outline-none resize-none leading-relaxed"
                 />
 
-                {/* Status pills */}
-                <div className="flex gap-2 flex-wrap mt-auto">
+                {/* Section pills */}
+                <div className="flex gap-2 flex-wrap">
                     {sections.map((s, i) => {
                         const color = getSectionColor(s.name, i)
                         const isActive = s.id === sectionId
@@ -121,6 +133,33 @@ const CardEdit: React.FC<CardEditProps> = ({goBack, submit, card, sections}) => 
                     })}
                 </div>
 
+                {/* Assign user */}
+                {users.length > 0 && (
+                    <div className="flex gap-2 flex-wrap items-center">
+                        <button
+                            onClick={() => setAssignedUserId(null)}
+                            style={{ fontSize: '10px', borderColor: '#bbb', color: assignedUserId === null ? '#fff' : '#888', backgroundColor: assignedUserId === null ? '#888' : 'transparent' }}
+                            className="uppercase tracking-widest px-3 py-2 rounded-full border cursor-pointer transition-all duration-150 font-bold"
+                        >
+                            Unassigned
+                        </button>
+                        {users.map((u, i) => {
+                            const color = AVATAR_COLORS[u.id % AVATAR_COLORS.length]
+                            const isActive = assignedUserId === u.id
+                            return (
+                                <button
+                                    key={u.id}
+                                    onClick={() => setAssignedUserId(isActive ? null : u.id)}
+                                    style={{ borderColor: color, backgroundColor: isActive ? color : 'transparent', color: isActive ? '#fff' : color, fontSize: '10px' }}
+                                    className="uppercase tracking-widest px-3 py-2 rounded-full border cursor-pointer transition-all duration-150 font-bold flex items-center gap-1"
+                                >
+                                    {initials(u.name)} {u.name.split(' ')[0]}
+                                </button>
+                            )
+                        })}
+                    </div>
+                )}
+
                 {/* Save */}
                 <button
                     onClick={handleSubmit}
@@ -131,7 +170,7 @@ const CardEdit: React.FC<CardEditProps> = ({goBack, submit, card, sections}) => 
                         letterSpacing: '0.1em',
                         fontSize: '11px',
                     }}
-                    className="w-full py-2.5 rounded font-bold uppercase cursor-pointer hover:opacity-90 transition-opacity duration-150"
+                    className="w-full py-2.5 rounded font-bold uppercase cursor-pointer hover:opacity-90 transition-opacity duration-150 mt-auto"
                 >
                     {isNew ? 'Pin it' : 'Save'}
                 </button>

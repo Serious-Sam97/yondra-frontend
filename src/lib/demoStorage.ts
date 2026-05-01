@@ -3,7 +3,7 @@ const boardDataKey = (id: string) => `yondra_demo_data_${id}`;
 const LEGACY_KEY = 'yondra_demo';
 
 export type DemoSection = { id: number; name: string };
-export type DemoCard = { id: number; section_id: number; name: string; description: string };
+export type DemoCard = { id: number; section_id: number; assigned_user_id?: number | null; name: string; description: string };
 export type DemoBoardData = { sections: DemoSection[]; cards: DemoCard[] };
 export type DemoBoard = { id: string; name: string; description: string };
 

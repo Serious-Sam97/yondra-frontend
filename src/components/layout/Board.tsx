@@ -4,15 +4,27 @@ import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core"
 import { useEffect, useState } from "react";
 import { Card } from "../ui/Card";
 import { Section } from "../ui/Section";
-import { BoardInterface } from "@/interfaces/BoardInterface";
+import { BoardInterface, SharedUser } from "@/interfaces/BoardInterface";
 import CardEdit from "../ui/CardEdit";
 import Modal from "../shared/Modal";
 import { createCard, updateCard, createSection, updateSection, deleteSection } from "@/lib/api";
 import { demoCreateCard, demoUpdateCard, demoCreateSection, demoUpdateSection, demoDeleteSection } from "@/lib/demoStorage";
 
 const SECTION_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107'];
+const AVATAR_COLORS  = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107', '#00BCD4', '#E91E63'];
 
-export function Board({id, name, description, size, cards, sections: initialSections, isDemo = false, demoId = 'demo'}: BoardInterface & { size: string; isDemo?: boolean; demoId?: string }) {
+function initials(name: string): string {
+    return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+}
+
+interface BoardProps extends BoardInterface {
+    size: string;
+    isDemo?: boolean;
+    demoId?: string;
+    boardUsers?: SharedUser[];
+}
+
+export function Board({ id, name, description, size, cards, sections: initialSections, isDemo = false, demoId = 'demo', boardUsers = [] }: BoardProps) {
     const [cardsProp, setCards] = useState(cards);
     const [sections, setSections] = useState(initialSections);
     const [isCardVisible, setIsCardVisible] = useState<boolean>(false)
@@ -20,14 +32,10 @@ export function Board({id, name, description, size, cards, sections: initialSect
     const [isAddingSection, setIsAddingSection] = useState(false)
     const [newSectionName, setNewSectionName] = useState('')
     const [sectionToDelete, setSectionToDelete] = useState<{id: number, name: string} | null>(null)
+    const [filterUserId, setFilterUserId] = useState<number | null>(null)
 
-    useEffect(() => {
-        setCards(cards);
-    }, [cards]);
-
-    useEffect(() => {
-        setSections(initialSections);
-    }, [initialSections]);
+    useEffect(() => { setCards(cards); }, [cards]);
+    useEffect(() => { setSections(initialSections); }, [initialSections]);
 
     const handleRenameSection = async (sectionId: number, newName: string) => {
         setSections(prev => prev.map(s => s.id === sectionId ? { ...s, name: newName } : s));
@@ -60,7 +68,9 @@ export function Board({id, name, description, size, cards, sections: initialSect
     };
 
     const sectionCards = (sectionId: any) => {
-        return cardsProp.filter((card) => card.section_id === sectionId)
+        const filtered = cardsProp.filter(card => card.section_id === sectionId);
+        if (filterUserId === null) return filtered;
+        return filtered.filter(card => card.assigned_user_id === filterUserId);
     };
 
     const handleClick = (card: any) => {
@@ -72,12 +82,12 @@ export function Board({id, name, description, size, cards, sections: initialSect
         if (isNew) {
             const saved = isDemo
                 ? demoCreateCard(demoId, { section_id: card.section_id, name: card.name, description: card.description })
-                : await createCard(id, { section_id: card.section_id, name: card.name, description: card.description });
-            setCards((prev) => [...prev, saved]);
+                : await createCard(id, { section_id: card.section_id, assigned_user_id: card.assigned_user_id, name: card.name, description: card.description });
+            setCards(prev => [...prev, saved]);
         } else {
             const saved = isDemo
                 ? demoUpdateCard(demoId, card.id, { section_id: card.section_id, name: card.name, description: card.description })
-                : await updateCard(id, card.id, { section_id: card.section_id, name: card.name, description: card.description });
+                : await updateCard(id, card.id, { section_id: card.section_id, assigned_user_id: card.assigned_user_id, name: card.name, description: card.description });
             setCards(cardsProp.map(c => c.id === card.id ? saved : c));
         }
         setIsCardVisible(false)
@@ -100,6 +110,42 @@ export function Board({id, name, description, size, cards, sections: initialSect
 
     return (
         <>
+            {/* User filter strip */}
+            {boardUsers.length > 0 && (
+                <div className="flex items-center gap-2 mb-5 flex-wrap">
+                    <button
+                        onClick={() => setFilterUserId(null)}
+                        className={`text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border font-bold cursor-pointer transition-all duration-150 ${
+                            filterUserId === null
+                                ? 'bg-white text-gray-900 border-white'
+                                : 'text-gray-500 border-gray-700 hover:border-gray-400 hover:text-gray-300'
+                        }`}
+                    >
+                        All
+                    </button>
+                    {boardUsers.map((user) => {
+                        const color = AVATAR_COLORS[user.id % AVATAR_COLORS.length]
+                        const isActive = filterUserId === user.id
+                        return (
+                            <button
+                                key={user.id}
+                                onClick={() => setFilterUserId(isActive ? null : user.id)}
+                                style={{ borderColor: color, backgroundColor: isActive ? color : 'transparent', color: isActive ? '#fff' : color }}
+                                className="text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border font-bold cursor-pointer transition-all duration-150 flex items-center gap-1.5"
+                            >
+                                <span
+                                    style={{ backgroundColor: isActive ? 'rgba(255,255,255,0.3)' : color, fontSize: '9px', width: '16px', height: '16px' }}
+                                    className="rounded-full flex items-center justify-center text-white font-bold flex-shrink-0"
+                                >
+                                    {initials(user.name)}
+                                </span>
+                                {user.name.split(' ')[0]}
+                            </button>
+                        )
+                    })}
+                </div>
+            )}
+
             <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
                 <div className="flex gap-5 items-start overflow-x-auto pb-4">
                     {sections.map((section, i) => (
@@ -158,7 +204,7 @@ export function Board({id, name, description, size, cards, sections: initialSect
                 </div>
             </DndContext>
 
-            {/* FAB - Add ticket (primary on mobile, secondary on desktop) */}
+            {/* FAB - Add ticket */}
             <button
                 onClick={() => setIsCardVisible(true)}
                 className="fixed bottom-6 right-6 w-14 h-14 bg-amber-400 hover:bg-amber-300 active:scale-95 text-black rounded-full flex items-center justify-center shadow-2xl cursor-pointer transition-all duration-150 text-2xl font-bold z-40"
@@ -199,6 +245,7 @@ export function Board({id, name, description, size, cards, sections: initialSect
                         <CardEdit
                             card={selectedCard}
                             sections={sections}
+                            users={boardUsers}
                             goBack={() => { setIsCardVisible(false); setSelectedCard(null); }}
                             submit={handleSubmit}
                         />
