@@ -1,6 +1,7 @@
 'use client'
 
-import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { Card } from "../ui/Card";
 import { useEffect, useState } from "react";
 import { Section } from "../ui/Section";
 import { BoardInterface, SharedUser } from "@/interfaces/BoardInterface";
@@ -47,6 +48,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const [filterUserId, setFilterUserId] = useState<number | null>(null);
     const [filterTagId, setFilterTagId] = useState<number | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [activeCard, setActiveCard] = useState<any>(null);
     const [isTagsOpen, setIsTagsOpen] = useState(false);
     const [isActivityOpen, setIsActivityOpen] = useState(false);
     const [activityLog, setActivityLog] = useState<any[]>([]);
@@ -174,6 +176,11 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
+    function handleDragStart(event: any) {
+        const cardId = Number(event.active.id.split('-')[1]);
+        setActiveCard(cardsProp.find(c => c.id === cardId) ?? null);
+    }
+
     return (
         <>
             {/* Top bar: search + shortcuts */}
@@ -274,7 +281,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             </div>
 
             {/* Board columns */}
-            <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+            <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                 <div className="flex gap-5 items-start overflow-x-auto pb-4">
                     {sections.map((section, i) => (
                         <Section
@@ -319,6 +326,17 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                         )}
                     </div>
                 </div>
+
+                <DragOverlay dropAnimation={null}>
+                    {activeCard ? (
+                        <div style={{ transform: 'rotate(2deg)', opacity: 0.95 }}>
+                            <Card
+                                {...activeCard}
+                                color={SECTION_COLORS[sections.findIndex(s => s.id === activeCard.section_id) % SECTION_COLORS.length] ?? SECTION_COLORS[0]}
+                            />
+                        </div>
+                    ) : null}
+                </DragOverlay>
             </DndContext>
 
             {/* FAB */}
@@ -474,6 +492,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     );
 
     function handleDragEnd(event: any) {
+        setActiveCard(null);
         const sectionSelected = sections.find(section => section.name === event.over?.id);
         if (!sectionSelected) return;
         const selectedCardId = Number(event.active.id.split('-')[1]);

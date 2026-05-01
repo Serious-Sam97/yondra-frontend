@@ -1,18 +1,20 @@
 import React from 'react';
-import {useDraggable} from '@dnd-kit/core';
+import { useDraggable } from '@dnd-kit/core';
 
 export function Draggable(props: any) {
-  const {attributes, listeners, setNodeRef, transform} = useDraggable({
-    id: props.id,
-  });
-  const style = transform ? {
-    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-  } : undefined;
+    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+        id: props.id,
+    });
 
-  
-  return (
-    <button ref={setNodeRef} style={style} {...listeners} {...attributes} className="w-full block">
-      {props.children}
-    </button>
-  );
+    return (
+        <button
+            ref={setNodeRef}
+            {...listeners}
+            {...attributes}
+            className="w-full block"
+            style={{ opacity: isDragging ? 0 : 1, cursor: isDragging ? 'grabbing' : 'grab' }}
+        >
+            {props.children}
+        </button>
+    );
 }
