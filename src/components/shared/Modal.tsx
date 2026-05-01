@@ -6,7 +6,7 @@ interface ModalI {
 
 const Modal: React.FC<ModalI> = ({children}) => {
     return (
-        <div className="fixed inset-0 bg-black/70 items-center justify-center flex">
+        <div className="fixed inset-0 z-50 bg-black/70 items-center justify-center flex">
             {children}
         </div>
     )
