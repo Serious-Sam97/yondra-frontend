@@ -72,7 +72,7 @@ export default function DashboardPage () {
     }
 
     return (
-        <div className="min-h-screen px-8 py-10 max-w-6xl mx-auto">
+        <div className="min-h-screen px-4 py-6 md:px-8 md:py-10 max-w-6xl mx-auto">
 
             {/* Header */}
             <div className="mb-10">
@@ -82,13 +82,13 @@ export default function DashboardPage () {
                     ))}
                 </div>
                 <p className="text-xs uppercase tracking-[0.3em] text-gray-500 mb-1">Welcome back</p>
-                <p className="text-5xl font-bold tracking-tight">
+                <p className="text-3xl md:text-5xl font-bold tracking-tight">
                     {user?.name ?? 'Dashboard'}
                 </p>
             </div>
 
             {/* Toolbar */}
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-6 gap-3 flex-wrap">
                 <div className="flex items-center gap-3">
                     <p className="text-xs uppercase tracking-widest text-gray-500">Your Boards</p>
                     <button

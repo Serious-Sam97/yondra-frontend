@@ -57,7 +57,7 @@ export default function ShareModal({ boardId, sharedWith, onClose, onUpdate }: S
                     <button
                         type="submit"
                         disabled={loading}
-                        className="text-xs uppercase tracking-widest px-4 py-2 rounded-lg border-2 border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-black font-bold cursor-pointer transition-all duration-200 disabled:opacity-50"
+                        className="text-xs uppercase tracking-widest px-4 py-3 rounded-lg border-2 border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-black font-bold cursor-pointer transition-all duration-200 disabled:opacity-50"
                     >
                         {loading ? '...' : 'Invite'}
                     </button>
@@ -70,14 +70,14 @@ export default function ShareModal({ boardId, sharedWith, onClose, onUpdate }: S
                         <p className="text-xs uppercase tracking-widest text-gray-600 mb-3">Collaborators</p>
                         <ul className="space-y-2">
                             {sharedWith.map(user => (
-                                <li key={user.id} className="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2">
+                                <li key={user.id} className="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-3">
                                     <div>
                                         <p className="text-white text-sm font-medium">{user.name}</p>
                                         <p className="text-gray-500 text-xs">{user.email}</p>
                                     </div>
                                     <button
                                         onClick={() => handleRemove(user.id)}
-                                        className="text-xs text-red-500 hover:text-red-400 cursor-pointer transition-colors uppercase tracking-widest"
+                                        className="text-xs text-red-500 hover:text-red-400 cursor-pointer transition-colors uppercase tracking-widest py-2 px-1"
                                     >
                                         Remove
                                     </button>

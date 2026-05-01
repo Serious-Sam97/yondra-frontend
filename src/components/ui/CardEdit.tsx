@@ -52,7 +52,7 @@ const CardEdit: React.FC<CardEditProps> = ({goBack, submit, card, sections}) => 
                 boxShadow: '4px 4px 12px rgba(0,0,0,0.4), 2px 2px 4px rgba(0,0,0,0.2)',
                 fontFamily: 'Georgia, serif',
             }}
-            className="flex flex-col w-[420px] min-h-[480px] rounded-sm relative"
+            className="flex flex-col w-[95vw] max-w-[420px] min-h-[420px] md:min-h-[480px] rounded-sm relative"
         >
             {/* Glue strip */}
             <div
@@ -80,7 +80,7 @@ const CardEdit: React.FC<CardEditProps> = ({goBack, submit, card, sections}) => 
                     placeholder="What needs to be done?"
                     rows={2}
                     style={{ color: '#1a1a1a', caretColor: '#1a1a1a' }}
-                    className="w-full bg-transparent text-2xl font-bold placeholder-yellow-600/50 focus:outline-none resize-none leading-tight"
+                    className="w-full bg-transparent text-lg md:text-2xl font-bold placeholder-yellow-600/50 focus:outline-none resize-none leading-tight"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                 />
@@ -113,7 +113,7 @@ const CardEdit: React.FC<CardEditProps> = ({goBack, submit, card, sections}) => 
                                     color: isActive ? '#fff' : color,
                                     fontSize: '10px',
                                 }}
-                                className="uppercase tracking-widest px-2.5 py-1 rounded-full border cursor-pointer transition-all duration-150 font-bold"
+                                className="uppercase tracking-widest px-3 py-2 rounded-full border cursor-pointer transition-all duration-150 font-bold"
                             >
                                 {s.name}
                             </button>

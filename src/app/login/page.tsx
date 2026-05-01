@@ -34,7 +34,7 @@ export default function LoginPage () {
     }
 
     return (
-        <div className="flex items-center justify-center min-h-[90vh]">
+        <div className="flex items-center justify-center min-h-[90vh] px-4">
             <div className="w-full max-w-md">
                 <div className="flex flex-col items-center mb-8">
                     <Image src={YondraIcon} alt="logo" width={60} height={60} className="rounded-xl mb-3"/>
@@ -42,7 +42,7 @@ export default function LoginPage () {
                     <p className="text-gray-400 mt-1">Sign in to your Yondra account</p>
                 </div>
 
-                <div className="bg-gray-800 p-8 rounded-2xl shadow-lg">
+                <div className="bg-gray-800 p-6 md:p-8 rounded-2xl shadow-lg">
                     {error && (
                         <div className="bg-red-500/20 border border-red-500 text-red-300 text-sm px-4 py-2 rounded-lg mb-6">
                             {error}

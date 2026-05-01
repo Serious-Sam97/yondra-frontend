@@ -148,6 +148,15 @@ export function Board({id, name, description, size, cards, sections: initialSect
                 </div>
             </DndContext>
 
+            {/* FAB - Add ticket (primary on mobile, secondary on desktop) */}
+            <button
+                onClick={() => setIsCardVisible(true)}
+                className="fixed bottom-6 right-6 w-14 h-14 bg-amber-400 hover:bg-amber-300 active:scale-95 text-black rounded-full flex items-center justify-center shadow-2xl cursor-pointer transition-all duration-150 text-2xl font-bold z-40"
+                title="Add ticket"
+            >
+                +
+            </button>
+
             {sectionToDelete && (
                 <Modal>
                     <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-[90%] max-w-sm flex flex-col gap-6">

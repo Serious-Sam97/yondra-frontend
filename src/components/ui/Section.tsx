@@ -32,7 +32,7 @@ export function Section({id, name, color, cards, handleClick, onDelete}: Section
             </div>
 
             {/* Top color bar */}
-            <div style={{ backgroundColor: color + '33', borderColor: color + '55' }} className="border rounded-xl p-2 flex-1">
+            <div style={{ backgroundColor: color + '33', borderColor: color + '55' }} className="border rounded-xl p-2 flex-1 max-h-[50vh] md:max-h-[calc(100vh-320px)] overflow-y-auto">
                 <Droppable style={style} key={id} id={name}>
                     {cards.map((card: CardInterface) => (
                         <div key={card.id} onClick={() => handleClick(card)}>

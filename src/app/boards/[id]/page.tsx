@@ -63,7 +63,7 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
     }, [id])
 
     return (
-        <div className="min-h-screen px-8 py-8">
+        <div className="min-h-screen px-4 py-6 md:px-8 md:py-8">
             {/* Rainbow stripe */}
             <div className="flex gap-1 mb-6">
                 {STRIPE_COLORS.map(c => (
@@ -72,20 +72,20 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
             </div>
 
             {/* Header */}
-            <div className="flex items-start justify-between mb-8">
-                <div>
+            <div className="flex items-start justify-between gap-4 mb-6 md:mb-8 flex-wrap">
+                <div className="min-w-0">
                     <button
                         onClick={() => router.push(isDemo ? '/demo' : '/dashboard')}
                         className="text-xs uppercase tracking-widest text-gray-500 hover:text-gray-300 mb-3 flex items-center gap-1 cursor-pointer transition-colors duration-150"
                     >
                         ← Back to boards
                     </button>
-                    <p className="text-4xl font-bold text-white">{board.name || '...'}</p>
+                    <p className="text-2xl md:text-4xl font-bold text-white truncate">{board.name || '...'}</p>
                     {board.description && (
-                        <p className="text-gray-500 mt-1">{board.description}</p>
+                        <p className="text-gray-500 mt-1 text-sm">{board.description}</p>
                     )}
                 </div>
-                <div className="flex flex-col items-end gap-3">
+                <div className="flex flex-col items-end gap-3 flex-shrink-0">
                     {isOwner && !isDemo && (
                         <button
                             onClick={() => setShareOpen(true)}
@@ -94,7 +94,7 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                             Share
                         </button>
                     )}
-                    <div className="text-right">
+                    <div className="text-right hidden md:block">
                         <p className="text-xs uppercase tracking-widest text-gray-600">Press</p>
                         <kbd className="text-xs bg-gray-800 border border-gray-700 text-amber-400 px-2 py-1 rounded font-mono">C</kbd>
                         <p className="text-xs uppercase tracking-widest text-gray-600">to add a ticket</p>
