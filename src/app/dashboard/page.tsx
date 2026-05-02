@@ -1,14 +1,25 @@
-'use client'
+'use client';
 
-import Modal from "@/components/shared/Modal";
-import ProjectEdit from "@/components/ui/ProjectEdit";
-import { fetchBoards, fetchUser } from "@/lib/auth";
-import { createBoard, deleteBoard } from "@/lib/api";
+import Modal from '@/components/shared/Modal';
+import { fetchUser } from '@/lib/auth';
+import {
+    fetchProjects, createProject, updateProject, deleteProject,
+    createBoard, deleteBoard,
+    addProjectMember, updateProjectMember, removeProjectMember,
+} from '@/lib/api';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
-const STRIPE_COLORS = ['#4CAF50', '#FFC107', '#FF9800', '#F44336', '#7B1FA2', '#1976D2'];
+// ─── constants ────────────────────────────────────────────────────────────────
+
+const PROJECT_COLORS = [
+    '#1976D2', '#388E3C', '#F57C00', '#7B1FA2',
+    '#C62828', '#00838F', '#AD1457', '#4527A0',
+];
+
 const AVATAR_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107', '#00BCD4', '#E91E63'];
+
+// ─── tiny helpers ─────────────────────────────────────────────────────────────
 
 function initials(name: string) {
     return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -16,293 +27,966 @@ function initials(name: string) {
 
 function timeAgo(dateStr: string): string {
     const diff = Date.now() - new Date(dateStr).getTime();
-    const mins  = Math.floor(diff / 60000);
+    const mins = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
-    const days  = Math.floor(diff / 86400000);
-    if (mins < 2)   return 'just now';
-    if (mins < 60)  return `${mins}m ago`;
+    const days = Math.floor(diff / 86400000);
+    if (mins < 2) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
     if (hours < 24) return `${hours}h ago`;
     if (days === 1) return 'yesterday';
-    if (days < 7)   return `${days}d ago`;
-    if (days < 30)  return `${Math.floor(days / 7)}w ago`;
+    if (days < 7) return `${days}d ago`;
+    if (days < 30) return `${Math.floor(days / 7)}w ago`;
     return `${Math.floor(days / 30)}mo ago`;
 }
 
-function MemberAvatars({ owner, sharedWith }: { owner?: any; sharedWith?: any[] }) {
-    const all = [owner, ...(sharedWith ?? [])].filter(Boolean).slice(0, 5);
-    const extra = [owner, ...(sharedWith ?? [])].filter(Boolean).length - 5;
+function Avatar({ user, size = 22 }: { user: { id: number; name: string }; size?: number }) {
     return (
-        <div className="flex items-center">
-            {all.map((u, i) => (
-                <div
-                    key={u.id}
-                    style={{
-                        backgroundColor: AVATAR_COLORS[u.id % AVATAR_COLORS.length],
-                        fontSize: 9,
-                        width: 22,
-                        height: 22,
-                        marginLeft: i === 0 ? 0 : -6,
-                        zIndex: all.length - i,
-                        position: 'relative',
-                    }}
-                    className="rounded-full flex items-center justify-center text-white font-bold border-2 border-gray-900 flex-shrink-0"
-                    title={u.name}
-                >
-                    {initials(u.name)}
-                </div>
-            ))}
-            {extra > 0 && (
-                <div style={{ marginLeft: -6, fontSize: 9, width: 22, height: 22 }}
-                     className="rounded-full flex items-center justify-center text-gray-400 font-bold border-2 border-gray-900 bg-gray-700 flex-shrink-0">
-                    +{extra}
-                </div>
-            )}
+        <div
+            title={user.name}
+            style={{
+                backgroundColor: AVATAR_COLORS[user.id % AVATAR_COLORS.length],
+                width: size, height: size, fontSize: size * 0.42,
+            }}
+            className="rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 border-2 border-[#1a1a12]"
+        >
+            {initials(user.name)}
         </div>
     );
 }
 
-function BoardCard({ project, index, onClick, editMode, isShared }: { project: any; index: number; onClick: () => void; editMode: boolean; isShared: boolean }) {
-    const color = STRIPE_COLORS[index % STRIPE_COLORS.length];
-    const cardCount = project.cards_count ?? 0;
+// ─── Left panel: project folder tabs ─────────────────────────────────────────
+
+function FolderTab({
+    project, active, onClick, isMember,
+}: {
+    project: any; active: boolean; onClick: () => void; isMember?: boolean;
+}) {
+    return (
+        <button
+            onClick={onClick}
+            className="w-full text-left group transition-all duration-150 focus:outline-none"
+        >
+            <div
+                style={{
+                    borderLeftColor: active ? project.color : 'transparent',
+                    backgroundColor: active ? project.color + '18' : 'transparent',
+                }}
+                className={`
+                    relative flex items-center gap-3 px-4 py-3 border-l-4
+                    hover:bg-[#2a2a1a] transition-colors duration-100
+                    ${active ? 'border-l-4' : 'border-l-4 hover:border-[#555]'}
+                `}
+            >
+                {/* folder icon */}
+                <div
+                    style={{ backgroundColor: project.color + '33', color: project.color }}
+                    className="w-7 h-7 rounded flex items-center justify-center text-base flex-shrink-0 font-bold"
+                >
+                    {project.name[0].toUpperCase()}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                    <p
+                        style={{ color: active ? project.color : '#d4c97a' }}
+                        className="text-sm font-bold truncate leading-tight"
+                    >
+                        {project.name}
+                    </p>
+                    <p className="text-[10px] text-[#888] truncate">
+                        {project.boards_count ?? 0} board{project.boards_count !== 1 ? 's' : ''}
+                        {isMember && <span className="ml-1 text-[#aaa]">· member</span>}
+                    </p>
+                </div>
+
+                {active && (
+                    <div
+                        style={{ backgroundColor: project.color }}
+                        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                    />
+                )}
+            </div>
+        </button>
+    );
+}
+
+// ─── Center: board card ───────────────────────────────────────────────────────
+
+function BoardCard({
+    board, projectColor, onClick, editMode, isShared,
+}: {
+    board: any; projectColor: string; onClick: () => void; editMode: boolean; isShared: boolean;
+}) {
+    const cardCount = board.cards_count ?? 0;
 
     return (
         <div
             onClick={onClick}
-            className={`group relative bg-gray-900 border border-gray-800 rounded-xl overflow-hidden cursor-pointer transition-all duration-200 hover:border-gray-600 hover:shadow-xl hover:-translate-y-0.5 flex flex-col ${editMode && !isShared ? 'ring-2 ring-amber-400/40' : ''}`}
+            className={`
+                group relative cursor-pointer flex flex-col overflow-hidden rounded
+                transition-all duration-150 hover:-translate-y-0.5
+                ${editMode && !isShared ? 'ring-2 ring-yellow-400/50' : ''}
+            `}
+            style={{
+                background: 'linear-gradient(160deg, #f5f0dc 0%, #ede8cc 100%)',
+                boxShadow: '3px 3px 0 rgba(0,0,0,0.4), 1px 1px 0 rgba(0,0,0,0.2)',
+                fontFamily: 'Georgia, serif',
+                border: `1px solid ${projectColor}55`,
+            }}
         >
-            {/* Color stripe */}
-            <div style={{ backgroundColor: color }} className="h-1.5 w-full flex-shrink-0" />
+            {/* color tab at top */}
+            <div style={{ backgroundColor: projectColor }} className="h-2 w-full flex-shrink-0" />
 
-            <div className="p-5 flex flex-col flex-1 gap-3">
-                {/* Top row */}
-                <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                        <span
-                            style={{ backgroundColor: color + '22', color, fontSize: '10px' }}
-                            className="uppercase tracking-widest px-2 py-0.5 rounded font-bold"
-                        >
-                            Board
+            <div className="px-4 pt-3 pb-4 flex flex-col flex-1 gap-2">
+                <div className="flex items-start justify-between gap-1">
+                    <p style={{ color: '#1a1a1a', fontSize: '14px' }} className="font-bold leading-snug flex-1">
+                        {board.name}
+                    </p>
+                    {isShared && (
+                        <span style={{ fontSize: '9px', color: '#1976D2', backgroundColor: '#1976D220', borderColor: '#1976D255' }}
+                              className="px-1.5 py-0.5 rounded border font-bold uppercase tracking-wide flex-shrink-0">
+                            shared
                         </span>
-                        {isShared && (
-                            <span className="text-xs uppercase tracking-widest px-2 py-0.5 rounded font-bold bg-blue-500/20 text-blue-400" style={{ fontSize: '10px' }}>
-                                Shared
-                            </span>
-                        )}
-                    </div>
+                    )}
                     {editMode && !isShared && (
-                        <span className="text-xs text-amber-400 uppercase tracking-widest opacity-70 group-hover:opacity-100">edit</span>
+                        <span style={{ fontSize: '9px', color: '#b45309' }} className="font-bold uppercase tracking-wide flex-shrink-0 opacity-60 group-hover:opacity-100">
+                            edit
+                        </span>
                     )}
                 </div>
 
-                {/* Name + description */}
-                <div className="flex-1">
-                    <p className="text-white font-bold text-lg leading-tight mb-1">{project.name}</p>
-                    {project.description ? (
-                        <p className="text-gray-500 text-sm line-clamp-2">{project.description}</p>
-                    ) : (
-                        <p className="text-gray-700 text-sm italic">No description</p>
-                    )}
-                </div>
+                {board.description && (
+                    <p style={{ color: '#666', fontSize: '11px' }} className="line-clamp-2 leading-snug">{board.description}</p>
+                )}
 
-                {/* Card count bar */}
-                <div className="flex flex-col gap-1">
+                {/* card count bar */}
+                <div className="mt-auto pt-2 flex flex-col gap-1">
                     <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-600">{cardCount} {cardCount === 1 ? 'card' : 'cards'}</span>
+                        <span style={{ color: '#888', fontSize: '10px' }}>
+                            {cardCount} {cardCount === 1 ? 'card' : 'cards'}
+                        </span>
+                        <span style={{ color: '#aaa', fontSize: '10px' }}>
+                            {board.updated_at ? timeAgo(board.updated_at) : ''}
+                        </span>
                     </div>
-                    <div className="h-0.5 bg-gray-800 rounded-full overflow-hidden">
+                    <div className="h-0.5 rounded-full overflow-hidden" style={{ backgroundColor: '#ccc' }}>
                         <div
-                            style={{ width: cardCount > 0 ? `${Math.min(cardCount * 8, 100)}%` : '0%', backgroundColor: color }}
-                            className="h-full rounded-full transition-all duration-500"
+                            style={{ width: cardCount > 0 ? `${Math.min(cardCount * 8, 100)}%` : '0%', backgroundColor: projectColor }}
+                            className="h-full rounded-full"
                         />
                     </div>
                 </div>
 
-                {/* Bottom row: members + updated */}
-                <div className="flex items-center justify-between pt-1 border-t border-gray-800">
-                    <MemberAvatars owner={project.owner} sharedWith={project.shared_with} />
-                    <span className="text-xs text-gray-600">{timeAgo(project.updated_at)}</span>
-                </div>
+                {/* members */}
+                {(board.owner || (board.shared_with?.length > 0)) && (
+                    <div className="flex items-center gap-1 flex-wrap mt-1">
+                        {board.owner && <Avatar user={board.owner} size={18} />}
+                        {board.shared_with?.slice(0, 3).map((u: any) => (
+                            <Avatar key={u.id} user={u} size={18} />
+                        ))}
+                    </div>
+                )}
             </div>
+
+            {/* dog-ear */}
+            <div style={{
+                position: 'absolute', bottom: 0, right: 0,
+                width: 0, height: 0, borderStyle: 'solid',
+                borderWidth: '0 0 12px 12px',
+                borderColor: `transparent transparent ${projectColor}55 transparent`,
+            }} />
         </div>
     );
 }
 
-function EmptySection({ onNew, label }: { onNew?: () => void; label: string }) {
+// ─── Right panel: activity feed ───────────────────────────────────────────────
+
+function RightPanel({ projects, memberProjects, selectedProject }: { projects: any[]; memberProjects: any[]; selectedProject: any | null }) {
+    const allProjects = [...projects, ...memberProjects];
+    const totalBoards = allProjects.reduce((s, p) => s + (p.boards_count ?? 0), 0);
+    const totalCards  = projects.reduce((s, p) => s + (p.boards ?? []).reduce((b: number, board: any) => b + (board.cards_count ?? 0), 0), 0);
+
     return (
-        <div className="border-2 border-dashed border-gray-800 rounded-xl flex flex-col items-center justify-center py-14 text-center">
-            <p className="text-3xl mb-3 opacity-40">▦</p>
-            <p className="text-gray-600 text-sm uppercase tracking-widest">{label}</p>
-            {onNew && (
-                <button
-                    onClick={onNew}
-                    className="mt-4 text-xs uppercase tracking-widest px-4 py-2 rounded border border-amber-400/50 text-amber-400 hover:bg-amber-400/10 cursor-pointer transition-all duration-200"
+        <div className="flex flex-col gap-4 h-full">
+            {/* stats notepad */}
+            <div
+                className="rounded p-4 flex flex-col gap-3"
+                style={{
+                    background: 'linear-gradient(160deg, #f5f0dc 0%, #ede8cc 100%)',
+                    boxShadow: '2px 2px 0 rgba(0,0,0,0.35)',
+                    fontFamily: 'Georgia, serif',
+                    border: '1px solid #b8a96055',
+                }}
+            >
+                {/* notepad lines decoration */}
+                <div className="border-b-2 border-[#c8a060]/30 pb-2 mb-1">
+                    <p style={{ color: '#8a7a40', fontSize: '10px' }} className="uppercase tracking-widest font-bold">Stats</p>
+                </div>
+                <StatRow label="Projects" value={allProjects.length} />
+                <StatRow label="Boards" value={totalBoards} />
+                {selectedProject && (
+                    <StatRow label={`${selectedProject.name} boards`} value={selectedProject.boards_count ?? 0} accent />
+                )}
+                <StatRow label="Members" value={
+                    selectedProject
+                        ? (selectedProject.members?.length ?? 1)
+                        : allProjects.reduce((s, p) => s + (p.members?.length ?? 1), 0)
+                } />
+            </div>
+
+            {/* members of selected project */}
+            {selectedProject && selectedProject.members?.length > 0 && (
+                <div
+                    className="rounded p-4 flex flex-col gap-2"
+                    style={{
+                        background: 'linear-gradient(160deg, #f5f0dc 0%, #ede8cc 100%)',
+                        boxShadow: '2px 2px 0 rgba(0,0,0,0.35)',
+                        fontFamily: 'Georgia, serif',
+                        border: '1px solid #b8a96055',
+                    }}
                 >
-                    + Create your first board
-                </button>
+                    <div className="border-b-2 border-[#c8a060]/30 pb-2 mb-1">
+                        <p style={{ color: '#8a7a40', fontSize: '10px' }} className="uppercase tracking-widest font-bold">Members</p>
+                    </div>
+                    {selectedProject.members.map((m: any) => (
+                        <div key={m.id} className="flex items-center gap-2">
+                            <Avatar user={m} size={20} />
+                            <div className="flex-1 min-w-0">
+                                <p style={{ color: '#333', fontSize: '11px' }} className="font-bold truncate">{m.name}</p>
+                                <p style={{ color: '#888', fontSize: '9px' }} className="uppercase tracking-wide">{m.role ?? 'member'}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             )}
         </div>
     );
 }
 
+function StatRow({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
+    return (
+        <div className="flex items-center justify-between">
+            <span style={{ color: '#666', fontSize: '11px' }}>{label}</span>
+            <span
+                style={{ color: accent ? '#b45309' : '#333', fontSize: '13px' }}
+                className="font-bold"
+            >
+                {value}
+            </span>
+        </div>
+    );
+}
+
+// ─── Project form modal ───────────────────────────────────────────────────────
+
+function ProjectFormModal({
+    project, onSave, onDelete, onClose,
+}: {
+    project: any | null; onSave: (data: any) => void; onDelete?: () => void; onClose: () => void;
+}) {
+    const [name, setName] = useState(project?.name ?? '');
+    const [description, setDescription] = useState(project?.description ?? '');
+    const [color, setColor] = useState(project?.color ?? '#1976D2');
+    const [loading, setLoading] = useState(false);
+
+    async function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        if (!name.trim()) return;
+        setLoading(true);
+        await onSave({ name: name.trim(), description: description.trim() || null, color });
+        setLoading(false);
+    }
+
+    return (
+        <div
+            className="rounded p-6 w-[90vw] max-w-md flex flex-col gap-5"
+            style={{
+                background: 'linear-gradient(160deg, #f5f0dc 0%, #ede8cc 100%)',
+                boxShadow: '4px 4px 0 rgba(0,0,0,0.5)',
+                fontFamily: 'Georgia, serif',
+                border: '1px solid #b8a96088',
+            }}
+        >
+            <div className="border-b-2 border-[#c8a060]/30 pb-3">
+                <p style={{ color: '#8a7a40', fontSize: '11px' }} className="uppercase tracking-widest font-bold">
+                    {project ? 'Edit Project' : 'New Project'}
+                </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1">
+                    <label style={{ color: '#555', fontSize: '11px' }} className="uppercase tracking-widest font-bold">Name</label>
+                    <input
+                        autoFocus
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        placeholder="Project name..."
+                        style={{ fontFamily: 'Georgia, serif', color: '#1a1a1a', backgroundColor: '#faf6e8', borderColor: '#c8b870' }}
+                        className="border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#b45309]"
+                    />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                    <label style={{ color: '#555', fontSize: '11px' }} className="uppercase tracking-widest font-bold">Description</label>
+                    <textarea
+                        value={description}
+                        onChange={e => setDescription(e.target.value)}
+                        placeholder="Optional..."
+                        rows={2}
+                        style={{ fontFamily: 'Georgia, serif', color: '#1a1a1a', backgroundColor: '#faf6e8', borderColor: '#c8b870' }}
+                        className="border rounded px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-[#b45309]"
+                    />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                    <label style={{ color: '#555', fontSize: '11px' }} className="uppercase tracking-widest font-bold">Color</label>
+                    <div className="flex gap-2 flex-wrap">
+                        {PROJECT_COLORS.map(c => (
+                            <button
+                                key={c}
+                                type="button"
+                                onClick={() => setColor(c)}
+                                style={{ backgroundColor: c, width: 24, height: 24, borderRadius: '50%' }}
+                                className={`border-2 transition-all ${color === c ? 'border-[#1a1a1a] scale-125' : 'border-transparent'}`}
+                            />
+                        ))}
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-[#c8b870]/40">
+                    {onDelete ? (
+                        <button
+                            type="button"
+                            onClick={onDelete}
+                            style={{ color: '#b91c1c', fontSize: '11px' }}
+                            className="uppercase tracking-widest font-bold hover:underline cursor-pointer"
+                        >
+                            Delete
+                        </button>
+                    ) : <div />}
+                    <div className="flex gap-3">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            style={{ color: '#888', fontSize: '11px' }}
+                            className="uppercase tracking-widest font-bold hover:underline cursor-pointer"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={loading || !name.trim()}
+                            style={{ backgroundColor: color, color: '#fff', fontSize: '11px' }}
+                            className="uppercase tracking-widest font-bold px-4 py-1.5 rounded cursor-pointer disabled:opacity-50"
+                        >
+                            {loading ? '...' : 'Save'}
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    );
+}
+
+// ─── Board form modal ─────────────────────────────────────────────────────────
+
+function BoardFormModal({
+    board, projectId, projectColor, onSave, onDelete, onClose,
+}: {
+    board: any | null; projectId: number; projectColor: string; onSave: (data: any) => void; onDelete?: () => void; onClose: () => void;
+}) {
+    const [name, setName] = useState(board?.name ?? '');
+    const [description, setDescription] = useState(board?.description ?? '');
+    const [loading, setLoading] = useState(false);
+
+    async function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        if (!name.trim()) return;
+        setLoading(true);
+        await onSave({ name: name.trim(), description: description.trim() || '', project_id: projectId });
+        setLoading(false);
+    }
+
+    return (
+        <div
+            className="rounded p-6 w-[90vw] max-w-md flex flex-col gap-5"
+            style={{
+                background: 'linear-gradient(160deg, #f5f0dc 0%, #ede8cc 100%)',
+                boxShadow: '4px 4px 0 rgba(0,0,0,0.5)',
+                fontFamily: 'Georgia, serif',
+                border: `1px solid ${projectColor}55`,
+            }}
+        >
+            <div style={{ borderBottomColor: projectColor + '44' }} className="border-b-2 pb-3">
+                <p style={{ color: '#8a7a40', fontSize: '11px' }} className="uppercase tracking-widest font-bold">
+                    {board ? 'Edit Board' : 'New Board'}
+                </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1">
+                    <label style={{ color: '#555', fontSize: '11px' }} className="uppercase tracking-widest font-bold">Name</label>
+                    <input
+                        autoFocus
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        placeholder="Board name..."
+                        style={{ fontFamily: 'Georgia, serif', color: '#1a1a1a', backgroundColor: '#faf6e8', borderColor: '#c8b870' }}
+                        className="border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1"
+                    />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                    <label style={{ color: '#555', fontSize: '11px' }} className="uppercase tracking-widest font-bold">Description</label>
+                    <textarea
+                        value={description}
+                        onChange={e => setDescription(e.target.value)}
+                        placeholder="Optional..."
+                        rows={2}
+                        style={{ fontFamily: 'Georgia, serif', color: '#1a1a1a', backgroundColor: '#faf6e8', borderColor: '#c8b870' }}
+                        className="border rounded px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1"
+                    />
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-[#c8b870]/40">
+                    {onDelete ? (
+                        <button
+                            type="button"
+                            onClick={onDelete}
+                            style={{ color: '#b91c1c', fontSize: '11px' }}
+                            className="uppercase tracking-widest font-bold hover:underline cursor-pointer"
+                        >
+                            Delete
+                        </button>
+                    ) : <div />}
+                    <div className="flex gap-3">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            style={{ color: '#888', fontSize: '11px' }}
+                            className="uppercase tracking-widest font-bold hover:underline cursor-pointer"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={loading || !name.trim()}
+                            style={{ backgroundColor: projectColor, color: '#fff', fontSize: '11px' }}
+                            className="uppercase tracking-widest font-bold px-4 py-1.5 rounded cursor-pointer disabled:opacity-50"
+                        >
+                            {loading ? '...' : 'Save'}
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    );
+}
+
+// ─── Members management modal ─────────────────────────────────────────────────
+
+function MembersModal({
+    project, currentUserId, onUpdate, onClose,
+}: {
+    project: any; currentUserId: number; onUpdate: (p: any) => void; onClose: () => void;
+}) {
+    const [email, setEmail] = useState('');
+    const [role, setRole] = useState<'member' | 'viewer'>('member');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    async function handleAdd(e: React.FormEvent) {
+        e.preventDefault();
+        if (!email.trim()) return;
+        setLoading(true);
+        setError('');
+        try {
+            const updated = await addProjectMember(project.id, email.trim(), role);
+            onUpdate(updated);
+            setEmail('');
+        } catch {
+            setError('User not found or already a member.');
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function handleRoleChange(userId: number, newRole: 'member' | 'viewer') {
+        const updated = await updateProjectMember(project.id, userId, newRole);
+        onUpdate(updated);
+    }
+
+    async function handleRemove(userId: number) {
+        await removeProjectMember(project.id, userId);
+        onUpdate({ ...project, members: project.members.filter((m: any) => m.id !== userId) });
+    }
+
+    const isOwner = project.owner_id === currentUserId;
+
+    return (
+        <div
+            className="rounded p-6 w-[90vw] max-w-lg flex flex-col gap-5"
+            style={{
+                background: 'linear-gradient(160deg, #f5f0dc 0%, #ede8cc 100%)',
+                boxShadow: '4px 4px 0 rgba(0,0,0,0.5)',
+                fontFamily: 'Georgia, serif',
+                border: `1px solid ${project.color}55`,
+            }}
+        >
+            <div style={{ borderBottomColor: project.color + '44' }} className="border-b-2 pb-3 flex items-center justify-between">
+                <p style={{ color: '#8a7a40', fontSize: '11px' }} className="uppercase tracking-widest font-bold">
+                    {project.name} · Members
+                </p>
+                <button onClick={onClose} style={{ color: '#888', fontSize: '11px' }} className="uppercase tracking-widest font-bold hover:underline cursor-pointer">
+                    Close
+                </button>
+            </div>
+
+            {/* existing members */}
+            <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
+                {project.members?.map((m: any) => (
+                    <div key={m.id} className="flex items-center gap-3">
+                        <Avatar user={m} size={22} />
+                        <div className="flex-1 min-w-0">
+                            <p style={{ color: '#1a1a1a', fontSize: '12px' }} className="font-bold truncate">{m.name}</p>
+                            <p style={{ color: '#888', fontSize: '10px' }}>{m.email}</p>
+                        </div>
+                        {m.id === project.owner_id ? (
+                            <span style={{ color: project.color, fontSize: '9px' }} className="uppercase tracking-widest font-bold">owner</span>
+                        ) : isOwner ? (
+                            <div className="flex items-center gap-2">
+                                <select
+                                    value={m.role ?? 'member'}
+                                    onChange={e => handleRoleChange(m.id, e.target.value as any)}
+                                    style={{ fontSize: '10px', backgroundColor: '#faf6e8', borderColor: '#c8b870', color: '#333' }}
+                                    className="border rounded px-1 py-0.5 cursor-pointer"
+                                >
+                                    <option value="member">member</option>
+                                    <option value="viewer">viewer</option>
+                                </select>
+                                <button
+                                    onClick={() => handleRemove(m.id)}
+                                    style={{ color: '#b91c1c', fontSize: '10px' }}
+                                    className="font-bold hover:underline cursor-pointer"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        ) : (
+                            <span style={{ color: '#888', fontSize: '9px' }} className="uppercase tracking-widest">{m.role ?? 'member'}</span>
+                        )}
+                    </div>
+                ))}
+            </div>
+
+            {/* add member */}
+            {isOwner && (
+                <form onSubmit={handleAdd} className="flex flex-col gap-2 border-t border-[#c8b870]/40 pt-4">
+                    <label style={{ color: '#555', fontSize: '11px' }} className="uppercase tracking-widest font-bold">Invite by email</label>
+                    {error && <p style={{ color: '#b91c1c', fontSize: '11px' }}>{error}</p>}
+                    <div className="flex gap-2">
+                        <input
+                            type="email"
+                            value={email}
+                            onChange={e => setEmail(e.target.value)}
+                            placeholder="user@example.com"
+                            style={{ fontFamily: 'Georgia, serif', color: '#1a1a1a', backgroundColor: '#faf6e8', borderColor: '#c8b870', fontSize: '12px' }}
+                            className="flex-1 border rounded px-3 py-1.5 focus:outline-none"
+                        />
+                        <select
+                            value={role}
+                            onChange={e => setRole(e.target.value as any)}
+                            style={{ fontSize: '11px', backgroundColor: '#faf6e8', borderColor: '#c8b870', color: '#333' }}
+                            className="border rounded px-2 py-1.5 cursor-pointer"
+                        >
+                            <option value="member">member</option>
+                            <option value="viewer">viewer</option>
+                        </select>
+                        <button
+                            type="submit"
+                            disabled={loading || !email.trim()}
+                            style={{ backgroundColor: project.color, color: '#fff', fontSize: '11px' }}
+                            className="uppercase tracking-widest font-bold px-3 py-1.5 rounded cursor-pointer disabled:opacity-50"
+                        >
+                            {loading ? '...' : 'Add'}
+                        </button>
+                    </div>
+                </form>
+            )}
+        </div>
+    );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
 export default function DashboardPage() {
     const router = useRouter();
-    const [ownedBoards, setOwnedBoards] = useState<any[]>([]);
-    const [sharedBoards, setSharedBoards] = useState<any[]>([]);
-    const [user, setUser] = useState<any>(null);
-    const [modalIsVisible, setModalIsVisible] = useState(false);
-    const [projectSelected, setProjectSelected] = useState<any>(null);
-    const [editMode, setEditMode] = useState(false);
+    const [ownedProjects, setOwnedProjects]   = useState<any[]>([]);
+    const [memberProjects, setMemberProjects] = useState<any[]>([]);
+    const [user, setUser]                     = useState<any>(null);
+    const [selectedId, setSelectedId]         = useState<number | null>(null);
+    const [editMode, setEditMode]             = useState(false);
+
+    // modals
+    const [modal, setModal] = useState<
+        | { type: 'project-new' }
+        | { type: 'project-edit'; project: any }
+        | { type: 'board-new'; projectId: number; projectColor: string }
+        | { type: 'board-edit'; board: any; projectId: number; projectColor: string }
+        | { type: 'members'; project: any }
+        | null
+    >(null);
+
+    // mobile sidebar state
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     useEffect(() => {
-        const fetchData = async () => {
+        (async () => {
             try {
-                const [userData, boards] = await Promise.all([fetchUser(), fetchBoards()]);
+                const [userData, projectsData] = await Promise.all([fetchUser(), fetchProjects()]);
                 if (userData) setUser(userData);
-                if (boards) {
-                    setOwnedBoards(boards.owned ?? []);
-                    setSharedBoards(boards.shared ?? []);
+                if (projectsData) {
+                    setOwnedProjects(projectsData.owned ?? []);
+                    setMemberProjects(projectsData.member ?? []);
+                    const first = projectsData.owned?.[0] ?? projectsData.member?.[0];
+                    if (first) setSelectedId(first.id);
                 }
             } catch {
                 router.push('/login');
             }
-        };
-        fetchData();
+        })();
     }, []);
 
-    const handleSubmitProject = async (project: any) => {
-        if (project.id !== null) {
-            setOwnedBoards(prev => prev.map(p => p.id === project.id ? { ...p, ...project } : p));
+    const allProjects   = [...ownedProjects, ...memberProjects];
+    const selectedProject = allProjects.find(p => p.id === selectedId) ?? null;
+    const selectedBoards  = selectedProject?.boards ?? [];
+    const isOwner         = selectedProject?.owner_id === user?.id;
+
+    // ── handlers ──────────────────────────────────────────────────────────────
+
+    async function handleSaveProject(data: any) {
+        if (modal?.type === 'project-edit') {
+            const updated = await updateProject(modal.project.id, data);
+            setOwnedProjects(prev => prev.map(p => p.id === updated.id ? { ...p, ...updated } : p));
         } else {
-            const saved = await createBoard({ name: project.name, description: project.description });
-            setOwnedBoards(prev => [...prev, { ...saved, cards_count: 0, owner: user, shared_with: [] }]);
+            const created = await createProject(data);
+            setOwnedProjects(prev => [...prev, { ...created, boards: [], boards_count: 0 }]);
+            setSelectedId(created.id);
         }
-        setModalIsVisible(false);
-        setProjectSelected(null);
-    };
+        setModal(null);
+    }
 
-    const handleDeleteProject = async (projectId: number) => {
-        await deleteBoard(projectId);
-        setOwnedBoards(prev => prev.filter(p => p.id !== projectId));
-        setModalIsVisible(false);
-        setProjectSelected(null);
-    };
+    async function handleDeleteProject(id: number) {
+        await deleteProject(id);
+        const remaining = ownedProjects.filter(p => p.id !== id);
+        setOwnedProjects(remaining);
+        setSelectedId(remaining[0]?.id ?? memberProjects[0]?.id ?? null);
+        setModal(null);
+    }
 
-    const handleOpenCard = (project: any, isShared: boolean) => {
-        if (editMode && !isShared) {
-            setProjectSelected(project);
-            setModalIsVisible(true);
+    async function handleSaveBoard(data: any) {
+        if (modal?.type === 'board-edit') {
+            // board update not yet wired — navigate to the board for now
+            setModal(null);
             return;
         }
-        router.push(`/boards/${project.id}`);
-    };
+        const saved = await createBoard(data);
+        const boardWithMeta = { ...saved, cards_count: 0, owner: user, shared_with: [] };
+        setOwnedProjects(prev => prev.map(p =>
+            p.id === data.project_id
+                ? { ...p, boards: [...(p.boards ?? []), boardWithMeta], boards_count: (p.boards_count ?? 0) + 1 }
+                : p
+        ));
+        setModal(null);
+    }
 
-    const totalBoards = ownedBoards.length + sharedBoards.length;
+    async function handleDeleteBoard(boardId: number, projectId: number) {
+        await deleteBoard(boardId);
+        setOwnedProjects(prev => prev.map(p =>
+            p.id === projectId
+                ? { ...p, boards: (p.boards ?? []).filter((b: any) => b.id !== boardId), boards_count: Math.max(0, (p.boards_count ?? 1) - 1) }
+                : p
+        ));
+        setModal(null);
+    }
+
+    function handleBoardClick(board: any) {
+        if (editMode && isOwner) {
+            setModal({ type: 'board-edit', board, projectId: selectedProject.id, projectColor: selectedProject.color });
+            return;
+        }
+        router.push(`/boards/${board.id}`);
+    }
+
+    function handleProjectMembersUpdate(updated: any) {
+        setOwnedProjects(prev => prev.map(p => p.id === updated.id ? { ...p, ...updated } : p));
+        if (modal?.type === 'members') {
+            setModal({ type: 'members', project: updated });
+        }
+    }
+
+    // ── render ────────────────────────────────────────────────────────────────
 
     return (
-        <div className="min-h-screen px-4 py-6 md:px-8 md:py-10 max-w-6xl mx-auto">
+        <div className="flex h-[calc(100vh-56px)] overflow-hidden" style={{ backgroundColor: '#111108' }}>
 
-            {/* Header */}
-            <div className="mb-10">
-                <div className="flex gap-1 mb-3">
-                    {STRIPE_COLORS.map(c => (
-                        <div key={c} style={{ backgroundColor: c }} className="h-1 flex-1 rounded-full" />
-                    ))}
-                </div>
-                <p className="text-xs uppercase tracking-[0.3em] text-gray-500 mb-1">Welcome back</p>
-                <p className="text-3xl md:text-5xl font-bold tracking-tight">
-                    {user?.name ?? '...'}
-                </p>
-                {totalBoards > 0 && (
-                    <p className="text-gray-500 text-sm mt-2">
-                        {totalBoards} {totalBoards === 1 ? 'board' : 'boards'} · {ownedBoards.reduce((s, b) => s + (b.cards_count ?? 0), 0)} cards
-                    </p>
-                )}
-            </div>
+            {/* ── Mobile sidebar overlay ── */}
+            {sidebarOpen && (
+                <div
+                    className="fixed inset-0 z-30 bg-black/60 lg:hidden"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
 
-            {/* Toolbar */}
-            <div className="flex justify-between items-center mb-8 gap-3 flex-wrap">
-                <button
-                    onClick={() => setEditMode(e => !e)}
-                    className={`text-xs uppercase tracking-widest px-3 py-1.5 rounded border cursor-pointer transition-all duration-200 ${
-                        editMode
-                            ? 'border-amber-400 text-amber-400 bg-amber-400/10'
-                            : 'border-gray-700 text-gray-500 hover:border-gray-500 hover:text-gray-300'
-                    }`}
-                >
-                    ⚙ {editMode ? 'Exit Edit Mode' : 'Edit Mode'}
-                </button>
-                <button
-                    onClick={() => { setProjectSelected(null); setModalIsVisible(true); }}
-                    className="text-xs uppercase tracking-widest px-4 py-2 rounded border-2 border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-black font-bold cursor-pointer transition-all duration-200"
-                >
-                    + New Board
-                </button>
-            </div>
-
-            {/* My Boards */}
-            <section className="mb-12">
-                <div className="flex items-center gap-3 mb-4">
-                    <p className="text-xs uppercase tracking-widest text-gray-400 font-bold">My Boards</p>
-                    <span className="text-xs bg-gray-800 text-gray-500 px-2 py-0.5 rounded-full">{ownedBoards.length}</span>
-                </div>
-
-                {ownedBoards.length === 0 ? (
-                    <EmptySection label="No boards yet" onNew={() => { setProjectSelected(null); setModalIsVisible(true); }} />
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {ownedBoards.map((project, i) => (
-                            <BoardCard
-                                key={project.id}
-                                project={project}
-                                index={i}
-                                isShared={false}
-                                editMode={editMode}
-                                onClick={() => handleOpenCard(project, false)}
-                            />
-                        ))}
+            {/* ── Left panel ── */}
+            <aside
+                className={`
+                    fixed lg:relative z-40 lg:z-auto
+                    flex flex-col h-full w-64 flex-shrink-0
+                    transition-transform duration-200
+                    ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+                `}
+                style={{
+                    backgroundColor: '#18180f',
+                    borderRight: '1px solid #2a2a18',
+                }}
+            >
+                {/* panel header */}
+                <div className="flex items-center justify-between px-4 py-4 border-b border-[#2a2a18]">
+                    <div>
+                        <p style={{ color: '#8a7a40', fontSize: '9px' }} className="uppercase tracking-[0.3em] font-bold">Projects</p>
+                        <p style={{ color: '#d4c97a', fontSize: '13px' }} className="font-bold mt-0.5">{user?.name ?? '...'}</p>
                     </div>
-                )}
-            </section>
-
-            {/* Shared with me */}
-            <section>
-                <div className="flex items-center gap-3 mb-4">
-                    <p className="text-xs uppercase tracking-widest text-gray-400 font-bold">Shared with me</p>
-                    <span className="text-xs bg-gray-800 text-gray-500 px-2 py-0.5 rounded-full">{sharedBoards.length}</span>
+                    <button
+                        onClick={() => setModal({ type: 'project-new' })}
+                        title="New project"
+                        style={{ color: '#d4c97a', backgroundColor: '#d4c97a18', borderColor: '#d4c97a33' }}
+                        className="w-7 h-7 rounded border flex items-center justify-center text-lg font-bold hover:bg-[#d4c97a33] transition-colors cursor-pointer"
+                    >
+                        +
+                    </button>
                 </div>
 
-                {sharedBoards.length === 0 ? (
-                    <EmptySection label="No boards shared with you yet" />
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {sharedBoards.map((project, i) => (
-                            <BoardCard
-                                key={project.id}
-                                project={project}
-                                index={i}
-                                isShared={true}
-                                editMode={editMode}
-                                onClick={() => handleOpenCard(project, true)}
-                            />
-                        ))}
-                    </div>
-                )}
-            </section>
+                {/* folder list */}
+                <div className="flex-1 overflow-y-auto py-2">
+                    {ownedProjects.length === 0 && memberProjects.length === 0 && (
+                        <p style={{ color: '#555', fontSize: '11px' }} className="px-4 py-6 text-center">No projects yet.</p>
+                    )}
 
-            {/* Modal */}
-            {modalIsVisible && (
+                    {ownedProjects.length > 0 && (
+                        <>
+                            <p style={{ color: '#555', fontSize: '9px' }} className="px-4 pt-2 pb-1 uppercase tracking-widest">Mine</p>
+                            {ownedProjects.map(p => (
+                                <FolderTab
+                                    key={p.id}
+                                    project={p}
+                                    active={p.id === selectedId}
+                                    onClick={() => { setSelectedId(p.id); setSidebarOpen(false); }}
+                                />
+                            ))}
+                        </>
+                    )}
+
+                    {memberProjects.length > 0 && (
+                        <>
+                            <p style={{ color: '#555', fontSize: '9px' }} className="px-4 pt-4 pb-1 uppercase tracking-widest">Shared</p>
+                            {memberProjects.map(p => (
+                                <FolderTab
+                                    key={p.id}
+                                    project={p}
+                                    active={p.id === selectedId}
+                                    isMember
+                                    onClick={() => { setSelectedId(p.id); setSidebarOpen(false); }}
+                                />
+                            ))}
+                        </>
+                    )}
+                </div>
+            </aside>
+
+            {/* ── Center ── */}
+            <main className="flex-1 flex flex-col overflow-hidden">
+                {/* center header */}
+                <div
+                    className="flex items-center justify-between gap-3 px-6 py-3 border-b flex-shrink-0 flex-wrap"
+                    style={{ borderColor: '#2a2a18', backgroundColor: '#14140c' }}
+                >
+                    {/* mobile menu button */}
+                    <button
+                        className="lg:hidden p-1 rounded cursor-pointer"
+                        style={{ color: '#d4c97a' }}
+                        onClick={() => setSidebarOpen(s => !s)}
+                    >
+                        ☰
+                    </button>
+
+                    {selectedProject ? (
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div
+                                style={{ backgroundColor: selectedProject.color }}
+                                className="w-3 h-3 rounded-sm flex-shrink-0"
+                            />
+                            <p style={{ color: '#d4c97a', fontSize: '15px' }} className="font-bold truncate">
+                                {selectedProject.name}
+                            </p>
+                            {selectedProject.description && (
+                                <p style={{ color: '#666', fontSize: '12px' }} className="truncate hidden sm:block">
+                                    {selectedProject.description}
+                                </p>
+                            )}
+                        </div>
+                    ) : (
+                        <p style={{ color: '#555', fontSize: '14px' }}>Select a project</p>
+                    )}
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {selectedProject && isOwner && (
+                            <>
+                                <button
+                                    onClick={() => setModal({ type: 'members', project: selectedProject })}
+                                    style={{ color: '#888', borderColor: '#333', fontSize: '10px' }}
+                                    className="uppercase tracking-widest px-2 py-1 rounded border hover:border-[#555] hover:text-[#bbb] transition-colors cursor-pointer"
+                                >
+                                    Members
+                                </button>
+                                <button
+                                    onClick={() => setModal({ type: 'project-edit', project: selectedProject })}
+                                    style={{ color: '#888', borderColor: '#333', fontSize: '10px' }}
+                                    className="uppercase tracking-widest px-2 py-1 rounded border hover:border-[#555] hover:text-[#bbb] transition-colors cursor-pointer"
+                                >
+                                    ⚙ Project
+                                </button>
+                            </>
+                        )}
+
+                        <button
+                            onClick={() => setEditMode(e => !e)}
+                            style={{
+                                color: editMode ? '#d4c97a' : '#666',
+                                borderColor: editMode ? '#d4c97a55' : '#333',
+                                backgroundColor: editMode ? '#d4c97a12' : 'transparent',
+                                fontSize: '10px',
+                            }}
+                            className="uppercase tracking-widest px-2 py-1 rounded border transition-colors cursor-pointer"
+                        >
+                            ⚙ {editMode ? 'Exit Edit' : 'Edit'}
+                        </button>
+
+                        {selectedProject && isOwner && (
+                            <button
+                                onClick={() => setModal({ type: 'board-new', projectId: selectedProject.id, projectColor: selectedProject.color })}
+                                style={{ backgroundColor: selectedProject.color, color: '#fff', fontSize: '10px' }}
+                                className="uppercase tracking-widest font-bold px-3 py-1.5 rounded cursor-pointer hover:opacity-90 transition-opacity"
+                            >
+                                + Board
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* boards grid */}
+                <div className="flex-1 overflow-y-auto p-6">
+                    {!selectedProject ? (
+                        <div className="flex flex-col items-center justify-center h-full text-center">
+                            <p style={{ color: '#333', fontSize: '40px' }}>▦</p>
+                            <p style={{ color: '#555', fontSize: '13px' }} className="mt-2 uppercase tracking-widest">
+                                Select a project from the left
+                            </p>
+                            <button
+                                onClick={() => setModal({ type: 'project-new' })}
+                                style={{ color: '#d4c97a', borderColor: '#d4c97a44', fontSize: '11px' }}
+                                className="mt-4 uppercase tracking-widest px-4 py-2 rounded border hover:bg-[#d4c97a12] transition-colors cursor-pointer"
+                            >
+                                + New Project
+                            </button>
+                        </div>
+                    ) : selectedBoards.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full text-center">
+                            <p style={{ color: '#333', fontSize: '40px' }}>▦</p>
+                            <p style={{ color: '#555', fontSize: '13px' }} className="mt-2 uppercase tracking-widest">No boards yet</p>
+                            {isOwner && (
+                                <button
+                                    onClick={() => setModal({ type: 'board-new', projectId: selectedProject.id, projectColor: selectedProject.color })}
+                                    style={{ color: selectedProject.color, borderColor: selectedProject.color + '44', fontSize: '11px' }}
+                                    className="mt-4 uppercase tracking-widest px-4 py-2 rounded border hover:opacity-80 transition-opacity cursor-pointer"
+                                >
+                                    + Create First Board
+                                </button>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                            {selectedBoards.map((board: any) => (
+                                <BoardCard
+                                    key={board.id}
+                                    board={board}
+                                    projectColor={selectedProject.color}
+                                    editMode={editMode}
+                                    isShared={!isOwner}
+                                    onClick={() => handleBoardClick(board)}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </main>
+
+            {/* ── Right panel (desktop only) ── */}
+            <aside
+                className="hidden xl:flex flex-col w-52 flex-shrink-0 overflow-y-auto p-4 gap-4"
+                style={{ backgroundColor: '#18180f', borderLeft: '1px solid #2a2a18' }}
+            >
+                <RightPanel
+                    projects={ownedProjects}
+                    memberProjects={memberProjects}
+                    selectedProject={selectedProject}
+                />
+            </aside>
+
+            {/* ── Modals ── */}
+            {modal && (
                 <Modal>
-                    <div className="bg-gray-900 border border-gray-700 p-6 rounded-2xl w-[90%] max-w-lg">
-                        <p className="text-xs uppercase tracking-widest text-gray-500 mb-4">
-                            {projectSelected ? 'Edit Board' : 'New Board'}
-                        </p>
-                        <ProjectEdit
-                            cancel={() => { setModalIsVisible(false); setProjectSelected(null); }}
-                            submit={handleSubmitProject}
-                            onDelete={projectSelected ? () => handleDeleteProject(projectSelected.id) : undefined}
-                            project={projectSelected}
+                    {modal.type === 'project-new' && (
+                        <ProjectFormModal
+                            project={null}
+                            onSave={handleSaveProject}
+                            onClose={() => setModal(null)}
                         />
-                    </div>
+                    )}
+                    {modal.type === 'project-edit' && (
+                        <ProjectFormModal
+                            project={modal.project}
+                            onSave={handleSaveProject}
+                            onDelete={() => handleDeleteProject(modal.project.id)}
+                            onClose={() => setModal(null)}
+                        />
+                    )}
+                    {modal.type === 'board-new' && (
+                        <BoardFormModal
+                            board={null}
+                            projectId={modal.projectId}
+                            projectColor={modal.projectColor}
+                            onSave={handleSaveBoard}
+                            onClose={() => setModal(null)}
+                        />
+                    )}
+                    {modal.type === 'board-edit' && (
+                        <BoardFormModal
+                            board={modal.board}
+                            projectId={modal.projectId}
+                            projectColor={modal.projectColor}
+                            onSave={handleSaveBoard}
+                            onDelete={() => handleDeleteBoard(modal.board.id, modal.projectId)}
+                            onClose={() => setModal(null)}
+                        />
+                    )}
+                    {modal.type === 'members' && (
+                        <MembersModal
+                            project={modal.project}
+                            currentUserId={user?.id}
+                            onUpdate={handleProjectMembersUpdate}
+                            onClose={() => setModal(null)}
+                        />
+                    )}
                 </Modal>
             )}
         </div>

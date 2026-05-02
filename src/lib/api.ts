@@ -17,13 +17,47 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
   return res.json().catch(() => ({}));
 }
 
+// --- Projects ---
+
+export async function fetchProjects() {
+  return apiFetch('/api/projects');
+}
+
+export async function fetchProject(id: number) {
+  return apiFetch(`/api/projects/${id}`);
+}
+
+export async function createProject(data: { name: string; description?: string; color?: string }) {
+  return apiFetch('/api/projects', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateProject(id: number, data: { name?: string; description?: string; color?: string }) {
+  return apiFetch(`/api/projects/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export async function deleteProject(id: number) {
+  return apiFetch(`/api/projects/${id}`, { method: 'DELETE' });
+}
+
+export async function addProjectMember(projectId: number, email: string, role: 'member' | 'viewer' = 'member') {
+  return apiFetch(`/api/projects/${projectId}/members`, { method: 'POST', body: JSON.stringify({ email, role }) });
+}
+
+export async function updateProjectMember(projectId: number, userId: number, role: 'member' | 'viewer') {
+  return apiFetch(`/api/projects/${projectId}/members/${userId}`, { method: 'PUT', body: JSON.stringify({ role }) });
+}
+
+export async function removeProjectMember(projectId: number, userId: number) {
+  return apiFetch(`/api/projects/${projectId}/members/${userId}`, { method: 'DELETE' });
+}
+
 // --- Boards ---
 
 export async function deleteBoard(id: number) {
   return apiFetch(`/api/boards/${id}`, { method: 'DELETE' });
 }
 
-export async function createBoard(data: { name: string; description: string }) {
+export async function createBoard(data: { name: string; description: string; project_id?: number | null }) {
   return apiFetch('/api/boards', { method: 'POST', body: JSON.stringify(data) });
 }
 
