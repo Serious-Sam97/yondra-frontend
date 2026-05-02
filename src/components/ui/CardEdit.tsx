@@ -324,9 +324,8 @@ const CardEdit: React.FC<CardEditProps> = ({
                 background: cardBackground,
                 boxShadow: '4px 4px 12px rgba(0,0,0,0.4), 2px 2px 4px rgba(0,0,0,0.2)',
                 fontFamily: 'Georgia, serif',
-                maxHeight: '90vh',
             }}
-            className="flex flex-col w-[95vw] max-w-[480px] rounded-sm relative"
+            className="flex flex-col w-full h-[100dvh] sm:w-[95vw] sm:max-w-[480px] sm:rounded-sm sm:h-auto sm:max-h-[90vh] relative"
         >
             {/* Glue strip */}
             <div
@@ -380,7 +379,7 @@ const CardEdit: React.FC<CardEditProps> = ({
             )}
 
             {/* Body */}
-            <div className="flex flex-col flex-1 px-6 pt-4 pb-6 gap-3 overflow-y-auto" style={{ maxHeight: '70vh' }}>
+            <div className="flex flex-col flex-1 px-6 pt-4 pb-6 gap-3 overflow-y-auto">
 
                 {/* Details tab (or always shown if new) */}
                 {(isNew || activeTab === 'details') && (
@@ -509,70 +508,83 @@ const CardEdit: React.FC<CardEditProps> = ({
                         </div>
 
                         {/* Section */}
-                        <div className="flex gap-2 flex-wrap">
-                            {sections.map((s, i) => {
-                                const color = getSectionColor(s.name, i)
-                                const isActive = s.id === sectionId
-                                return (
-                                    <button
-                                        key={s.id}
-                                        disabled={isReadOnly}
-                                        onClick={() => setSectionId(s.id)}
-                                        style={{ borderColor: color, backgroundColor: isActive ? color : 'transparent', color: isActive ? '#fff' : color, fontSize: '10px' }}
-                                        className="uppercase tracking-widest px-3 py-2 rounded-full border cursor-pointer transition-all duration-150 font-bold disabled:opacity-60 disabled:cursor-not-allowed"
-                                    >
-                                        {s.name}
-                                    </button>
-                                )
-                            })}
+                        <div className="flex flex-col gap-1.5">
+                            <label style={{ color: '#a89800', fontSize: '9px', letterSpacing: '0.1em' }} className="uppercase font-bold">Section</label>
+                            <div className="flex gap-2 flex-wrap">
+                                {sections.map((s, i) => {
+                                    const color = getSectionColor(s.name, i)
+                                    const isActive = s.id === sectionId
+                                    return (
+                                        <button
+                                            key={s.id}
+                                            disabled={isReadOnly}
+                                            onClick={() => setSectionId(s.id)}
+                                            style={{ borderColor: color, backgroundColor: isActive ? color : 'transparent', color: isActive ? '#fff' : color, fontSize: '10px' }}
+                                            className="uppercase tracking-widest px-3 py-1.5 rounded-full border cursor-pointer transition-all duration-150 font-bold disabled:opacity-60 disabled:cursor-not-allowed"
+                                        >
+                                            {s.name}
+                                        </button>
+                                    )
+                                })}
+                            </div>
                         </div>
 
                         {/* Tags */}
                         {tags.length > 0 && (
-                            <div className="flex gap-1.5 flex-wrap">
-                                {tags.map(tag => {
-                                    const isActive = selectedTagIds.includes(tag.id)
-                                    return (
-                                        <button
-                                            key={tag.id}
-                                            disabled={isReadOnly}
-                                            onClick={() => toggleTag(tag.id)}
-                                            style={{ borderColor: tag.color, backgroundColor: isActive ? tag.color : 'transparent', color: isActive ? '#fff' : tag.color, fontSize: '10px' }}
-                                            className="uppercase tracking-widest px-2.5 py-1.5 rounded-full border cursor-pointer transition-all duration-150 font-bold disabled:opacity-60 disabled:cursor-not-allowed"
-                                        >
-                                            {tag.name}
-                                        </button>
-                                    )
-                                })}
+                            <div className="flex flex-col gap-1.5">
+                                <label style={{ color: '#a89800', fontSize: '9px', letterSpacing: '0.1em' }} className="uppercase font-bold">Tags</label>
+                                <div className="flex gap-1.5 flex-wrap">
+                                    {tags.map(tag => {
+                                        const isActive = selectedTagIds.includes(tag.id)
+                                        return (
+                                            <button
+                                                key={tag.id}
+                                                disabled={isReadOnly}
+                                                onClick={() => toggleTag(tag.id)}
+                                                style={{ borderColor: tag.color, backgroundColor: isActive ? tag.color : 'transparent', color: isActive ? '#fff' : tag.color, fontSize: '10px' }}
+                                                className="uppercase tracking-widest px-2.5 py-1 rounded-full border cursor-pointer transition-all duration-150 font-bold disabled:opacity-60 disabled:cursor-not-allowed"
+                                            >
+                                                {tag.name}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
                             </div>
                         )}
 
                         {/* Assign user */}
                         {users.length > 0 && (
-                            <div className="flex gap-2 flex-wrap items-center">
-                                <button
-                                    disabled={isReadOnly}
-                                    onClick={() => setAssignedUserId(null)}
-                                    style={{ fontSize: '10px', borderColor: '#bbb', color: assignedUserId === null ? '#fff' : '#888', backgroundColor: assignedUserId === null ? '#888' : 'transparent' }}
-                                    className="uppercase tracking-widest px-3 py-2 rounded-full border cursor-pointer transition-all duration-150 font-bold disabled:opacity-60 disabled:cursor-not-allowed"
-                                >
-                                    Unassigned
-                                </button>
-                                {users.map((u) => {
-                                    const color = AVATAR_COLORS[u.id % AVATAR_COLORS.length]
-                                    const isActive = assignedUserId === u.id
-                                    return (
-                                        <button
-                                            key={u.id}
-                                            disabled={isReadOnly}
-                                            onClick={() => setAssignedUserId(isActive ? null : u.id)}
-                                            style={{ borderColor: color, backgroundColor: isActive ? color : 'transparent', color: isActive ? '#fff' : color, fontSize: '10px' }}
-                                            className="uppercase tracking-widest px-3 py-2 rounded-full border cursor-pointer transition-all duration-150 font-bold flex items-center gap-1 disabled:opacity-60 disabled:cursor-not-allowed"
-                                        >
-                                            {initials(u.name)} {u.name.split(' ')[0]}
-                                        </button>
-                                    )
-                                })}
+                            <div className="flex flex-col gap-1.5">
+                                <label style={{ color: '#a89800', fontSize: '9px', letterSpacing: '0.1em' }} className="uppercase font-bold">
+                                    Assign{assignedUserId !== null ? ` · ${users.find(u => u.id === assignedUserId)?.name ?? ''}` : ''}
+                                </label>
+                                <div className="flex gap-2 flex-wrap items-center">
+                                    <button
+                                        disabled={isReadOnly}
+                                        onClick={() => setAssignedUserId(null)}
+                                        title="Unassigned"
+                                        style={{ fontSize: '9px', borderColor: '#bbb', color: assignedUserId === null ? '#fff' : '#888', backgroundColor: assignedUserId === null ? '#888' : 'rgba(255,255,255,0.3)', width: 32, height: 32 }}
+                                        className="rounded-full border-2 flex items-center justify-center font-bold cursor-pointer transition-all duration-150 disabled:opacity-60 flex-shrink-0"
+                                    >
+                                        —
+                                    </button>
+                                    {users.map((u) => {
+                                        const color = AVATAR_COLORS[u.id % AVATAR_COLORS.length]
+                                        const isActive = assignedUserId === u.id
+                                        return (
+                                            <button
+                                                key={u.id}
+                                                disabled={isReadOnly}
+                                                onClick={() => setAssignedUserId(isActive ? null : u.id)}
+                                                title={u.name}
+                                                style={{ borderColor: color, backgroundColor: isActive ? color : 'rgba(255,255,255,0.3)', color: isActive ? '#fff' : color, fontSize: '10px', width: 32, height: 32 }}
+                                                className="rounded-full border-2 flex items-center justify-center font-bold cursor-pointer transition-all duration-150 disabled:opacity-60 flex-shrink-0"
+                                            >
+                                                {initials(u.name)}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
                             </div>
                         )}
 

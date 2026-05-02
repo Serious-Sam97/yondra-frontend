@@ -26,6 +26,30 @@ import {
 } from "@/lib/demoStorage";
 
 const SECTION_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107'];
+
+function ToolBtn({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
+    return (
+        <div className="relative group flex items-center">
+            <span className="absolute right-full mr-3 text-[10px] uppercase tracking-widest text-gray-300 bg-gray-900 border border-gray-700 px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none shadow-lg">
+                {label}
+            </span>
+            <button onClick={onClick}
+                className="w-10 h-10 rounded-lg bg-gray-900/95 border border-gray-700 flex items-center justify-center hover:border-amber-400/60 hover:bg-gray-800 transition-all duration-150 cursor-pointer text-lg shadow-lg backdrop-blur-sm">
+                {icon}
+            </button>
+        </div>
+    );
+}
+
+function MobileToolBtn({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
+    return (
+        <button onClick={onClick}
+            className="flex flex-col items-center gap-1.5 py-3 px-4 rounded-xl hover:bg-gray-800 active:scale-95 transition-all duration-150 cursor-pointer">
+            <span className="text-2xl">{icon}</span>
+            <span className="text-[9px] uppercase tracking-widest text-gray-500">{label}</span>
+        </button>
+    );
+}
 const AVATAR_COLORS  = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107', '#00BCD4', '#E91E63'];
 const TAG_PALETTE    = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'];
 const BG_OPTIONS = [
@@ -85,6 +109,8 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const [chatMessages, setChatMessages] = useState<any[]>([]);
     const chatChannelRef = useRef<any>(null);
     const chatLoadedRef = useRef(false);
+    const [isToolbarOpen, setIsToolbarOpen] = useState(false);
+    const touchStartY = useRef<number>(0);
 
     useEffect(() => {
         if (typeof window === 'undefined' || (!isDemo && id === 0)) return;
@@ -412,49 +438,6 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                     );
                 })}
 
-                {/* Tags manage button */}
-                <button
-                    onClick={() => setIsTagsOpen(true)}
-                    className="text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border border-gray-700 text-gray-500 hover:border-gray-400 hover:text-gray-300 font-bold cursor-pointer transition-all duration-150 flex items-center gap-1.5"
-                >
-                    🏷 Tags
-                </button>
-
-                {/* Activity button */}
-                {!isDemo && (
-                    <button
-                        onClick={handleOpenActivity}
-                        className="text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border border-gray-700 text-gray-500 hover:border-gray-400 hover:text-gray-300 font-bold cursor-pointer transition-all duration-150 flex items-center gap-1.5"
-                    >
-                        📋 Activity
-                    </button>
-                )}
-
-                {/* Chat button */}
-                {!isDemo && (
-                    <button
-                        onClick={handleOpenChat}
-                        className="text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border border-gray-700 text-gray-500 hover:border-gray-400 hover:text-gray-300 font-bold cursor-pointer transition-all duration-150 flex items-center gap-1.5"
-                    >
-                        💬 Chat
-                    </button>
-                )}
-
-                {/* Archived button */}
-                <button
-                    onClick={handleOpenArchived}
-                    className="text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border border-gray-700 text-gray-500 hover:border-gray-400 hover:text-gray-300 font-bold cursor-pointer transition-all duration-150 flex items-center gap-1.5"
-                >
-                    🗂 Archived
-                </button>
-
-                {/* Background button */}
-                <button
-                    onClick={() => setIsBgOpen(true)}
-                    className="text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border border-gray-700 text-gray-500 hover:border-gray-400 hover:text-gray-300 font-bold cursor-pointer transition-all duration-150 flex items-center gap-1.5"
-                >
-                    🎨 Background
-                </button>
             </div>
 
             {/* Board columns */}
@@ -528,6 +511,45 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                     +
                 </button>
             )}
+
+            {/* Desktop vertical toolbar */}
+            <div className="hidden lg:flex flex-col gap-2 fixed z-40" style={{ right: '24px', bottom: '96px' }}>
+                <ToolBtn icon="🏷" label="Tags" onClick={() => setIsTagsOpen(true)} />
+                {!isDemo && <ToolBtn icon="📋" label="Activity" onClick={handleOpenActivity} />}
+                {!isDemo && <ToolBtn icon="💬" label="Chat" onClick={handleOpenChat} />}
+                <ToolBtn icon="🗂" label="Archived" onClick={handleOpenArchived} />
+                <ToolBtn icon="🎨" label="Background" onClick={() => setIsBgOpen(true)} />
+            </div>
+
+            {/* Mobile bottom drawer */}
+            <div className="lg:hidden">
+                {isToolbarOpen && (
+                    <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setIsToolbarOpen(false)} />
+                )}
+                <div
+                    className="fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-out"
+                    style={{ transform: isToolbarOpen ? 'translateY(0)' : 'translateY(calc(100% - 36px))' }}
+                    onTouchStart={e => { touchStartY.current = e.touches[0].clientY; }}
+                    onTouchEnd={e => {
+                        const delta = touchStartY.current - e.changedTouches[0].clientY;
+                        if (delta > 40) setIsToolbarOpen(true);
+                        if (delta < -40) setIsToolbarOpen(false);
+                    }}
+                >
+                    <div className="bg-gray-900 border-t border-gray-700 rounded-t-2xl">
+                        <div className="flex justify-center pt-3 pb-2 cursor-pointer" onClick={() => setIsToolbarOpen(s => !s)}>
+                            <div className="w-10 h-1 rounded-full bg-gray-600" />
+                        </div>
+                        <div className="flex justify-around px-6 pb-8 pt-1">
+                            <MobileToolBtn icon="🏷" label="Tags" onClick={() => { setIsTagsOpen(true); setIsToolbarOpen(false); }} />
+                            {!isDemo && <MobileToolBtn icon="📋" label="Activity" onClick={() => { handleOpenActivity(); setIsToolbarOpen(false); }} />}
+                            {!isDemo && <MobileToolBtn icon="💬" label="Chat" onClick={() => { handleOpenChat(); setIsToolbarOpen(false); }} />}
+                            <MobileToolBtn icon="🗂" label="Archived" onClick={() => { handleOpenArchived(); setIsToolbarOpen(false); }} />
+                            <MobileToolBtn icon="🎨" label="Background" onClick={() => { setIsBgOpen(true); setIsToolbarOpen(false); }} />
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             {/* Tags modal */}
             {isTagsOpen && (
