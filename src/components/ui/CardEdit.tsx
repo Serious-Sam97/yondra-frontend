@@ -128,7 +128,7 @@ const CardEdit: React.FC<CardEditProps> = ({
         if (!isNew && card?.id) {
             setLoadingSubtasks(true)
             if (isDemo) {
-                setSubtasks(demoGetSubtasks(demoId, card.id))
+                setSubtasks(demoGetSubtasks(demoId, card.id).map(s => ({ id: s.id, name: s.name, is_done: s.is_done ?? false })))
                 setLoadingSubtasks(false)
             } else if (boardId) {
                 getSubtasks(boardId, card.id)
