@@ -2,7 +2,7 @@
 
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { Card } from "../ui/Card";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Section } from "../ui/Section";
 import { BoardInterface, SharedUser } from "@/interfaces/BoardInterface";
 import { TagInterface } from "@/interfaces/TagInterface";
@@ -15,6 +15,8 @@ import {
     getActivity, restoreCard, getArchivedCards,
     getTemplates,
 } from "@/lib/api";
+import BoardChat from "../ui/BoardChat";
+import { getEcho } from "@/lib/echo";
 import {
     demoCreateCard, demoUpdateCard,
     demoCreateSection, demoUpdateSection, demoDeleteSection,
@@ -49,9 +51,10 @@ interface BoardProps extends BoardInterface {
     demoId?: string;
     boardUsers?: SharedUser[];
     isReadOnly?: boolean;
+    currentUserId?: number;
 }
 
-export function Board({ id, name, description, size, cards, sections: initialSections, tags: initialTags = [], isDemo = false, demoId = 'demo', boardUsers = [], isReadOnly = false }: BoardProps) {
+export function Board({ id, name, description, size, cards, sections: initialSections, tags: initialTags = [], isDemo = false, demoId = 'demo', boardUsers = [], isReadOnly = false, currentUserId = 0 }: BoardProps) {
     const [cardsProp, setCards] = useState(cards);
     const [sections, setSections] = useState(initialSections);
     const [tags, setTags] = useState<TagInterface[]>(initialTags);
@@ -78,6 +81,10 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const [boardBg, setBoardBg] = useState<string>('');
     const [isBgOpen, setIsBgOpen] = useState(false);
     const [boardTemplates, setBoardTemplates] = useState<any[]>([]);
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [chatMessages, setChatMessages] = useState<any[]>([]);
+    const chatChannelRef = useRef<any>(null);
+    const chatLoadedRef = useRef(false);
 
     useEffect(() => {
         if (typeof window === 'undefined' || (!isDemo && id === 0)) return;
@@ -106,6 +113,54 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     useEffect(() => { setCards(cards); }, [cards]);
     useEffect(() => { setSections(initialSections); }, [initialSections]);
     useEffect(() => { setTags(initialTags); }, [initialTags]);
+
+    // --- Real-time ---
+
+    useEffect(() => {
+        if (isDemo || id === 0 || currentUserId === 0) return;
+
+        const echo = getEcho();
+        const channel = echo.private(`board.${id}`);
+        chatChannelRef.current = channel;
+
+        channel.listen('.board.event', (e: any) => {
+            switch (e.type) {
+                case 'card.created':
+                    setCards(prev => prev.some(c => c.id === e.payload.id) ? prev : [...prev, e.payload]);
+                    break;
+                case 'card.updated':
+                    setCards(prev => prev.map(c => c.id === e.payload.id ? { ...c, ...e.payload } : c));
+                    break;
+                case 'card.deleted':
+                    setCards(prev => prev.filter(c => c.id !== e.payload.id));
+                    break;
+                case 'card.restored':
+                    setCards(prev => prev.some(c => c.id === e.payload.id) ? prev : [...prev, e.payload]);
+                    break;
+                case 'section.created':
+                    setSections(prev => prev.some(s => s.id === e.payload.id) ? prev : [...prev, e.payload]);
+                    break;
+                case 'section.updated':
+                    setSections(prev => prev.map(s => s.id === e.payload.id ? { ...s, ...e.payload } : s));
+                    break;
+                case 'section.deleted':
+                    setSections(prev => prev.filter(s => s.id !== e.payload.id));
+                    setCards(prev => prev.filter(c => c.section_id !== e.payload.id));
+                    break;
+                case 'message.created':
+                    setChatMessages(prev => prev.some(m => m.id === e.payload.id) ? prev : [...prev, e.payload]);
+                    break;
+                case 'message.deleted':
+                    setChatMessages(prev => prev.filter(m => m.id !== e.payload.id));
+                    break;
+            }
+        });
+
+        return () => {
+            echo.leave(`board.${id}`);
+            chatChannelRef.current = null;
+        };
+    }, [id, isDemo, currentUserId]);
 
     // --- Tag management ---
 
@@ -229,15 +284,41 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         }
     };
 
+    const handleOpenChat = async () => {
+        setIsChatOpen(true);
+        if (!chatLoadedRef.current) {
+            chatLoadedRef.current = true;
+            const { getBoardMessages } = await import('@/lib/api');
+            const data = await getBoardMessages(id).catch(() => []);
+            setChatMessages(prev => {
+                const fetched = Array.isArray(data) ? data : [];
+                const merged = [...fetched, ...prev.filter((m: any) => !fetched.some((f: any) => f.id === m.id))];
+                return merged.sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+            });
+        }
+    };
+
+    const handleChatSend = async (body: string) => {
+        const { createBoardMessage } = await import('@/lib/api');
+        const msg = await createBoardMessage(id, body);
+        setChatMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
+    };
+
+    const handleChatDelete = async (messageId: number) => {
+        const { deleteBoardMessage } = await import('@/lib/api');
+        await deleteBoardMessage(id, messageId).catch(() => {});
+        setChatMessages(prev => prev.filter(m => m.id !== messageId));
+    };
+
     useEffect(() => {
         const handleGlobalEvent = (event: any) => {
-            if (event.key.toLowerCase() === 'c' && !isReadOnly && !isCardVisible && !isTagsOpen && !isActivityOpen && !isArchivedOpen && !isBgOpen) {
+            if (event.key.toLowerCase() === 'c' && !isReadOnly && !isCardVisible && !isTagsOpen && !isActivityOpen && !isArchivedOpen && !isBgOpen && !isChatOpen) {
                 setIsCardVisible(true);
             }
         };
         window.addEventListener('keydown', handleGlobalEvent);
         return () => window.removeEventListener('keydown', handleGlobalEvent);
-    }, [isReadOnly, isCardVisible, isTagsOpen, isActivityOpen, isArchivedOpen, isBgOpen]);
+    }, [isReadOnly, isCardVisible, isTagsOpen, isActivityOpen, isArchivedOpen, isBgOpen, isChatOpen]);
 
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -346,6 +427,16 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                         className="text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border border-gray-700 text-gray-500 hover:border-gray-400 hover:text-gray-300 font-bold cursor-pointer transition-all duration-150 flex items-center gap-1.5"
                     >
                         📋 Activity
+                    </button>
+                )}
+
+                {/* Chat button */}
+                {!isDemo && (
+                    <button
+                        onClick={handleOpenChat}
+                        className="text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border border-gray-700 text-gray-500 hover:border-gray-400 hover:text-gray-300 font-bold cursor-pointer transition-all duration-150 flex items-center gap-1.5"
+                    >
+                        💬 Chat
                     </button>
                 )}
 
@@ -586,6 +677,19 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                             ))}
                         </div>
                     </div>
+                </Modal>
+            )}
+
+            {/* Chat modal */}
+            {isChatOpen && (
+                <Modal>
+                    <BoardChat
+                        messages={chatMessages}
+                        currentUserId={currentUserId}
+                        onSend={handleChatSend}
+                        onDelete={handleChatDelete}
+                        onClose={() => setIsChatOpen(false)}
+                    />
                 </Modal>
             )}
 

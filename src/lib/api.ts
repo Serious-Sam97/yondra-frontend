@@ -179,6 +179,20 @@ export async function deleteTemplate(boardId: number, templateId: number) {
   return apiFetch(`/api/boards/${boardId}/templates/${templateId}`, { method: 'DELETE' });
 }
 
+// --- Board Chat ---
+
+export async function getBoardMessages(boardId: number) {
+  return apiFetch(`/api/boards/${boardId}/messages`);
+}
+
+export async function createBoardMessage(boardId: number, body: string) {
+  return apiFetch(`/api/boards/${boardId}/messages`, { method: 'POST', body: JSON.stringify({ body }) });
+}
+
+export async function deleteBoardMessage(boardId: number, messageId: number) {
+  return apiFetch(`/api/boards/${boardId}/messages/${messageId}`, { method: 'DELETE' });
+}
+
 // --- Subtasks ---
 
 export async function getSubtasks(boardId: number, cardId: number | string) {

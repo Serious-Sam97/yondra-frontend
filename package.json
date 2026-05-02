@@ -17,7 +17,9 @@
     "@fontsource/roboto": "^5.2.8",
     "@mui/icons-material": "^7.3.4",
     "@mui/material": "^7.3.4",
+    "laravel-echo": "^2.3.4",
     "next": "15.5.7",
+    "pusher-js": "^8.5.0",
     "react": "19.1.0",
     "react-dom": "19.1.0"
   },

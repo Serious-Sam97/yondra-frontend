@@ -121,6 +121,7 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                 boardUsers={boardUsers}
                 tags={board.tags ?? []}
                 isReadOnly={isReadOnly}
+                currentUserId={currentUserId ?? 0}
             />
 
             {shareOpen && (
