@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Yondra</string>
+    <string name="title_activity_main">Yondra</string>
+    <string name="package_name">com.yondra.app</string>
+    <string name="custom_url_scheme">com.yondra.app</string>
+</resources>
