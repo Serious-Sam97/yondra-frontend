@@ -238,7 +238,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             const saved = isDemo
                 ? demoCreateCard(demoId, { section_id: card.section_id, name: card.name, description: card.description, tag_ids: card.tag_ids, due_date: card.due_date, priority: card.priority })
                 : await createCard(id, { section_id: card.section_id, assigned_user_id: card.assigned_user_id, tag_ids: card.tag_ids, name: card.name, description: card.description, due_date: card.due_date, priority: card.priority });
-            setCards(prev => [...prev, saved]);
+            setCards(prev => prev.some(c => c.id === saved.id) ? prev.map(c => c.id === saved.id ? { ...c, ...saved } : c) : [...prev, saved]);
         } else {
             const saved = isDemo
                 ? demoUpdateCard(demoId, card.id, { section_id: card.section_id, name: card.name, description: card.description, tag_ids: card.tag_ids, due_date: card.due_date, priority: card.priority })
