@@ -29,8 +29,8 @@ const SECTION_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '
 
 function ToolBtn({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
     return (
-        <div className="relative group flex items-center">
-            <span className="absolute right-full mr-3 text-[10px] uppercase tracking-widest text-gray-300 bg-gray-900 border border-gray-700 px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none shadow-lg">
+        <div className="flex items-center gap-2">
+            <span className="text-[9px] uppercase tracking-widest text-gray-500 whitespace-nowrap">
                 {label}
             </span>
             <button onClick={onClick}
@@ -513,7 +513,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             )}
 
             {/* Desktop vertical toolbar */}
-            <div className="hidden lg:flex flex-col gap-2 fixed z-40" style={{ right: '24px', bottom: '96px' }}>
+            <div className="hidden lg:flex flex-col items-end gap-2 fixed z-40" style={{ right: '24px', bottom: '96px' }}>
                 <ToolBtn icon="🏷" label="Tags" onClick={() => setIsTagsOpen(true)} />
                 {!isDemo && <ToolBtn icon="📋" label="Activity" onClick={handleOpenActivity} />}
                 {!isDemo && <ToolBtn icon="💬" label="Chat" onClick={handleOpenChat} />}
@@ -751,8 +751,8 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
             {/* Card edit modal */}
             {isCardVisible && (
-                <Modal>
-                    <div>
+                <Modal mobileFullscreen>
+                    <div className="w-full sm:w-auto">
                         <CardEdit
                             card={selectedCard}
                             sections={sections}

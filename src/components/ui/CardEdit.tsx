@@ -325,7 +325,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                 boxShadow: '4px 4px 12px rgba(0,0,0,0.4), 2px 2px 4px rgba(0,0,0,0.2)',
                 fontFamily: 'Georgia, serif',
             }}
-            className="flex flex-col w-full h-[100dvh] sm:w-[95vw] sm:max-w-[480px] sm:rounded-sm sm:h-auto sm:max-h-[90vh] relative"
+            className="flex flex-col w-full min-h-[100svh] sm:min-h-0 sm:w-[95vw] sm:max-w-[480px] sm:rounded-sm sm:h-auto sm:max-h-[90vh] relative"
         >
             {/* Glue strip */}
             <div
@@ -379,7 +379,7 @@ const CardEdit: React.FC<CardEditProps> = ({
             )}
 
             {/* Body */}
-            <div className="flex flex-col flex-1 px-6 pt-4 pb-6 gap-3 overflow-y-auto">
+            <div className="flex flex-col sm:flex-1 px-6 pt-4 pb-6 gap-3 sm:overflow-y-auto">
 
                 {/* Details tab (or always shown if new) */}
                 {(isNew || activeTab === 'details') && (
