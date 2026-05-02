@@ -69,7 +69,7 @@ function blendWithCream(hex: string, amount = 0.18): string {
     return `rgb(${nr},${ng},${nb})`;
 }
 
-export function Card({ id, name, description, assigned_user, created_by, tags, due_date, priority, checklist_items, updated_at }: CardInterface & { color: string }) {
+export function Card({ id, name, description, assigned_user, created_by, tags, due_date, priority, checklist_items, updated_at, done_at }: CardInterface & { color: string }) {
     const showBottom = assigned_user || created_by;
     const priorityColor = priority ? PRIORITY_COLORS[priority] : null;
     const doneItems = (checklist_items ?? []).filter(i => i.is_done).length;
@@ -125,6 +125,14 @@ export function Card({ id, name, description, assigned_user, created_by, tags, d
                                     {tag.name}
                                 </span>
                             ))}
+                        </div>
+                    )}
+
+                    {/* Done stamp */}
+                    {done_at && (
+                        <div style={{ fontSize: '9px', color: '#16a34a', borderColor: '#16a34a55', backgroundColor: '#16a34a15' }}
+                             className="px-1.5 py-0.5 rounded border font-bold uppercase tracking-wide flex items-center gap-1 w-fit mt-1">
+                            ✓ Done · {new Date(done_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} {new Date(done_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                         </div>
                     )}
 

@@ -24,6 +24,7 @@ export interface CardInterface {
     created_at?: string | null,
     updated_at?: string | null,
     archived_at?: string | null,
+    done_at?: string | null,
     parent_card_id?: number | null,
     is_done?: boolean,
 }
