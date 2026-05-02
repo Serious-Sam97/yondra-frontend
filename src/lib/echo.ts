@@ -1,9 +1,9 @@
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
-let echo: Echo | null = null;
+let echo: Echo<any> | null = null;
 
-export function getEcho(): Echo {
+export function getEcho(): Echo<any> {
     if (echo) return echo;
 
     (window as any).Pusher = Pusher;
