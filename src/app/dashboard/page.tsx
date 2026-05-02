@@ -4,7 +4,7 @@ import Modal from '@/components/shared/Modal';
 import { fetchUser } from '@/lib/auth';
 import {
     fetchProjects, createProject, updateProject, deleteProject,
-    createBoard, deleteBoard,
+    createBoard, updateBoard, deleteBoard,
     addProjectMember, updateProjectMember, removeProjectMember,
 } from '@/lib/api';
 import { useRouter } from 'next/navigation';
@@ -390,21 +390,39 @@ function ProjectFormModal({
 // ─── Board form modal ─────────────────────────────────────────────────────────
 
 function BoardFormModal({
-    board, projectId, projectColor, onSave, onDelete, onClose,
+    board, projectId, projectColor, ownedProjects, onSave, onDelete, onClose,
 }: {
-    board: any | null; projectId: number; projectColor: string; onSave: (data: any) => void; onDelete?: () => void; onClose: () => void;
+    board: any | null;
+    projectId: number;
+    projectColor: string;
+    ownedProjects: any[];
+    onSave: (data: any) => void;
+    onDelete?: () => void;
+    onClose: () => void;
 }) {
-    const [name, setName] = useState(board?.name ?? '');
+    const [name, setName]               = useState(board?.name ?? '');
     const [description, setDescription] = useState(board?.description ?? '');
-    const [loading, setLoading] = useState(false);
+    const [targetProjectId, setTargetProjectId] = useState<number>(projectId);
+    const [loading, setLoading]         = useState(false);
+
+    const isNew = !board;
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!name.trim()) return;
         setLoading(true);
-        await onSave({ name: name.trim(), description: description.trim() || '', project_id: projectId });
+        await onSave({
+            id: board?.id,
+            name: name.trim(),
+            description: description.trim() || '',
+            project_id: targetProjectId,
+        });
         setLoading(false);
     }
+
+    const targetProject = ownedProjects.find(p => p.id === targetProjectId);
+    const accentColor = targetProject?.color ?? projectColor;
+    const moved = !isNew && targetProjectId !== projectId;
 
     return (
         <div
@@ -413,12 +431,12 @@ function BoardFormModal({
                 background: 'linear-gradient(160deg, #f5f0dc 0%, #ede8cc 100%)',
                 boxShadow: '4px 4px 0 rgba(0,0,0,0.5)',
                 fontFamily: 'Georgia, serif',
-                border: `1px solid ${projectColor}55`,
+                border: `1px solid ${accentColor}55`,
             }}
         >
-            <div style={{ borderBottomColor: projectColor + '44' }} className="border-b-2 pb-3">
+            <div style={{ borderBottomColor: accentColor + '44' }} className="border-b-2 pb-3">
                 <p style={{ color: '#8a7a40', fontSize: '11px' }} className="uppercase tracking-widest font-bold">
-                    {board ? 'Edit Board' : 'New Board'}
+                    {isNew ? 'New Board' : 'Edit Board'}
                 </p>
             </div>
 
@@ -447,6 +465,33 @@ function BoardFormModal({
                     />
                 </div>
 
+                {/* Project selector (move) */}
+                <div className="flex flex-col gap-1">
+                    <label style={{ color: '#555', fontSize: '11px' }} className="uppercase tracking-widest font-bold">
+                        Project
+                    </label>
+                    <div className="flex items-center gap-2">
+                        <div
+                            style={{ backgroundColor: accentColor, width: 10, height: 10, borderRadius: 2, flexShrink: 0 }}
+                        />
+                        <select
+                            value={targetProjectId}
+                            onChange={e => setTargetProjectId(Number(e.target.value))}
+                            style={{ fontFamily: 'Georgia, serif', color: '#1a1a1a', backgroundColor: '#faf6e8', borderColor: '#c8b870', fontSize: '12px' }}
+                            className="flex-1 border rounded px-3 py-2 focus:outline-none cursor-pointer"
+                        >
+                            {ownedProjects.map(p => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                    {moved && (
+                        <p style={{ color: '#b45309', fontSize: '10px' }} className="uppercase tracking-widest mt-0.5">
+                            ↳ Will be moved to "{targetProject?.name}"
+                        </p>
+                    )}
+                </div>
+
                 <div className="flex items-center justify-between pt-2 border-t border-[#c8b870]/40">
                     {onDelete ? (
                         <button
@@ -470,10 +515,10 @@ function BoardFormModal({
                         <button
                             type="submit"
                             disabled={loading || !name.trim()}
-                            style={{ backgroundColor: projectColor, color: '#fff', fontSize: '11px' }}
+                            style={{ backgroundColor: accentColor, color: '#fff', fontSize: '11px' }}
                             className="uppercase tracking-widest font-bold px-4 py-1.5 rounded cursor-pointer disabled:opacity-50"
                         >
-                            {loading ? '...' : 'Save'}
+                            {loading ? '...' : moved ? 'Move & Save' : 'Save'}
                         </button>
                     </div>
                 </div>
@@ -685,10 +730,39 @@ export default function DashboardPage() {
 
     async function handleSaveBoard(data: any) {
         if (modal?.type === 'board-edit') {
-            // board update not yet wired — navigate to the board for now
+            const updated = await updateBoard(data.id, {
+                name: data.name,
+                description: data.description,
+                project_id: data.project_id,
+            });
+            const sourceProjectId = modal.projectId;
+            const targetProjectId = data.project_id;
+            const moved = targetProjectId !== sourceProjectId;
+
+            setOwnedProjects(prev => prev.map(p => {
+                if (p.id === sourceProjectId) {
+                    // remove from source (or update in place if not moved)
+                    const boards = moved
+                        ? (p.boards ?? []).filter((b: any) => b.id !== data.id)
+                        : (p.boards ?? []).map((b: any) => b.id === data.id ? { ...b, ...updated } : b);
+                    return { ...p, boards, boards_count: moved ? Math.max(0, (p.boards_count ?? 1) - 1) : p.boards_count };
+                }
+                if (moved && p.id === targetProjectId) {
+                    // add to target project
+                    return {
+                        ...p,
+                        boards: [...(p.boards ?? []), { ...updated, cards_count: updated.cards_count ?? 0 }],
+                        boards_count: (p.boards_count ?? 0) + 1,
+                    };
+                }
+                return p;
+            }));
+
+            if (moved) setSelectedId(targetProjectId);
             setModal(null);
             return;
         }
+
         const saved = await createBoard(data);
         const boardWithMeta = { ...saved, cards_count: 0, owner: user, shared_with: [] };
         setOwnedProjects(prev => prev.map(p =>
@@ -696,6 +770,7 @@ export default function DashboardPage() {
                 ? { ...p, boards: [...(p.boards ?? []), boardWithMeta], boards_count: (p.boards_count ?? 0) + 1 }
                 : p
         ));
+        setSelectedId(data.project_id);
         setModal(null);
     }
 
@@ -965,6 +1040,7 @@ export default function DashboardPage() {
                             board={null}
                             projectId={modal.projectId}
                             projectColor={modal.projectColor}
+                            ownedProjects={ownedProjects}
                             onSave={handleSaveBoard}
                             onClose={() => setModal(null)}
                         />
@@ -974,6 +1050,7 @@ export default function DashboardPage() {
                             board={modal.board}
                             projectId={modal.projectId}
                             projectColor={modal.projectColor}
+                            ownedProjects={ownedProjects}
                             onSave={handleSaveBoard}
                             onDelete={() => handleDeleteBoard(modal.board.id, modal.projectId)}
                             onClose={() => setModal(null)}
