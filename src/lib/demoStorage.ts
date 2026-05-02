@@ -17,8 +17,11 @@ export type DemoCard           = {
     position?: number;
     archived_at?: string | null;
     checklist_items?: DemoChecklistItem[];
+    parent_card_id?: number | null;
+    is_done?: boolean;
 };
-export type DemoBoardData = { sections: DemoSection[]; cards: DemoCard[]; tags: DemoTag[] };
+export type DemoTemplate       = { id: number; name: string; template_data: object };
+export type DemoBoardData = { sections: DemoSection[]; cards: DemoCard[]; tags: DemoTag[]; templates?: DemoTemplate[] };
 export type DemoBoard = { id: string; name: string; description: string };
 
 const DEFAULT_DATA: DemoBoardData = {
@@ -109,7 +112,7 @@ export function loadDemoBoardData(boardId: string): DemoBoardData {
     return {
         ...data,
         cards: data.cards
-            .filter(c => !c.archived_at)
+            .filter(c => !c.archived_at && !c.parent_card_id)
             .map(c => resolveCardTags(c, data.tags)),
     };
 }
@@ -261,5 +264,62 @@ export function demoDeleteChecklistItem(boardId: string, cardId: number, itemId:
     const card = data.cards.find(c => c.id === cardId);
     if (!card || !card.checklist_items) return;
     card.checklist_items = card.checklist_items.filter(i => i.id !== itemId);
+    saveBoardData(boardId, data);
+}
+
+// --- Subtasks ---
+
+export function demoGetSubtasks(boardId: string, parentCardId: number): (DemoCard & { tags: DemoTag[] })[] {
+    const data = loadBoardData(boardId);
+    return data.cards
+        .filter(c => c.parent_card_id === parentCardId && !c.archived_at)
+        .map(c => resolveCardTags(c, data.tags));
+}
+
+export function demoCreateSubtask(boardId: string, parentCardId: number, subtaskData: { name: string; description?: string }): DemoCard {
+    const data = loadBoardData(boardId);
+    const newId = data.cards.length > 0 ? Math.max(...data.cards.map(c => c.id)) + 1 : 1;
+    const subtask: DemoCard = {
+        id: newId,
+        section_id: data.cards.find(c => c.id === parentCardId)?.section_id ?? 1,
+        name: subtaskData.name,
+        description: subtaskData.description ?? '',
+        parent_card_id: parentCardId,
+        is_done: false,
+        checklist_items: [],
+    };
+    data.cards.push(subtask);
+    saveBoardData(boardId, data);
+    return subtask;
+}
+
+export function demoToggleSubtask(boardId: string, subtaskId: number): void {
+    const data = loadBoardData(boardId);
+    const idx = data.cards.findIndex(c => c.id === subtaskId);
+    if (idx === -1) return;
+    data.cards[idx] = { ...data.cards[idx], is_done: !data.cards[idx].is_done };
+    saveBoardData(boardId, data);
+}
+
+// --- Templates ---
+
+export function loadDemoTemplates(boardId: string): DemoTemplate[] {
+    const data = loadBoardData(boardId);
+    return data.templates ?? [];
+}
+
+export function saveDemoTemplate(boardId: string, name: string, templateData: object): DemoTemplate {
+    const data = loadBoardData(boardId);
+    if (!data.templates) data.templates = [];
+    const newId = data.templates.length > 0 ? Math.max(...data.templates.map(t => t.id)) + 1 : 1;
+    const template: DemoTemplate = { id: newId, name, template_data: templateData };
+    data.templates.push(template);
+    saveBoardData(boardId, data);
+    return template;
+}
+
+export function deleteDemoTemplate(boardId: string, templateId: number): void {
+    const data = loadBoardData(boardId);
+    data.templates = (data.templates ?? []).filter(t => t.id !== templateId);
     saveBoardData(boardId, data);
 }

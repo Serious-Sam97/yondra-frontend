@@ -153,10 +153,42 @@ export async function markAllNotificationsRead() {
 
 // --- Sharing ---
 
-export async function shareBoard(boardId: number, email: string) {
-  return apiFetch(`/api/boards/${boardId}/share`, { method: 'POST', body: JSON.stringify({ email }) });
+export async function shareBoard(boardId: number, email: string, permission: 'read' | 'write' = 'write') {
+  return apiFetch(`/api/boards/${boardId}/share`, { method: 'POST', body: JSON.stringify({ email, permission }) });
+}
+
+export async function updateSharePermission(boardId: number, userId: number, permission: 'read' | 'write') {
+  return apiFetch(`/api/boards/${boardId}/share/${userId}`, { method: 'PUT', body: JSON.stringify({ permission }) });
 }
 
 export async function unshareBoard(boardId: number, userId: number) {
   return apiFetch(`/api/boards/${boardId}/share/${userId}`, { method: 'DELETE' });
+}
+
+// --- Templates ---
+
+export async function getTemplates(boardId: number) {
+  return apiFetch(`/api/boards/${boardId}/templates`);
+}
+
+export async function createTemplate(boardId: number, data: { name: string; template_data: object }) {
+  return apiFetch(`/api/boards/${boardId}/templates`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function deleteTemplate(boardId: number, templateId: number) {
+  return apiFetch(`/api/boards/${boardId}/templates/${templateId}`, { method: 'DELETE' });
+}
+
+// --- Subtasks ---
+
+export async function getSubtasks(boardId: number, cardId: number | string) {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/subtasks`);
+}
+
+export async function createSubtask(boardId: number, cardId: number | string, data: { name: string; description?: string }) {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/subtasks`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateSubtask(boardId: number, cardId: number | string, subtaskId: number, data: { is_done?: boolean; name?: string }) {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/subtasks/${subtaskId}`, { method: 'PUT', body: JSON.stringify(data) });
 }

@@ -13,12 +13,14 @@ import {
     createSection, updateSection, deleteSection,
     createTag, deleteTag,
     getActivity, restoreCard, getArchivedCards,
+    getTemplates,
 } from "@/lib/api";
 import {
     demoCreateCard, demoUpdateCard,
     demoCreateSection, demoUpdateSection, demoDeleteSection,
     demoCreateTag, demoDeleteTag,
     demoArchiveCard, demoRestoreCard, loadDemoArchivedCards,
+    loadDemoTemplates,
 } from "@/lib/demoStorage";
 
 const SECTION_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107'];
@@ -46,9 +48,10 @@ interface BoardProps extends BoardInterface {
     isDemo?: boolean;
     demoId?: string;
     boardUsers?: SharedUser[];
+    isReadOnly?: boolean;
 }
 
-export function Board({ id, name, description, size, cards, sections: initialSections, tags: initialTags = [], isDemo = false, demoId = 'demo', boardUsers = [] }: BoardProps) {
+export function Board({ id, name, description, size, cards, sections: initialSections, tags: initialTags = [], isDemo = false, demoId = 'demo', boardUsers = [], isReadOnly = false }: BoardProps) {
     const [cardsProp, setCards] = useState(cards);
     const [sections, setSections] = useState(initialSections);
     const [tags, setTags] = useState<TagInterface[]>(initialTags);
@@ -74,12 +77,18 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const [wipLimits, setWipLimits] = useState<Record<number, number | null>>({});
     const [boardBg, setBoardBg] = useState<string>('');
     const [isBgOpen, setIsBgOpen] = useState(false);
+    const [boardTemplates, setBoardTemplates] = useState<any[]>([]);
 
     useEffect(() => {
         if (typeof window === 'undefined' || (!isDemo && id === 0)) return;
         const raw = localStorage.getItem(`yondra_wip_${storageKey}`);
         setWipLimits(raw ? JSON.parse(raw) : {});
         setBoardBg(localStorage.getItem(`yondra_bg_${storageKey}`) ?? '');
+        if (isDemo) {
+            setBoardTemplates(loadDemoTemplates(demoId));
+        } else if (id !== 0) {
+            getTemplates(id).then(data => setBoardTemplates(Array.isArray(data) ? data : [])).catch(() => {});
+        }
     }, [storageKey]);
 
     const handleSetWipLimit = (sectionId: number, limit: number | null) => {
@@ -222,13 +231,13 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
     useEffect(() => {
         const handleGlobalEvent = (event: any) => {
-            if (event.key.toLowerCase() === 'c' && !isCardVisible && !isTagsOpen && !isActivityOpen && !isArchivedOpen && !isBgOpen) {
+            if (event.key.toLowerCase() === 'c' && !isReadOnly && !isCardVisible && !isTagsOpen && !isActivityOpen && !isArchivedOpen && !isBgOpen) {
                 setIsCardVisible(true);
             }
         };
         window.addEventListener('keydown', handleGlobalEvent);
         return () => window.removeEventListener('keydown', handleGlobalEvent);
-    }, [isCardVisible, isTagsOpen, isActivityOpen, isArchivedOpen, isBgOpen]);
+    }, [isReadOnly, isCardVisible, isTagsOpen, isActivityOpen, isArchivedOpen, isBgOpen]);
 
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -369,14 +378,14 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                             name={section.name}
                             color={SECTION_COLORS[i % SECTION_COLORS.length]}
                             parent={null}
-                            onDelete={() => setSectionToDelete({ id: section.id, name: section.name })}
-                            onRename={(newName) => handleRenameSection(section.id, newName)}
+                            onDelete={isReadOnly ? undefined : () => setSectionToDelete({ id: section.id, name: section.name })}
+                            onRename={isReadOnly ? undefined : (newName) => handleRenameSection(section.id, newName)}
                             wipLimit={wipLimits[section.id] ?? null}
-                            onSetWipLimit={(limit) => handleSetWipLimit(section.id, limit)}
+                            onSetWipLimit={isReadOnly ? undefined : (limit) => handleSetWipLimit(section.id, limit)}
                         />
                     ))}
 
-                    <div className="flex flex-col w-64 flex-shrink-0">
+                    {!isReadOnly && <div className="flex flex-col w-64 flex-shrink-0">
                         {isAddingSection ? (
                             <div className="flex flex-col gap-2">
                                 <input
@@ -403,7 +412,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                                 <span className="text-lg leading-none">+</span> Add Section
                             </button>
                         )}
-                    </div>
+                    </div>}
                 </div>
 
                 <DragOverlay dropAnimation={null}>
@@ -419,13 +428,15 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             </DndContext>
 
             {/* FAB */}
-            <button
-                onClick={() => setIsCardVisible(true)}
-                className="fixed bottom-6 right-6 w-14 h-14 bg-amber-400 hover:bg-amber-300 active:scale-95 text-black rounded-full flex items-center justify-center shadow-2xl cursor-pointer transition-all duration-150 text-2xl font-bold z-40"
-                title="Add ticket"
-            >
-                +
-            </button>
+            {!isReadOnly && (
+                <button
+                    onClick={() => setIsCardVisible(true)}
+                    className="fixed bottom-6 right-6 w-14 h-14 bg-amber-400 hover:bg-amber-300 active:scale-95 text-black rounded-full flex items-center justify-center shadow-2xl cursor-pointer transition-all duration-150 text-2xl font-bold z-40"
+                    title="Add ticket"
+                >
+                    +
+                </button>
+            )}
 
             {/* Tags modal */}
             {isTagsOpen && (
@@ -446,17 +457,19 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                                         <div style={{ backgroundColor: tag.color }} className="w-3 h-3 rounded-full flex-shrink-0"/>
                                         <span style={{ color: tag.color }} className="text-sm font-bold uppercase tracking-wide">{tag.name}</span>
                                     </div>
-                                    <button
-                                        onClick={() => handleDeleteTag(tag.id)}
-                                        className="text-xs text-gray-600 hover:text-red-400 cursor-pointer transition-colors ml-2"
-                                    >
-                                        ✕
-                                    </button>
+                                    {!isReadOnly && (
+                                        <button
+                                            onClick={() => handleDeleteTag(tag.id)}
+                                            className="text-xs text-gray-600 hover:text-red-400 cursor-pointer transition-colors ml-2"
+                                        >
+                                            ✕
+                                        </button>
+                                    )}
                                 </div>
                             ))}
                         </div>
 
-                        <div className="flex flex-col gap-3 border-t border-gray-800 pt-4">
+                        {!isReadOnly && <div className="flex flex-col gap-3 border-t border-gray-800 pt-4">
                             <input
                                 value={newTagName}
                                 onChange={e => setNewTagName(e.target.value)}
@@ -481,7 +494,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                             >
                                 + Create Tag
                             </button>
-                        </div>
+                        </div>}
                     </div>
                 </Modal>
             )}
@@ -622,9 +635,11 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                             boardId={isDemo ? undefined : id}
                             isDemo={isDemo}
                             demoId={demoId}
+                            isReadOnly={isReadOnly}
+                            initialTemplates={boardTemplates}
                             goBack={() => { setIsCardVisible(false); setSelectedCard(null); }}
                             submit={handleSubmit}
-                            onDelete={selectedCard ? () => { setCardToDelete(selectedCard); setIsCardVisible(false); } : undefined}
+                            onDelete={selectedCard && !isReadOnly ? () => { setCardToDelete(selectedCard); setIsCardVisible(false); } : undefined}
                         />
                     </div>
                 </Modal>

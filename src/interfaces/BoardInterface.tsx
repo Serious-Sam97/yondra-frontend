@@ -10,6 +10,7 @@ export interface SharedUser {
     id: number,
     name: string,
     email: string,
+    permission?: 'read' | 'write',
 }
 
 export interface BoardInterface {

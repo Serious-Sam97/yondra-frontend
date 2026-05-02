@@ -32,6 +32,8 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
 
     const isDemo = id === 'demo' || id.startsWith('demo-');
     const isOwner = board.user_id === currentUserId;
+    const currentUserShare = board.shared_with?.find(u => u.id === currentUserId);
+    const isReadOnly = !isDemo && !isOwner && currentUserShare?.permission !== 'write';
 
     const boardUsers = isDemo ? [] : [
         board.owner,
@@ -118,6 +120,7 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                 demoId={id}
                 boardUsers={boardUsers}
                 tags={board.tags ?? []}
+                isReadOnly={isReadOnly}
             />
 
             {shareOpen && (
