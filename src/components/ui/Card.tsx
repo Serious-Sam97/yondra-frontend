@@ -1,3 +1,6 @@
+'use client'
+
+import { useRef } from "react";
 import { CardInterface } from "@/interfaces/CardInterface";
 import { Draggable } from "../shared/Draggable";
 
@@ -8,6 +11,16 @@ const PRIORITY_COLORS: Record<string, string> = {
     medium: '#f97316',
     low:    '#22c55e',
 };
+
+const SPRING    = 'cubic-bezier(0.34, 1.56, 0.64, 1)';
+const EASE_EXPO = 'cubic-bezier(0.16, 1, 0.3, 1)';
+
+function resetCard(el: HTMLDivElement, transition = `transform 400ms ${SPRING}, box-shadow 400ms ${SPRING}`) {
+    el.style.transition = transition;
+    el.style.transform  = '';
+    el.style.boxShadow  = '3px 3px 8px rgba(0,0,0,0.35)';
+    el.style.zIndex     = '';
+}
 
 function initials(name: string): string {
     return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -70,6 +83,8 @@ function blendWithCream(hex: string, amount = 0.18): string {
 }
 
 export function Card({ id, name, description, assigned_user, created_by, tags, due_date, priority, checklist_items, updated_at, done_at }: CardInterface & { color: string }) {
+    const cardRef = useRef<HTMLDivElement>(null);
+
     const showBottom = assigned_user || created_by;
     const priorityColor = priority ? PRIORITY_COLORS[priority] : null;
     const doneItems = (checklist_items ?? []).filter(i => i.is_done).length;
@@ -84,9 +99,71 @@ export function Card({ id, name, description, assigned_user, created_by, tags, d
         ? primaryTagColor
         : 'linear-gradient(to bottom, #e6d800, #f5e642)';
 
+    // ── 3-D tilt: card leans toward the cursor like paper being examined ──────
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        const el = cardRef.current;
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width  - 0.5;   // -0.5 … 0.5
+        const y = (e.clientY - rect.top)  / rect.height - 0.5;
+
+        // Directional shadow — light source stays top-left of screen
+        const shadowX = (-x * 10 + 3);
+        const shadowY = (-y * 10 + 5);
+
+        el.style.transition = `box-shadow 80ms ease-out`;
+        el.style.transform  = `perspective(600px) rotateX(${-y * 8}deg) rotateY(${x * 8}deg) translateY(-4px) scale(1.01)`;
+        el.style.boxShadow  = `${shadowX}px ${shadowY}px 22px rgba(0,0,0,0.45), ${shadowX * 0.4}px ${shadowY * 0.4}px 8px rgba(0,0,0,0.25)`;
+        el.style.zIndex     = '10';
+    };
+
+    const handleMouseLeave = () => {
+        const el = cardRef.current;
+        if (!el) return;
+        resetCard(el);
+    };
+
+    // ── Press depth: card dents into the surface on click ────────────────────
+    const handlePointerDown = () => {
+        const el = cardRef.current;
+        if (!el) return;
+        el.style.transition = `transform 60ms ease-out, box-shadow 60ms ease-out`;
+        el.style.transform  = `perspective(600px) translateY(2px) scale(0.985)`;
+        el.style.boxShadow  = `1px 1px 4px rgba(0,0,0,0.28)`;
+    };
+
+    const handlePointerUp = () => {
+        const el = cardRef.current;
+        if (!el) return;
+        // Spring bounce back with a slight overshoot — like paper springing off a surface
+        el.style.transition = `transform 350ms ${SPRING}, box-shadow 350ms ${EASE_EXPO}`;
+        el.style.transform  = `perspective(600px) translateY(-4px) scale(1.01)`;
+        el.style.boxShadow  = `3px 6px 18px rgba(0,0,0,0.42), 1px 2px 6px rgba(0,0,0,0.22)`;
+    };
+
+    // Fires when dnd-kit captures the pointer — resets pressed state cleanly
+    const handlePointerCancel = () => {
+        const el = cardRef.current;
+        if (!el) return;
+        resetCard(el, 'none');
+    };
+
+    const handlePointerLeave = () => {
+        const el = cardRef.current;
+        if (!el) return;
+        resetCard(el);
+    };
+
     return (
         <Draggable id={`draggable-${id}`}>
             <div
+                ref={cardRef}
+                onMouseMove={handleMouseMove}
+                onMouseLeave={handleMouseLeave}
+                onPointerDown={handlePointerDown}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerCancel}
+                onPointerLeave={handlePointerLeave}
                 style={{
                     background: cardBackground,
                     boxShadow: '3px 3px 8px rgba(0,0,0,0.35)',
@@ -95,20 +172,21 @@ export function Card({ id, name, description, assigned_user, created_by, tags, d
                     position: 'relative',
                     borderLeft: priorityColor ? `3px solid ${priorityColor}` : undefined,
                     opacity,
+                    willChange: 'transform',
                 }}
-                className="cursor-pointer hover:-translate-y-1 hover:shadow-xl transition-all duration-150 rounded-sm flex flex-col"
+                className="sticky-note cursor-pointer rounded-sm flex flex-col"
             >
                 {/* Glue strip */}
                 <div style={{ background: glueBackground, height: '10px' }} className="rounded-t-sm w-full flex-shrink-0" />
 
-                {/* Body */}
-                <div className="px-3 pt-2 pb-4 flex flex-col gap-1 flex-1">
-                    <p style={{ color: '#1a1a1a', fontSize: '13px', lineHeight: '1.3' }} className="font-bold">
+                {/* Body — sits above the ::after grain layer via relative positioning */}
+                <div className="px-3 pt-2 pb-4 flex flex-col gap-1 flex-1" style={{ position: 'relative', zIndex: 2 }}>
+                    <p style={{ color: '#1a1a1a', fontSize: '13px', lineHeight: '1.3' }} className="font-bold ink-text">
                         {name}
                     </p>
 
                     {description && (
-                        <p style={{ color: '#555', fontSize: '11px', lineHeight: '1.4' }} className="line-clamp-3">
+                        <p style={{ color: '#555', fontSize: '11px', lineHeight: '1.4' }} className="line-clamp-3 ink-text">
                             {description}
                         </p>
                     )}
@@ -128,10 +206,13 @@ export function Card({ id, name, description, assigned_user, created_by, tags, d
                         </div>
                     )}
 
-                    {/* Done stamp */}
+                    {/* Done stamp — plays the slam animation on every render where done_at is set */}
                     {done_at && (
-                        <div style={{ fontSize: '9px', color: '#16a34a', borderColor: '#16a34a55', backgroundColor: '#16a34a15' }}
-                             className="px-1.5 py-0.5 rounded border font-bold uppercase tracking-wide flex items-center gap-1 w-fit mt-1">
+                        <div
+                            key={done_at}
+                            style={{ fontSize: '9px', color: '#16a34a', borderColor: '#16a34a55', backgroundColor: '#16a34a15', display: 'inline-flex', width: 'fit-content' }}
+                            className="stamp-in px-1.5 py-0.5 rounded border font-bold uppercase tracking-wide items-center gap-1 mt-1"
+                        >
                             ✓ Done · {new Date(done_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} {new Date(done_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                         </div>
                     )}
@@ -172,7 +253,7 @@ export function Card({ id, name, description, assigned_user, created_by, tags, d
 
                 {/* Dog-ear */}
                 <div style={{
-                    position: 'absolute', bottom: 0, right: 0,
+                    position: 'absolute', bottom: 0, right: 0, zIndex: 3,
                     width: 0, height: 0, borderStyle: 'solid',
                     borderWidth: '0 0 14px 14px',
                     borderColor: 'transparent transparent rgba(0,0,0,0.12) transparent',

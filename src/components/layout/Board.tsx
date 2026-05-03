@@ -39,7 +39,7 @@ function ToolBtn({ icon, label, onClick }: { icon: string; label: string; onClic
                 {label}
             </span>
             <button onClick={onClick}
-                className="w-10 h-10 rounded-lg bg-gray-900/95 border border-gray-700 flex items-center justify-center hover:border-amber-400/60 hover:bg-gray-800 transition-all duration-150 cursor-pointer text-lg shadow-lg backdrop-blur-sm">
+                className="btn-physical w-10 h-10 rounded-lg bg-gray-900/95 border border-gray-700 flex items-center justify-center hover:border-amber-400/60 hover:bg-gray-800 cursor-pointer text-lg shadow-lg backdrop-blur-sm">
                 {icon}
             </button>
         </div>
@@ -49,7 +49,7 @@ function ToolBtn({ icon, label, onClick }: { icon: string; label: string; onClic
 function MobileToolBtn({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
     return (
         <button onClick={onClick}
-            className="flex flex-col items-center gap-1.5 py-3 px-4 rounded-xl hover:bg-gray-800 active:scale-95 transition-all duration-150 cursor-pointer">
+            className="btn-physical flex flex-col items-center gap-1.5 py-3 px-4 rounded-xl hover:bg-gray-800 cursor-pointer">
             <span className="text-2xl">{icon}</span>
             <span className="text-[9px] uppercase tracking-widest text-gray-500">{label}</span>
         </button>
@@ -401,7 +401,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                         { key: 'analytics', label: '📊 Stats' },
                     ] as const).map(({ key, label }) => (
                         <button key={key} onClick={() => setViewMode(key)}
-                            className={`text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-md font-bold cursor-pointer transition-all duration-150 ${
+                            className={`btn-physical text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-md font-bold cursor-pointer ${
                                 viewMode === key
                                     ? 'bg-amber-400 text-black'
                                     : 'text-gray-500 hover:text-gray-300'
@@ -435,7 +435,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                     <>
                         <button
                             onClick={() => { setFilterUserId(null); setFilterTagId(null); }}
-                            className={`text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border font-bold cursor-pointer transition-all duration-150 ${
+                            className={`btn-physical text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border font-bold cursor-pointer ${
                                 filterUserId === null && filterTagId === null
                                     ? 'bg-white text-gray-900 border-white'
                                     : 'text-gray-500 border-gray-700 hover:border-gray-400 hover:text-gray-300'
@@ -451,7 +451,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                                     key={user.id}
                                     onClick={() => setFilterUserId(isActive ? null : user.id)}
                                     style={{ borderColor: color, backgroundColor: isActive ? color : 'transparent', color: isActive ? '#fff' : color }}
-                                    className="text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border font-bold cursor-pointer transition-all duration-150 flex items-center gap-1.5"
+                                    className="btn-physical text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border font-bold cursor-pointer flex items-center gap-1.5"
                                 >
                                     <span
                                         style={{ backgroundColor: isActive ? 'rgba(255,255,255,0.3)' : color, fontSize: '9px', width: '16px', height: '16px' }}
@@ -474,7 +474,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                             key={tag.id}
                             onClick={() => setFilterTagId(isActive ? null : tag.id)}
                             style={{ borderColor: tag.color, backgroundColor: isActive ? tag.color : 'transparent', color: isActive ? '#fff' : tag.color, fontSize: '10px' }}
-                            className="uppercase tracking-widest px-2.5 py-1.5 rounded-full border cursor-pointer transition-all duration-150 font-bold"
+                            className="btn-physical uppercase tracking-widest px-2.5 py-1.5 rounded-full border cursor-pointer font-bold"
                         >
                             {tag.name}
                         </button>
@@ -539,14 +539,14 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                                     className="bg-gray-800 border border-gray-600 text-white text-xs uppercase tracking-widest px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder-gray-600 w-full"
                                 />
                                 <div className="flex gap-2">
-                                    <button onClick={handleAddSection} className="flex-1 text-xs uppercase tracking-widest font-bold text-black bg-amber-400 hover:bg-amber-300 py-1.5 rounded-lg cursor-pointer transition-all duration-150">Add</button>
-                                    <button onClick={() => { setIsAddingSection(false); setNewSectionName(''); }} className="flex-1 text-xs uppercase tracking-widest text-gray-400 hover:text-white border border-gray-700 hover:border-gray-400 py-1.5 rounded-lg cursor-pointer transition-all duration-150">Cancel</button>
+                                    <button onClick={handleAddSection} className="btn-physical flex-1 text-xs uppercase tracking-widest font-bold text-black bg-amber-400 hover:bg-amber-300 py-1.5 rounded-lg cursor-pointer">Add</button>
+                                    <button onClick={() => { setIsAddingSection(false); setNewSectionName(''); }} className="btn-physical flex-1 text-xs uppercase tracking-widest text-gray-400 hover:text-white border border-gray-700 hover:border-gray-400 py-1.5 rounded-lg cursor-pointer">Cancel</button>
                                 </div>
                             </div>
                         ) : (
                             <button
                                 onClick={() => setIsAddingSection(true)}
-                                className="flex items-center gap-2 text-xs uppercase tracking-widest text-gray-600 hover:text-gray-300 border-2 border-dashed border-gray-700 hover:border-gray-500 rounded-xl px-4 py-3 cursor-pointer transition-all duration-150 w-full"
+                                className="btn-physical flex items-center gap-2 text-xs uppercase tracking-widest text-gray-600 hover:text-gray-300 border-2 border-dashed border-gray-700 hover:border-gray-500 rounded-xl px-4 py-3 cursor-pointer w-full"
                             >
                                 <span className="text-lg leading-none">+</span> Add Section
                             </button>
@@ -556,7 +556,12 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
                 <DragOverlay dropAnimation={null}>
                     {activeCard ? (
-                        <div style={{ transform: 'rotate(2deg)', opacity: 0.95 }}>
+                        <div style={{
+                            transform: 'rotate(4deg) skewX(-1.5deg)',
+                            opacity: 0.97,
+                            filter: 'drop-shadow(0 18px 28px rgba(0,0,0,0.65)) drop-shadow(0 6px 10px rgba(0,0,0,0.4))',
+                            transition: 'none',
+                        }}>
                             <Card
                                 {...activeCard}
                                 color={SECTION_COLORS[sections.findIndex(s => s.id === activeCard.section_id) % SECTION_COLORS.length] ?? SECTION_COLORS[0]}
@@ -570,7 +575,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             {!isReadOnly && (
                 <button
                     onClick={() => setIsCardVisible(true)}
-                    className="fixed bottom-16 lg:bottom-6 right-6 w-14 h-14 bg-amber-400 hover:bg-amber-300 active:scale-95 text-black rounded-full flex items-center justify-center shadow-2xl cursor-pointer transition-all duration-150 text-2xl font-bold z-40"
+                    className="fab-physical fixed bottom-16 lg:bottom-6 right-6 w-14 h-14 bg-amber-400 hover:bg-amber-300 text-black rounded-full flex items-center justify-center shadow-2xl cursor-pointer text-2xl font-bold z-40"
                     title="Add ticket"
                 >
                     +
@@ -596,7 +601,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                         { icon: '🎨', label: 'Background', onClick: () => setIsBgOpen(true) },
                     ].map(({ icon, label, onClick }) => (
                         <button key={label} onClick={onClick} title={label}
-                            className="w-10 h-10 rounded-lg bg-gray-900/95 border border-gray-700 flex items-center justify-center hover:border-amber-400/60 hover:bg-gray-800 transition-all duration-150 cursor-pointer text-lg shadow-lg backdrop-blur-sm"
+                            className="btn-physical w-10 h-10 rounded-lg bg-gray-900/95 border border-gray-700 flex items-center justify-center hover:border-amber-400/60 hover:bg-gray-800 cursor-pointer text-lg shadow-lg backdrop-blur-sm"
                         >
                             {icon}
                         </button>
@@ -682,14 +687,14 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                                         key={color}
                                         onClick={() => setNewTagColor(color)}
                                         style={{ backgroundColor: color }}
-                                        className={`w-7 h-7 rounded-full cursor-pointer transition-all duration-150 ${newTagColor === color ? 'ring-2 ring-white ring-offset-2 ring-offset-gray-900 scale-110' : 'opacity-70 hover:opacity-100'}`}
+                                        className={`btn-physical w-7 h-7 rounded-full cursor-pointer ${newTagColor === color ? 'ring-2 ring-white ring-offset-2 ring-offset-gray-900 scale-110' : 'opacity-70 hover:opacity-100'}`}
                                     />
                                 ))}
                             </div>
                             <button
                                 onClick={handleCreateTag}
                                 disabled={!newTagName.trim()}
-                                className="text-xs uppercase tracking-widest font-bold text-black bg-amber-400 hover:bg-amber-300 disabled:opacity-40 disabled:cursor-not-allowed py-2 rounded-lg cursor-pointer transition-all duration-150"
+                                className="btn-physical text-xs uppercase tracking-widest font-bold text-black bg-amber-400 hover:bg-amber-300 disabled:opacity-40 disabled:cursor-not-allowed py-2 rounded-lg cursor-pointer"
                             >
                                 + Create Tag
                             </button>
@@ -750,7 +755,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                                     </div>
                                     <button
                                         onClick={() => handleRestoreCard(card)}
-                                        className="text-xs uppercase tracking-widest font-bold text-amber-400 border border-amber-700 hover:bg-amber-400 hover:text-black px-3 py-1.5 rounded-lg cursor-pointer transition-all duration-150 flex-shrink-0"
+                                        className="btn-physical text-xs uppercase tracking-widest font-bold text-amber-400 border border-amber-700 hover:bg-amber-400 hover:text-black px-3 py-1.5 rounded-lg cursor-pointer flex-shrink-0"
                                     >
                                         Restore
                                     </button>
@@ -774,7 +779,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                                 <button
                                     key={opt.value}
                                     onClick={() => handleSetBg(opt.value)}
-                                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all duration-150 text-left ${boardBg === opt.value ? 'border-amber-400 text-amber-400' : 'border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200'}`}
+                                    className={`btn-physical flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-left ${boardBg === opt.value ? 'border-amber-400 text-amber-400' : 'border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200'}`}
                                 >
                                     <div
                                         style={{ background: opt.value || '#111827' }}
@@ -811,8 +816,8 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                             <p className="text-gray-500 text-sm">All cards in this section will be permanently deleted.</p>
                         </div>
                         <div className="flex justify-between">
-                            <button onClick={() => setSectionToDelete(null)} className="text-xs uppercase tracking-widest text-gray-400 hover:text-white border border-gray-700 hover:border-gray-400 px-4 py-2 rounded-lg cursor-pointer transition-all duration-200">Go back</button>
-                            <button onClick={handleDeleteSection} className="text-xs uppercase tracking-widest font-bold text-white bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg cursor-pointer transition-all duration-200">Yes, delete</button>
+                            <button onClick={() => setSectionToDelete(null)} className="btn-physical text-xs uppercase tracking-widest text-gray-400 hover:text-white border border-gray-700 hover:border-gray-400 px-4 py-2 rounded-lg cursor-pointer">Go back</button>
+                            <button onClick={handleDeleteSection} className="btn-physical text-xs uppercase tracking-widest font-bold text-white bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg cursor-pointer">Yes, delete</button>
                         </div>
                     </div>
                 </Modal>
@@ -828,8 +833,8 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                             <p className="text-gray-500 text-sm">"{cardToDelete.name}" will be moved to the archive. You can restore it later.</p>
                         </div>
                         <div className="flex justify-between">
-                            <button onClick={() => setCardToDelete(null)} className="text-xs uppercase tracking-widest text-gray-400 hover:text-white border border-gray-700 hover:border-gray-400 px-4 py-2 rounded-lg cursor-pointer transition-all duration-200">Go back</button>
-                            <button onClick={handleArchiveCard} className="text-xs uppercase tracking-widest font-bold text-white bg-amber-600 hover:bg-amber-500 px-4 py-2 rounded-lg cursor-pointer transition-all duration-200">Archive it</button>
+                            <button onClick={() => setCardToDelete(null)} className="btn-physical text-xs uppercase tracking-widest text-gray-400 hover:text-white border border-gray-700 hover:border-gray-400 px-4 py-2 rounded-lg cursor-pointer">Go back</button>
+                            <button onClick={handleArchiveCard} className="btn-physical text-xs uppercase tracking-widest font-bold text-white bg-amber-600 hover:bg-amber-500 px-4 py-2 rounded-lg cursor-pointer">Archive it</button>
                         </div>
                     </div>
                 </Modal>
