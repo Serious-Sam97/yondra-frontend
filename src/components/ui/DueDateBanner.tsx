@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-interface Card { id: number; name: string; due_date?: string | null; section_id: number }
+interface Card { id: string | number; name: string; due_date?: string | null; section_id: number }
 interface Section { id: number; name: string }
 
 interface DueDateBannerProps {
