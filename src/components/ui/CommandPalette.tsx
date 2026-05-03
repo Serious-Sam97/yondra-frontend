@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 interface Section { id: number; name: string }
 interface Tag { id: number; name: string; color: string }
 interface Card {
-    id: number
+    id: string | number
     name: string
     description?: string
     section_id: number

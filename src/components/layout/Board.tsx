@@ -18,6 +18,9 @@ import {
 import BoardChat from "../ui/BoardChat";
 import { CalendarView } from "../ui/CalendarView";
 import { CommandPalette } from "../ui/CommandPalette";
+import { DueDateBanner } from "../ui/DueDateBanner";
+import { ListView } from "../ui/ListView";
+import { AnalyticsView } from "../ui/AnalyticsView";
 import { getEcho } from "@/lib/echo";
 import {
     demoCreateCard, demoUpdateCard,
@@ -113,7 +116,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const chatLoadedRef = useRef(false);
     const [isToolbarOpen, setIsToolbarOpen] = useState(false);
     const touchStartY = useRef<number>(0);
-    const [viewMode, setViewMode] = useState<'kanban' | 'calendar'>('kanban');
+    const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'calendar' | 'analytics'>('kanban');
     const [isCommandOpen, setIsCommandOpen] = useState(false);
 
     useEffect(() => {
@@ -391,14 +394,19 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
                 {/* View toggle */}
                 <div className="flex items-center border border-gray-700 rounded-lg p-0.5 flex-shrink-0">
-                    {(['kanban', 'calendar'] as const).map(v => (
-                        <button key={v} onClick={() => setViewMode(v)}
-                            className={`text-[10px] uppercase tracking-widest px-3 py-1 rounded-md font-bold cursor-pointer transition-all duration-150 ${
-                                viewMode === v
+                    {([
+                        { key: 'kanban',    label: '▦ Board' },
+                        { key: 'list',      label: '☰ List' },
+                        { key: 'calendar',  label: '📅 Cal' },
+                        { key: 'analytics', label: '📊 Stats' },
+                    ] as const).map(({ key, label }) => (
+                        <button key={key} onClick={() => setViewMode(key)}
+                            className={`text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-md font-bold cursor-pointer transition-all duration-150 ${
+                                viewMode === key
                                     ? 'bg-amber-400 text-black'
                                     : 'text-gray-500 hover:text-gray-300'
                             }`}>
-                            {v === 'kanban' ? '▦ Board' : '📅 Calendar'}
+                            {label}
                         </button>
                     ))}
                 </div>
@@ -418,13 +426,11 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                 </div>
             </div>
 
-            {/* Calendar view */}
-            {viewMode === 'calendar' && (
-                <CalendarView cards={cardsProp} sections={sections} onCardClick={handleClick} />
-            )}
+            {/* Due date banner — always visible when there are overdue/due-today cards */}
+            <DueDateBanner cards={cardsProp} sections={sections} onCardClick={handleClick} />
 
-            {/* Filter strip — kanban only */}
-            {viewMode === 'kanban' && <div className="flex items-center gap-2 mb-5 flex-wrap">
+            {/* Filter strip — kanban + list */}
+            {(viewMode === 'kanban' || viewMode === 'list') && <div className="flex items-center gap-2 mb-5 flex-wrap">
                 {boardUsers.length > 0 && (
                     <>
                         <button
@@ -476,6 +482,28 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                 })}
 
             </div>}
+
+            {/* Calendar view */}
+            {viewMode === 'calendar' && (
+                <CalendarView cards={cardsProp} sections={sections} onCardClick={handleClick} />
+            )}
+
+            {/* Analytics view */}
+            {viewMode === 'analytics' && (
+                <AnalyticsView cards={cardsProp} sections={sections} />
+            )}
+
+            {/* List view */}
+            {viewMode === 'list' && (() => {
+                let filtered = cardsProp;
+                if (filterUserId !== null) filtered = filtered.filter((c: any) => c.assigned_user_id === filterUserId);
+                if (filterTagId !== null) filtered = filtered.filter((c: any) => (c.tags ?? []).some((t: any) => t.id === filterTagId));
+                if (searchQuery.trim()) {
+                    const q = searchQuery.trim().toLowerCase();
+                    filtered = filtered.filter((c: any) => c.name.toLowerCase().includes(q) || (c.description ?? '').toLowerCase().includes(q));
+                }
+                return <ListView cards={filtered} sections={sections} users={boardUsers} onCardClick={handleClick} />;
+            })()}
 
             {/* Board columns — kanban only */}
             {viewMode === 'kanban' && <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
