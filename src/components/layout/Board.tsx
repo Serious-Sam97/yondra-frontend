@@ -16,6 +16,8 @@ import {
     getTemplates,
 } from "@/lib/api";
 import BoardChat from "../ui/BoardChat";
+import { CalendarView } from "../ui/CalendarView";
+import { CommandPalette } from "../ui/CommandPalette";
 import { getEcho } from "@/lib/echo";
 import {
     demoCreateCard, demoUpdateCard,
@@ -111,6 +113,8 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const chatLoadedRef = useRef(false);
     const [isToolbarOpen, setIsToolbarOpen] = useState(false);
     const touchStartY = useRef<number>(0);
+    const [viewMode, setViewMode] = useState<'kanban' | 'calendar'>('kanban');
+    const [isCommandOpen, setIsCommandOpen] = useState(false);
 
     useEffect(() => {
         if (typeof window === 'undefined' || (!isDemo && id === 0)) return;
@@ -338,13 +342,19 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
     useEffect(() => {
         const handleGlobalEvent = (event: any) => {
-            if (event.key.toLowerCase() === 'c' && !isReadOnly && !isCardVisible && !isTagsOpen && !isActivityOpen && !isArchivedOpen && !isBgOpen && !isChatOpen) {
+            const anyOpen = isCardVisible || isTagsOpen || isActivityOpen || isArchivedOpen || isBgOpen || isChatOpen || isCommandOpen;
+            if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+                event.preventDefault();
+                setIsCommandOpen(v => !v);
+                return;
+            }
+            if (event.key.toLowerCase() === 'c' && !isReadOnly && !anyOpen) {
                 setIsCardVisible(true);
             }
         };
         window.addEventListener('keydown', handleGlobalEvent);
         return () => window.removeEventListener('keydown', handleGlobalEvent);
-    }, [isReadOnly, isCardVisible, isTagsOpen, isActivityOpen, isArchivedOpen, isBgOpen, isChatOpen]);
+    }, [isReadOnly, isCardVisible, isTagsOpen, isActivityOpen, isArchivedOpen, isBgOpen, isChatOpen, isCommandOpen]);
 
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -379,15 +389,42 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                     </span>
                 )}
 
-                <div className="hidden md:flex items-center gap-2 text-gray-600 flex-shrink-0 ml-auto">
+                {/* View toggle */}
+                <div className="flex items-center border border-gray-700 rounded-lg p-0.5 flex-shrink-0">
+                    {(['kanban', 'calendar'] as const).map(v => (
+                        <button key={v} onClick={() => setViewMode(v)}
+                            className={`text-[10px] uppercase tracking-widest px-3 py-1 rounded-md font-bold cursor-pointer transition-all duration-150 ${
+                                viewMode === v
+                                    ? 'bg-amber-400 text-black'
+                                    : 'text-gray-500 hover:text-gray-300'
+                            }`}>
+                            {v === 'kanban' ? '▦ Board' : '📅 Calendar'}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="hidden md:flex items-center gap-3 text-gray-600 flex-shrink-0 ml-auto">
+                    <button
+                        onClick={() => setIsCommandOpen(true)}
+                        className="flex items-center gap-1.5 text-gray-600 hover:text-gray-400 transition-colors cursor-pointer"
+                    >
+                        <kbd className="text-xs bg-gray-800 border border-gray-700 text-amber-400 px-2 py-1 rounded font-mono">⌘K</kbd>
+                        <span className="text-xs uppercase tracking-widest">Search</span>
+                    </button>
+                    <span className="text-gray-800">·</span>
                     <p className="text-xs uppercase tracking-widest">Press</p>
                     <kbd className="text-xs bg-gray-800 border border-gray-700 text-amber-400 px-2 py-1 rounded font-mono">C</kbd>
-                    <p className="text-xs uppercase tracking-widest">to add a ticket</p>
+                    <p className="text-xs uppercase tracking-widest">to add</p>
                 </div>
             </div>
 
-            {/* Filter strip */}
-            <div className="flex items-center gap-2 mb-5 flex-wrap">
+            {/* Calendar view */}
+            {viewMode === 'calendar' && (
+                <CalendarView cards={cardsProp} sections={sections} onCardClick={handleClick} />
+            )}
+
+            {/* Filter strip — kanban only */}
+            {viewMode === 'kanban' && <div className="flex items-center gap-2 mb-5 flex-wrap">
                 {boardUsers.length > 0 && (
                     <>
                         <button
@@ -438,10 +475,10 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                     );
                 })}
 
-            </div>
+            </div>}
 
-            {/* Board columns */}
-            <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            {/* Board columns — kanban only */}
+            {viewMode === 'kanban' && <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                 <div className="flex gap-5 items-start overflow-x-auto pb-4">
                     {sections.map((section, i) => (
                         <Section
@@ -499,7 +536,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                         </div>
                     ) : null}
                 </DragOverlay>
-            </DndContext>
+            </DndContext>}
 
             {/* FAB */}
             {!isReadOnly && (
@@ -747,6 +784,16 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                         </div>
                     </div>
                 </Modal>
+            )}
+
+            {/* Command palette */}
+            {isCommandOpen && (
+                <CommandPalette
+                    cards={cardsProp}
+                    sections={sections}
+                    onSelect={(card) => { setIsCommandOpen(false); handleClick(card); }}
+                    onClose={() => setIsCommandOpen(false)}
+                />
             )}
 
             {/* Card edit modal */}
