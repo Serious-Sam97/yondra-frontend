@@ -66,6 +66,7 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                 cards: data.cards ?? [],
                 tags: data.tags ?? [],
                 user_id: data.user_id,
+                project_id: data.project_id ?? null,
                 owner: data.owner,
                 shared_with: data.shared_with ?? [],
             });
@@ -86,10 +87,10 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
             <div className="flex items-start justify-between gap-4 mb-6 md:mb-8 flex-wrap">
                 <div className="min-w-0">
                     <button
-                        onClick={() => router.push(isDemo ? '/demo' : '/dashboard')}
+                        onClick={() => router.push(isDemo ? '/demo' : board.project_id ? `/projects/${board.project_id}` : '/dashboard')}
                         className="text-xs uppercase tracking-widest text-gray-500 hover:text-gray-300 mb-3 flex items-center gap-1 cursor-pointer transition-colors duration-150"
                     >
-                        ← Back to boards
+                        ← {isDemo ? 'Back to demo' : board.project_id ? 'Back to project' : 'Back to boards'}
                     </button>
                     <p className="text-2xl md:text-4xl font-bold text-white truncate">{board.name || '...'}</p>
                     {board.description && (

@@ -570,21 +570,39 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             {!isReadOnly && (
                 <button
                     onClick={() => setIsCardVisible(true)}
-                    className="fixed bottom-6 right-6 w-14 h-14 bg-amber-400 hover:bg-amber-300 active:scale-95 text-black rounded-full flex items-center justify-center shadow-2xl cursor-pointer transition-all duration-150 text-2xl font-bold z-40"
+                    className="fixed bottom-16 lg:bottom-6 right-6 w-14 h-14 bg-amber-400 hover:bg-amber-300 active:scale-95 text-black rounded-full flex items-center justify-center shadow-2xl cursor-pointer transition-all duration-150 text-2xl font-bold z-40"
                     title="Add ticket"
                 >
                     +
                 </button>
             )}
 
-            {/* Desktop vertical toolbar */}
-            <div className="hidden lg:flex flex-col items-end gap-2 fixed z-40" style={{ right: '24px', bottom: '96px' }}>
-                <ToolBtn icon="🏷" label="Tags" onClick={() => setIsTagsOpen(true)} />
-                {!isDemo && <ToolBtn icon="📋" label="Activity" onClick={handleOpenActivity} />}
-                {!isDemo && <ToolBtn icon="💬" label="Chat" onClick={handleOpenChat} />}
-                <ToolBtn icon="🗂" label="Archived" onClick={handleOpenArchived} />
-                <ToolBtn icon="🎨" label="Background" onClick={() => setIsBgOpen(true)} />
-            </div>
+            {/* Desktop toolbar — vertical on kanban/list, horizontal bottom bar on calendar/analytics */}
+            {(viewMode === 'kanban' || viewMode === 'list') ? (
+                <div className="hidden lg:flex flex-col items-end gap-2 fixed z-40" style={{ right: '24px', bottom: '96px' }}>
+                    <ToolBtn icon="🏷" label="Tags" onClick={() => setIsTagsOpen(true)} />
+                    {!isDemo && <ToolBtn icon="📋" label="Activity" onClick={handleOpenActivity} />}
+                    {!isDemo && <ToolBtn icon="💬" label="Chat" onClick={handleOpenChat} />}
+                    <ToolBtn icon="🗂" label="Archived" onClick={handleOpenArchived} />
+                    <ToolBtn icon="🎨" label="Background" onClick={() => setIsBgOpen(true)} />
+                </div>
+            ) : (
+                <div className="hidden lg:flex flex-row items-center gap-2 fixed z-40" style={{ bottom: '28px', left: '50%', transform: 'translateX(-50%)' }}>
+                    {[
+                        { icon: '🏷', label: 'Tags',       onClick: () => setIsTagsOpen(true) },
+                        ...(!isDemo ? [{ icon: '📋', label: 'Activity',   onClick: handleOpenActivity }] : []),
+                        ...(!isDemo ? [{ icon: '💬', label: 'Chat',       onClick: handleOpenChat }] : []),
+                        { icon: '🗂', label: 'Archived',   onClick: handleOpenArchived },
+                        { icon: '🎨', label: 'Background', onClick: () => setIsBgOpen(true) },
+                    ].map(({ icon, label, onClick }) => (
+                        <button key={label} onClick={onClick} title={label}
+                            className="w-10 h-10 rounded-lg bg-gray-900/95 border border-gray-700 flex items-center justify-center hover:border-amber-400/60 hover:bg-gray-800 transition-all duration-150 cursor-pointer text-lg shadow-lg backdrop-blur-sm"
+                        >
+                            {icon}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {/* Mobile bottom drawer */}
             <div className="lg:hidden">
@@ -602,8 +620,11 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                     }}
                 >
                     <div className="bg-gray-900 border-t border-gray-700 rounded-t-2xl">
-                        <div className="flex justify-center pt-3 pb-2 cursor-pointer" onClick={() => setIsToolbarOpen(s => !s)}>
-                            <div className="w-10 h-1 rounded-full bg-gray-600" />
+                        <div className="flex items-center justify-center gap-2 pt-3 pb-2 cursor-pointer" onClick={() => setIsToolbarOpen(s => !s)}>
+                            <div className="w-10 h-1 rounded-full bg-gray-600 flex-shrink-0" />
+                            {!isToolbarOpen && (
+                                <span className="text-[9px] uppercase tracking-widest text-gray-600 font-bold">Tools</span>
+                            )}
                         </div>
                         <div className="flex justify-around px-6 pb-8 pt-1">
                             <MobileToolBtn icon="🏷" label="Tags" onClick={() => { setIsTagsOpen(true); setIsToolbarOpen(false); }} />

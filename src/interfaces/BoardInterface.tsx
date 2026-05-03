@@ -21,6 +21,7 @@ export interface BoardInterface {
     cards: CardInterface[],
     tags?: TagInterface[],
     user_id?: number,
+    project_id?: number | null,
     owner?: SharedUser,
     shared_with?: SharedUser[],
 }
