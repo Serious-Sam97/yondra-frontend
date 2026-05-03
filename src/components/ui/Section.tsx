@@ -4,6 +4,7 @@ import { Droppable } from "../shared/Droppable"
 import { Card } from "./Card"
 import { SectionInterface } from "@/interfaces/SectionInterface"
 import { playWipReject } from "@/lib/sound"
+import { hapticReject } from "@/lib/haptics"
 
 export function Section({id, name, color, cards, handleClick, onDelete, onRename, wipLimit, onSetWipLimit}: SectionInterface) {
     const [editing, setEditing] = useState(false)
@@ -47,6 +48,7 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
         if (overLimit && !prevOverLimit.current) {
             setShaking(true)
             playWipReject()
+            hapticReject()
             setTimeout(() => setShaking(false), 500)
         }
         prevOverLimit.current = overLimit

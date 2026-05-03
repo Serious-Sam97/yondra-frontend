@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { playComplete } from '@/lib/sound'
+import { hapticDone } from '@/lib/haptics'
 import { TagInterface } from '@/interfaces/TagInterface'
 import { ChecklistItem } from '@/interfaces/CardInterface'
 import {
@@ -226,7 +227,7 @@ const CardEdit: React.FC<CardEditProps> = ({
 
     const handleToggleItem = async (item: ChecklistItem) => {
         const updated = { ...item, is_done: !item.is_done }
-        if (updated.is_done) playComplete()
+        if (updated.is_done) { playComplete(); hapticDone(); }
         setChecklistItems(prev => prev.map(i => i.id === item.id ? updated : i))
         if (!isNew) {
             if (isDemo) demoUpdateChecklistItem(demoId, id, item.id, { is_done: updated.is_done })
@@ -296,7 +297,7 @@ const CardEdit: React.FC<CardEditProps> = ({
     }
 
     const handleToggleSubtask = async (s: Subtask) => {
-        if (!s.is_done) playComplete()
+        if (!s.is_done) { playComplete(); hapticDone(); }
         setSubtasks(prev => prev.map(i => i.id === s.id ? { ...i, is_done: !i.is_done } : i))
         if (isDemo) {
             demoToggleSubtask(demoId, s.id)

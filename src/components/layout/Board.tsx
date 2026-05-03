@@ -2,7 +2,7 @@
 
 import { DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { Card } from "../ui/Card";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Section } from "../ui/Section";
 import { BoardInterface, SharedUser } from "@/interfaces/BoardInterface";
 import { TagInterface } from "@/interfaces/TagInterface";
@@ -30,6 +30,8 @@ import {
     loadDemoTemplates,
 } from "@/lib/demoStorage";
 import { playPickup, playDrop } from "@/lib/sound";
+import { hapticPick, hapticDrop } from "@/lib/haptics";
+import { initGyroscope, requestGyroscopePermission } from "@/lib/lightSource";
 
 const SECTION_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107'];
 
@@ -119,6 +121,44 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const touchStartY = useRef<number>(0);
     const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'calendar' | 'analytics'>('kanban');
     const [isCommandOpen, setIsCommandOpen] = useState(false);
+
+    // Board gravity tilt — the board tilts toward wherever the card is being dragged
+    const kanbanRef      = useRef<HTMLDivElement>(null);
+    const gyroRequested  = useRef(false);
+
+    useEffect(() => { initGyroscope(); }, []);
+
+    const applyTilt = useCallback((clientX: number, clientY: number) => {
+        const el = kanbanRef.current;
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const x = ((clientX - rect.left)  / rect.width  - 0.5) * 2;
+        const y = ((clientY - rect.top)   / rect.height - 0.5) * 2;
+        el.style.transform  = `perspective(1400px) rotateX(${(-y * 1.8).toFixed(2)}deg) rotateY(${(x * 2.2).toFixed(2)}deg)`;
+        el.style.transition = 'transform 80ms ease-out';
+    }, []);
+
+    const resetTilt = useCallback(() => {
+        const el = kanbanRef.current;
+        if (!el) return;
+        el.style.transform  = '';
+        el.style.transition = `transform 500ms cubic-bezier(0.34,1.56,0.64,1)`;
+    }, []);
+
+    // dnd-kit captures the pointer on drag start (setPointerCapture), so onPointerMove
+    // on the container stops firing. Listen on window instead while a card is active.
+    useEffect(() => {
+        if (!activeCard) return;
+        const onMove = (e: PointerEvent) => applyTilt(e.clientX, e.clientY);
+        window.addEventListener('pointermove', onMove, { passive: true });
+        return () => window.removeEventListener('pointermove', onMove);
+    }, [activeCard, applyTilt]);
+
+    const handleGyroPermission = useCallback(() => {
+        if (gyroRequested.current) return;
+        gyroRequested.current = true;
+        requestGyroscopePermission();
+    }, []);
 
     useEffect(() => {
         if (typeof window === 'undefined' || (!isDemo && id === 0)) return;
@@ -369,6 +409,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         const cardId = Number(event.active.id.split('-')[1]);
         setActiveCard(cardsProp.find(c => c.id === cardId) ?? null);
         playPickup();
+        hapticPick();
     }
 
     return (
@@ -512,7 +553,12 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
             {/* Board columns — kanban only */}
             {viewMode === 'kanban' && <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-                <div className="flex gap-5 items-start overflow-x-auto pb-4">
+                <div
+                    ref={kanbanRef}
+                    className="flex gap-5 items-start overflow-x-auto pb-4"
+                    style={{ transformOrigin: 'center center', willChange: 'transform' }}
+                    onTouchStart={handleGyroPermission}
+                >
                     {sections.map((section, i) => (
                         <Section
                             key={section.id}
@@ -881,7 +927,8 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
     function handleDragEnd(event: any) {
         setActiveCard(null);
-        if (event.over) playDrop();
+        resetTilt();
+        if (event.over) { playDrop(); hapticDrop(); }
         const sectionSelected = sections.find(section => section.name === event.over?.id);
         if (!sectionSelected) return;
         const selectedCardId = Number(event.active.id.split('-')[1]);
