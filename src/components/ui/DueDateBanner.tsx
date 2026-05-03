@@ -31,7 +31,7 @@ export function DueDateBanner({ cards, sections, onCardClick }: DueDateBannerPro
     const all = [...overdue, ...dueToday]
     if (all.length === 0) return null
 
-    const dismiss = (id: number) => setDismissed(prev => new Set([...prev, id]))
+    const dismiss = (id: string | number) => setDismissed(prev => new Set([...prev, id]))
     const dismissAll = () => setDismissed(prev => new Set([...prev, ...all.map(c => c.id)]))
 
     return (
