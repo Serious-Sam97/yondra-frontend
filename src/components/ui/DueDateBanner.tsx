@@ -12,7 +12,7 @@ interface DueDateBannerProps {
 }
 
 export function DueDateBanner({ cards, sections, onCardClick }: DueDateBannerProps) {
-    const [dismissed, setDismissed] = useState<Set<number>>(new Set())
+    const [dismissed, setDismissed] = useState<Set<string | number>>(new Set())
     const [expanded, setExpanded] = useState(true)
 
     const now = new Date()
