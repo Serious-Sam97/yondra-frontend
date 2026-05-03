@@ -4,6 +4,7 @@ import './globals.css';
 import ClientThemeProvider from './ClientThemeProvider';
 import MenuAppBar from '@/components/layout/MenuAppBar'; // make sure this is a client component
 import { SystemProvider } from '@/contexts/SystemContext';
+import { SpringTrail } from '@/components/ui/SpringTrail';
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SystemProvider>
             <MenuAppBar />
             {children}
+            <SpringTrail />
           </SystemProvider>
         </ClientThemeProvider>
       </body>

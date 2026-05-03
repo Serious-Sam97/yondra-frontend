@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { playComplete } from '@/lib/sound'
 import { TagInterface } from '@/interfaces/TagInterface'
 import { ChecklistItem } from '@/interfaces/CardInterface'
 import {
@@ -97,6 +98,10 @@ const CardEdit: React.FC<CardEditProps> = ({
     const [mentionAnchor, setMentionAnchor] = useState<number>(-1)
     const [activeTab, setActiveTab] = useState<'details' | 'checklist' | 'comments' | 'subtasks'>('details')
     const commentInputRef = useRef<HTMLTextAreaElement>(null)
+    const titleRef = useRef<HTMLTextAreaElement>(null)
+    const descRef  = useRef<HTMLTextAreaElement>(null)
+    const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+    const [tabIndicator, setTabIndicator] = useState({ left: 0, width: 0 })
 
     const isNew = card === null
 
@@ -221,6 +226,7 @@ const CardEdit: React.FC<CardEditProps> = ({
 
     const handleToggleItem = async (item: ChecklistItem) => {
         const updated = { ...item, is_done: !item.is_done }
+        if (updated.is_done) playComplete()
         setChecklistItems(prev => prev.map(i => i.id === item.id ? updated : i))
         if (!isNew) {
             if (isDemo) demoUpdateChecklistItem(demoId, id, item.id, { is_done: updated.is_done })
@@ -290,6 +296,7 @@ const CardEdit: React.FC<CardEditProps> = ({
     }
 
     const handleToggleSubtask = async (s: Subtask) => {
+        if (!s.is_done) playComplete()
         setSubtasks(prev => prev.map(i => i.id === s.id ? { ...i, is_done: !i.is_done } : i))
         if (isDemo) {
             demoToggleSubtask(demoId, s.id)
@@ -317,6 +324,13 @@ const CardEdit: React.FC<CardEditProps> = ({
     const tabs = isNew
         ? []
         : (['details', 'checklist', 'subtasks', 'comments'] as const)
+
+    // Measure tab button positions for sliding indicator
+    useEffect(() => {
+        const idx = tabs.indexOf(activeTab as any)
+        const btn = tabRefs.current[idx]
+        if (btn) setTabIndicator({ left: btn.offsetLeft, width: btn.offsetWidth })
+    }, [activeTab, tabs.length])
 
     return (
         <div
@@ -361,13 +375,14 @@ const CardEdit: React.FC<CardEditProps> = ({
 
             {/* Tabs (only for existing cards) */}
             {!isNew && (
-                <div className="flex border-b border-yellow-300/40 px-4 pt-2 gap-4 flex-shrink-0" style={{ backgroundColor: cardBackground as string }}>
-                    {tabs.map(tab => (
+                <div className="relative flex border-b border-yellow-300/40 px-4 pt-2 gap-4 flex-shrink-0" style={{ backgroundColor: cardBackground as string }}>
+                    {tabs.map((tab, i) => (
                         <button
                             key={tab}
+                            ref={el => { tabRefs.current[i] = el }}
                             onClick={() => setActiveTab(tab)}
-                            style={{ color: activeTab === tab ? '#7a6500' : '#bba000', fontSize: '10px', borderBottom: activeTab === tab ? '2px solid #7a6500' : '2px solid transparent' }}
-                            className="uppercase tracking-widest font-bold pb-2 cursor-pointer transition-all"
+                            style={{ color: activeTab === tab ? '#7a6500' : '#bba000', fontSize: '10px' }}
+                            className="btn-physical uppercase tracking-widest font-bold pb-2 cursor-pointer"
                         >
                             {tab === 'checklist' && checklistItems.length > 0 ? `checklist ${doneCount}/${checklistItems.length}` :
                              tab === 'comments' && comments.length > 0 ? `comments ${comments.length}` :
@@ -375,6 +390,17 @@ const CardEdit: React.FC<CardEditProps> = ({
                              tab}
                         </button>
                     ))}
+                    {/* Sliding indicator — springs between tabs */}
+                    <div style={{
+                        position: 'absolute',
+                        bottom: -1,
+                        left: tabIndicator.left,
+                        width: tabIndicator.width,
+                        height: 2,
+                        backgroundColor: '#7a6500',
+                        borderRadius: 1,
+                        transition: 'left 240ms cubic-bezier(0.34,1.56,0.64,1), width 240ms cubic-bezier(0.34,1.56,0.64,1)',
+                    }} />
                 </div>
             )}
 
@@ -385,6 +411,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                 {(isNew || activeTab === 'details') && (
                     <>
                         <textarea
+                            ref={titleRef}
                             autoFocus
                             placeholder="What needs to be done?"
                             rows={2}
@@ -392,16 +419,29 @@ const CardEdit: React.FC<CardEditProps> = ({
                             style={{ color: '#1a1a1a', caretColor: '#1a1a1a' }}
                             className="w-full bg-transparent text-lg md:text-xl font-bold placeholder-yellow-600/50 focus:outline-none resize-none leading-tight disabled:opacity-70"
                             value={name}
-                            onChange={(e) => setName(e.target.value)}
+                            onChange={(e) => {
+                                setName(e.target.value)
+                                titleRef.current?.animate(
+                                    [{ filter: 'blur(1.4px)' }, { filter: 'blur(0)' }],
+                                    { duration: 90, easing: 'ease-out' }
+                                )
+                            }}
                         />
 
                         <div style={{ borderColor: '#d4c200', opacity: 0.5 }} className="border-t"/>
 
                         <textarea
+                            ref={descRef}
                             rows={3}
                             disabled={isReadOnly}
                             value={description}
-                            onChange={(e) => setDescription(e.target.value)}
+                            onChange={(e) => {
+                                setDescription(e.target.value)
+                                descRef.current?.animate(
+                                    [{ filter: 'blur(1.2px)' }, { filter: 'blur(0)' }],
+                                    { duration: 85, easing: 'ease-out' }
+                                )
+                            }}
                             placeholder="Add some notes..."
                             style={{ color: '#333', caretColor: '#333' }}
                             className="w-full bg-transparent text-sm placeholder-yellow-700/40 focus:outline-none resize-none leading-relaxed disabled:opacity-70"
@@ -413,7 +453,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                                 <button
                                     onClick={() => setShowTemplatePicker(v => !v)}
                                     style={{ fontSize: '9px', borderColor: '#bba000', color: '#7a6500' }}
-                                    className="uppercase tracking-widest px-2 py-1 rounded border cursor-pointer hover:opacity-70 transition-opacity font-bold"
+                                    className="btn-physical uppercase tracking-widest px-2 py-1 rounded border cursor-pointer font-bold"
                                 >
                                     From Template ▾
                                 </button>
@@ -422,7 +462,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                                 <button
                                     onClick={() => setShowSaveTemplate(v => !v)}
                                     style={{ fontSize: '9px', borderColor: '#bba000', color: '#7a6500' }}
-                                    className="uppercase tracking-widest px-2 py-1 rounded border cursor-pointer hover:opacity-70 transition-opacity font-bold"
+                                    className="btn-physical uppercase tracking-widest px-2 py-1 rounded border cursor-pointer font-bold"
                                 >
                                     Save as Template
                                 </button>
@@ -467,7 +507,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                                     style={{ color: '#333', backgroundColor: 'rgba(255,255,255,0.5)', borderColor: '#d4c200', fontSize: '11px' }}
                                     className="flex-1 border rounded px-2 py-1 focus:outline-none placeholder-yellow-600/40"
                                 />
-                                <button onClick={handleSaveTemplate} style={{ backgroundColor: '#d4c200', color: '#fff', fontSize: '10px' }} className="px-2 py-1 rounded font-bold cursor-pointer hover:opacity-80">Save</button>
+                                <button onClick={handleSaveTemplate} style={{ backgroundColor: '#d4c200', color: '#fff', fontSize: '10px' }} className="btn-physical px-2 py-1 rounded font-bold cursor-pointer">Save</button>
                             </div>
                         )}
 
@@ -498,7 +538,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                                                 color: priority === opt.value ? '#fff' : opt.color,
                                                 fontSize: '9px',
                                             }}
-                                            className="uppercase tracking-widest px-2 py-1 rounded-full border cursor-pointer transition-all duration-150 font-bold disabled:opacity-60 disabled:cursor-not-allowed"
+                                            className="btn-physical uppercase tracking-widest px-2 py-1 rounded-full border cursor-pointer font-bold disabled:opacity-60 disabled:cursor-not-allowed"
                                         >
                                             {opt.label}
                                         </button>
@@ -520,7 +560,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                                             disabled={isReadOnly}
                                             onClick={() => setSectionId(s.id)}
                                             style={{ borderColor: color, backgroundColor: isActive ? color : 'transparent', color: isActive ? '#fff' : color, fontSize: '10px' }}
-                                            className="uppercase tracking-widest px-3 py-1.5 rounded-full border cursor-pointer transition-all duration-150 font-bold disabled:opacity-60 disabled:cursor-not-allowed"
+                                            className="btn-physical uppercase tracking-widest px-3 py-1.5 rounded-full border cursor-pointer font-bold disabled:opacity-60 disabled:cursor-not-allowed"
                                         >
                                             {s.name}
                                         </button>
@@ -542,7 +582,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                                                 disabled={isReadOnly}
                                                 onClick={() => toggleTag(tag.id)}
                                                 style={{ borderColor: tag.color, backgroundColor: isActive ? tag.color : 'transparent', color: isActive ? '#fff' : tag.color, fontSize: '10px' }}
-                                                className="uppercase tracking-widest px-2.5 py-1 rounded-full border cursor-pointer transition-all duration-150 font-bold disabled:opacity-60 disabled:cursor-not-allowed"
+                                                className="btn-physical uppercase tracking-widest px-2.5 py-1 rounded-full border cursor-pointer font-bold disabled:opacity-60 disabled:cursor-not-allowed"
                                             >
                                                 {tag.name}
                                             </button>
@@ -564,7 +604,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                                         onClick={() => setAssignedUserId(null)}
                                         title="Unassigned"
                                         style={{ fontSize: '9px', borderColor: '#bbb', color: assignedUserId === null ? '#fff' : '#888', backgroundColor: assignedUserId === null ? '#888' : 'rgba(255,255,255,0.3)', width: 32, height: 32 }}
-                                        className="rounded-full border-2 flex items-center justify-center font-bold cursor-pointer transition-all duration-150 disabled:opacity-60 flex-shrink-0"
+                                        className="btn-physical rounded-full border-2 flex items-center justify-center font-bold cursor-pointer disabled:opacity-60 flex-shrink-0"
                                     >
                                         —
                                     </button>
@@ -578,7 +618,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                                                 onClick={() => setAssignedUserId(isActive ? null : u.id)}
                                                 title={u.name}
                                                 style={{ borderColor: color, backgroundColor: isActive ? color : 'rgba(255,255,255,0.3)', color: isActive ? '#fff' : color, fontSize: '10px', width: 32, height: 32 }}
-                                                className="rounded-full border-2 flex items-center justify-center font-bold cursor-pointer transition-all duration-150 disabled:opacity-60 flex-shrink-0"
+                                                className="btn-physical rounded-full border-2 flex items-center justify-center font-bold cursor-pointer disabled:opacity-60 flex-shrink-0"
                                             >
                                                 {initials(u.name)}
                                             </button>
@@ -593,7 +633,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                             <button
                                 onClick={handleSubmit}
                                 style={{ backgroundColor: currentColor, color: '#fff', fontFamily: 'monospace', letterSpacing: '0.1em', fontSize: '11px' }}
-                                className="w-full py-2.5 rounded font-bold uppercase cursor-pointer hover:opacity-90 transition-opacity duration-150 mt-2 flex-shrink-0"
+                                className="btn-physical w-full py-2.5 rounded font-bold uppercase cursor-pointer hover:opacity-90 mt-2 flex-shrink-0"
                             >
                                 {isNew ? 'Pin it' : 'Save'}
                             </button>
@@ -609,19 +649,23 @@ const CardEdit: React.FC<CardEditProps> = ({
                         )}
                         {checklistItems.map(item => (
                             <div key={item.id} className="flex items-center gap-2 group">
-                                <input
-                                    type="checkbox"
-                                    checked={item.is_done}
-                                    disabled={isReadOnly}
-                                    onChange={() => handleToggleItem(item)}
-                                    className="cursor-pointer accent-yellow-600 w-4 h-4 flex-shrink-0 disabled:cursor-not-allowed"
-                                />
+                                {/* key changes on toggle → React remounts → check-pop replays */}
+                                <div key={`${item.id}-${item.is_done}`} className="check-pop flex-shrink-0">
+                                    <input
+                                        type="checkbox"
+                                        checked={item.is_done}
+                                        disabled={isReadOnly}
+                                        onChange={() => handleToggleItem(item)}
+                                        className="cursor-pointer accent-yellow-600 w-4 h-4 disabled:cursor-not-allowed"
+                                    />
+                                </div>
                                 <span
                                     style={{
                                         color: item.is_done ? '#999' : '#222',
                                         textDecoration: item.is_done ? 'line-through' : 'none',
                                         fontSize: '13px',
                                         flex: 1,
+                                        transition: 'color 200ms ease, text-decoration-color 200ms ease',
                                     }}
                                 >
                                     {item.text}
@@ -630,7 +674,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                                     <button
                                         onClick={() => handleDeleteItem(item)}
                                         style={{ color: '#ccc', fontSize: '10px' }}
-                                        className="opacity-0 group-hover:opacity-100 hover:text-red-500 cursor-pointer transition-all"
+                                        className="btn-physical opacity-0 group-hover:opacity-100 hover:text-red-500 cursor-pointer"
                                     >
                                         ✕
                                     </button>
@@ -665,7 +709,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                                 <button
                                     onClick={handleAddChecklistItem}
                                     style={{ backgroundColor: '#d4c200', color: '#fff', fontSize: '11px' }}
-                                    className="px-3 py-1.5 rounded font-bold cursor-pointer hover:opacity-80 transition-opacity"
+                                    className="btn-physical px-3 py-1.5 rounded font-bold cursor-pointer"
                                 >
                                     +
                                 </button>
@@ -683,14 +727,16 @@ const CardEdit: React.FC<CardEditProps> = ({
                         )}
                         {subtasks.map(s => (
                             <div key={s.id} className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    checked={s.is_done}
-                                    disabled={isReadOnly}
-                                    onChange={() => handleToggleSubtask(s)}
-                                    className="cursor-pointer accent-yellow-600 w-4 h-4 flex-shrink-0 disabled:cursor-not-allowed"
-                                />
-                                <span style={{ color: s.is_done ? '#999' : '#222', textDecoration: s.is_done ? 'line-through' : 'none', fontSize: '13px', flex: 1 }}>
+                                <div key={`${s.id}-${s.is_done}`} className="check-pop flex-shrink-0">
+                                    <input
+                                        type="checkbox"
+                                        checked={s.is_done}
+                                        disabled={isReadOnly}
+                                        onChange={() => handleToggleSubtask(s)}
+                                        className="cursor-pointer accent-yellow-600 w-4 h-4 disabled:cursor-not-allowed"
+                                    />
+                                </div>
+                                <span style={{ color: s.is_done ? '#999' : '#222', textDecoration: s.is_done ? 'line-through' : 'none', fontSize: '13px', flex: 1, transition: 'color 200ms ease' }}>
                                     {s.name}
                                 </span>
                             </div>
@@ -723,7 +769,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                                 <button
                                     onClick={handleAddSubtask}
                                     style={{ backgroundColor: '#d4c200', color: '#fff', fontSize: '11px' }}
-                                    className="px-3 py-1.5 rounded font-bold cursor-pointer hover:opacity-80 transition-opacity"
+                                    className="btn-physical px-3 py-1.5 rounded font-bold cursor-pointer"
                                 >
                                     +
                                 </button>
@@ -768,7 +814,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                                     onClick={handleAddComment}
                                     disabled={!newComment.trim()}
                                     style={{ backgroundColor: '#d4c200', color: '#fff', fontSize: '11px' }}
-                                    className="self-end px-4 py-1.5 rounded font-bold cursor-pointer hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                                    className="btn-physical self-end px-4 py-1.5 rounded font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
                                     Post
                                 </button>

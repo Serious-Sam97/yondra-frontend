@@ -139,11 +139,79 @@ body {
 }
 
 /* ─── Ink text on paper ────────────────────────────────────────────────────── */
-/*
-  Mimics the slight bleed of ink pressed into paper fibres.
-*/
 .ink-text {
   text-shadow:
     0.4px  0.4px 0   rgba(0,0,0,0.07),
     0.8px  0.8px 0.5px rgba(0,0,0,0.04);
 }
+
+/* ─── Modal backdrop + content entrance ───────────────────────────────────── */
+@keyframes backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes modal-drop {
+  0%   { transform: scale(0.88) translateY(14px); opacity: 0; filter: blur(3px); }
+  55%  { transform: scale(1.018) translateY(-3px); opacity: 1; filter: blur(0); }
+  75%  { transform: scale(0.994) translateY(1px); }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+.modal-backdrop { animation: backdrop-in 0.18s ease-out both; }
+.modal-content  { animation: modal-drop  0.30s var(--spring) both; }
+
+/* ─── Input / textarea — recessed into the surface on focus ───────────────── */
+input:focus,
+textarea:focus,
+input[type="number"]:focus {
+  box-shadow:
+    inset 0 2px 5px rgba(0,0,0,0.45),
+    0 0 0 2px rgba(251,191,36,0.22) !important;
+  outline: none !important;
+}
+
+/* ─── Checklist checkbox pop ───────────────────────────────────────────────── */
+@keyframes check-pop {
+  0%   { transform: scale(1); }
+  28%  { transform: scale(1.45) rotate(10deg); }
+  55%  { transform: scale(0.82) rotate(-4deg); }
+  78%  { transform: scale(1.12); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+.check-pop { animation: check-pop 0.30s var(--spring) both; }
+
+/* ─── Section drop-target glow ─────────────────────────────────────────────── */
+@keyframes drop-breathe {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
+}
+.drop-target-active {
+  background: rgba(87,217,163,0.07) !important;
+  box-shadow: inset 0 0 0 2px rgba(87,217,163,0.45);
+  border-radius: 12px;
+  animation: drop-breathe 0.9s ease-in-out infinite;
+}
+
+/* ─── Notification bell ring ───────────────────────────────────────────────── */
+@keyframes bell-ring {
+  0%,  100% { transform: rotate(0deg) scale(1); }
+  12%        { transform: rotate(20deg) scale(1.12); }
+  25%        { transform: rotate(-16deg); }
+  37%        { transform: rotate(14deg); }
+  50%        { transform: rotate(-10deg); }
+  62%        { transform: rotate(7deg); }
+  75%        { transform: rotate(-4deg); }
+  87%        { transform: rotate(2deg); }
+}
+.bell-ring { animation: bell-ring 0.65s var(--ease-expo) both; }
+
+/* ─── WIP limit column shake ───────────────────────────────────────────────── */
+@keyframes wip-shake {
+  0%   { transform: translateX(0); }
+  15%  { transform: translateX(-8px) rotate(-0.4deg); }
+  30%  { transform: translateX(7px)  rotate(0.3deg); }
+  45%  { transform: translateX(-5px) rotate(-0.2deg); }
+  60%  { transform: translateX(4px); }
+  78%  { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
+.wip-shake { animation: wip-shake 0.46s var(--ease-expo) both; }

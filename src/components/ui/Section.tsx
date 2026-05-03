@@ -1,15 +1,18 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { CardInterface } from "@/interfaces/CardInterface"
 import { Droppable } from "../shared/Droppable"
 import { Card } from "./Card"
 import { SectionInterface } from "@/interfaces/SectionInterface"
+import { playWipReject } from "@/lib/sound"
 
 export function Section({id, name, color, cards, handleClick, onDelete, onRename, wipLimit, onSetWipLimit}: SectionInterface) {
     const [editing, setEditing] = useState(false)
     const [editValue, setEditValue] = useState(name)
     const [editingWip, setEditingWip] = useState(false)
     const [wipInput, setWipInput] = useState('')
+    const [shaking, setShaking] = useState(false)
     const wipInputRef = useRef<HTMLInputElement>(null)
+    const prevOverLimit = useRef(false)
 
     const commitRename = () => {
         const trimmed = editValue.trim()
@@ -39,6 +42,19 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
     const countColor = overLimit ? '#ef4444' : atLimit ? '#f97316' : '#6b7280'
     const countBg    = overLimit ? '#ef444422' : atLimit ? '#f9731622' : '#1f2937'
 
+    // Shake + sound when a card pushes the column over its WIP limit
+    useEffect(() => {
+        if (overLimit && !prevOverLimit.current) {
+            setShaking(true)
+            playWipReject()
+            setTimeout(() => setShaking(false), 500)
+        }
+        prevOverLimit.current = overLimit
+    }, [overLimit])
+
+    // Column sags under load — subtle translateY proportional to card count
+    const sag = Math.min(count * 0.45, 7)
+
     const style = {
         minHeight: '300px',
         display: 'flex',
@@ -47,7 +63,10 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
     }
 
     return (
-        <div className="flex flex-col w-64 flex-shrink-0 group/section">
+        <div
+            className={`flex flex-col w-64 flex-shrink-0 group/section ${shaking ? 'wip-shake' : ''}`}
+            style={{ transform: shaking ? undefined : `translateY(${sag}px)`, transition: shaking ? 'none' : 'transform 600ms cubic-bezier(0.16,1,0.3,1)' }}
+        >
             {/* Column header */}
             <div className="flex items-center gap-2 mb-3 px-1">
                 <div style={{ backgroundColor: color }} className="w-2 h-2 rounded-full flex-shrink-0"/>
@@ -87,7 +106,7 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
                 {onSetWipLimit && (
                     <button
                         onClick={openWipEdit}
-                        className="opacity-0 group-hover/section:opacity-100 text-gray-600 hover:text-amber-400 text-xs cursor-pointer transition-all duration-150 leading-none flex-shrink-0"
+                        className="btn-physical opacity-0 group-hover/section:opacity-100 text-gray-600 hover:text-amber-400 text-xs cursor-pointer leading-none flex-shrink-0"
                         title="Set WIP limit"
                     >
                         ⚙
@@ -97,7 +116,7 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
                 {onDelete && (
                     <button
                         onClick={onDelete}
-                        className="opacity-0 group-hover/section:opacity-100 text-gray-600 hover:text-red-400 text-xs cursor-pointer transition-all duration-150 leading-none ml-1 flex-shrink-0"
+                        className="btn-physical opacity-0 group-hover/section:opacity-100 text-gray-600 hover:text-red-400 text-xs cursor-pointer leading-none ml-1 flex-shrink-0"
                         title="Delete section"
                     >
                         ✕
@@ -121,8 +140,8 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
                         placeholder="Limit..."
                         className="w-20 bg-gray-800 border border-gray-600 text-white text-xs px-2 py-1 rounded focus:outline-none focus:border-amber-400"
                     />
-                    <button onClick={commitWip} className="text-xs text-amber-400 font-bold cursor-pointer hover:text-amber-300">Set</button>
-                    <button onClick={() => { onSetWipLimit?.(null); setEditingWip(false); }} className="text-xs text-gray-500 cursor-pointer hover:text-gray-300">Clear</button>
+                    <button onClick={commitWip} className="btn-physical text-xs text-amber-400 font-bold cursor-pointer hover:text-amber-300">Set</button>
+                    <button onClick={() => { onSetWipLimit?.(null); setEditingWip(false); }} className="btn-physical text-xs text-gray-500 cursor-pointer hover:text-gray-300">Clear</button>
                 </div>
             )}
 

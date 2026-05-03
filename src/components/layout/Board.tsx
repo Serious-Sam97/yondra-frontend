@@ -1,6 +1,6 @@
 'use client'
 
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { Card } from "../ui/Card";
 import { useEffect, useRef, useState } from "react";
 import { Section } from "../ui/Section";
@@ -29,6 +29,7 @@ import {
     demoArchiveCard, demoRestoreCard, loadDemoArchivedCards,
     loadDemoTemplates,
 } from "@/lib/demoStorage";
+import { playPickup, playDrop } from "@/lib/sound";
 
 const SECTION_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107'];
 
@@ -359,11 +360,15 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         return () => window.removeEventListener('keydown', handleGlobalEvent);
     }, [isReadOnly, isCardVisible, isTagsOpen, isActivityOpen, isArchivedOpen, isBgOpen, isChatOpen, isCommandOpen]);
 
-    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+    const sensors = useSensors(
+        useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(TouchSensor,  { activationConstraint: { delay: 200, tolerance: 8 } })
+    );
 
     function handleDragStart(event: any) {
         const cardId = Number(event.active.id.split('-')[1]);
         setActiveCard(cardsProp.find(c => c.id === cardId) ?? null);
+        playPickup();
     }
 
     return (
@@ -876,6 +881,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
     function handleDragEnd(event: any) {
         setActiveCard(null);
+        if (event.over) playDrop();
         const sectionSelected = sections.find(section => section.name === event.over?.id);
         if (!sectionSelected) return;
         const selectedCardId = Number(event.active.id.split('-')[1]);

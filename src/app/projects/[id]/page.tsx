@@ -394,6 +394,14 @@ function RightPanel({ project, currentUserId, onMembersClick }: { project: any; 
     );
 }
 
+// ─── Sidebar cache (module-level — survives component remounts on route change) ─
+// Next.js App Router remounts the page on every router.push, so a ref won't work.
+// Storing user + project lists here means the sidebar is hydrated instantly on
+// every project switch instead of blinking empty during the fetch.
+let _cachedUser:   any    = null;
+let _cachedOwned:  any[]  = [];
+let _cachedMember: any[]  = [];
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function ProjectPage() {
@@ -401,12 +409,15 @@ export default function ProjectPage() {
     const router    = useRouter();
     const projectId = Number(params.id);
 
-    const [user, setUser]                     = useState<any>(null);
+    const hasSidebar = _cachedOwned.length > 0 || _cachedMember.length > 0;
+
+    const [user, setUser]                     = useState<any>(_cachedUser);
     const [project, setProject]               = useState<any>(null);
-    const [ownedProjects, setOwnedProjects]   = useState<any[]>([]);
-    const [memberProjects, setMemberProjects] = useState<any[]>([]);
+    const [ownedProjects, setOwnedProjects]   = useState<any[]>(_cachedOwned);
+    const [memberProjects, setMemberProjects] = useState<any[]>(_cachedMember);
     const [editMode, setEditMode]             = useState(false);
     const [sidebarOpen, setSidebarOpen]       = useState(false);
+    const [contentLoading, setContentLoading] = useState(true);
 
     type ModalState =
         | { type: 'project-edit' }
@@ -418,25 +429,42 @@ export default function ProjectPage() {
     const [modal, setModal] = useState<ModalState>(null);
 
     useEffect(() => {
-        setProject(null);
-        (async () => {
-            try {
-                const [u, projectData, allProjects] = await Promise.all([
-                    fetchUser(),
-                    fetchProject(projectId),
-                    fetchProjects(),
-                ]);
-                if (u) setUser(u);
-                if (projectData) setProject(projectData);
-                if (allProjects) {
-                    setOwnedProjects(allProjects.owned ?? []);
-                    setMemberProjects(allProjects.member ?? []);
-                }
-            } catch { router.push('/dashboard'); }
-        })();
+        setContentLoading(true);
+        setModal(null);
+        setEditMode(false);
+
+        if (!hasSidebar) {
+            // ── Very first visit: fetch sidebar data + current project together ─
+            (async () => {
+                try {
+                    const [u, projectData, allProjects] = await Promise.all([
+                        fetchUser(),
+                        fetchProject(projectId),
+                        fetchProjects(),
+                    ]);
+                    const owned  = allProjects?.owned  ?? [];
+                    const member = allProjects?.member ?? [];
+                    _cachedUser   = u;
+                    _cachedOwned  = owned;
+                    _cachedMember = member;
+                    if (u)           setUser(u);
+                    if (projectData) setProject(projectData);
+                    setOwnedProjects(owned);
+                    setMemberProjects(member);
+                } catch { router.push('/dashboard'); }
+                finally { setContentLoading(false); }
+            })();
+        } else {
+            // ── Project switch: sidebar already populated, only reload center ───
+            fetchProject(projectId)
+                .then(data => { setProject(data); setContentLoading(false); })
+                .catch(() => router.push('/dashboard'));
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [projectId]);
 
-    if (!project) {
+    // Full-page spinner only on the very first visit (no sidebar cache yet)
+    if (!hasSidebar && contentLoading) {
         return (
             <div className="min-h-[calc(100vh-56px)] flex items-center justify-center" style={{ backgroundColor: '#0a0a06' }}>
                 <p style={{ color: '#5a4e28', fontFamily: 'Georgia, serif', fontSize: '12px' }} className="uppercase tracking-widest">Loading…</p>
@@ -444,8 +472,8 @@ export default function ProjectPage() {
         );
     }
 
-    const boards: any[]  = project.boards ?? [];
-    const isOwner        = project.owner_id === user?.id;
+    const boards: any[]  = project?.boards ?? [];
+    const isOwner        = project?.owner_id === user?.id;
     const allProjects    = [...ownedProjects, ...memberProjects];
 
     // ── handlers ─────────────────────────────────────────────────────────────
@@ -550,7 +578,8 @@ export default function ProjectPage() {
             </aside>
 
             {/* ── Center ── */}
-            <main className="flex-1 flex flex-col overflow-hidden">
+            <main className="flex-1 flex flex-col overflow-hidden"
+                style={{ opacity: contentLoading ? 0.35 : 1, pointerEvents: contentLoading ? 'none' : undefined, transition: 'opacity 200ms ease' }}>
                 {/* header */}
                 <div className="flex items-center gap-3 px-5 py-3 border-b flex-shrink-0 flex-wrap"
                     style={{ borderColor: '#1e1e12', backgroundColor: '#0d0d08' }}>
@@ -559,9 +588,9 @@ export default function ProjectPage() {
                         onClick={() => setSidebarOpen(s => !s)}>☰</button>
 
                     {/* color dot + project name */}
-                    <div style={{ backgroundColor: project.color, width: 10, height: 10, borderRadius: '2px', flexShrink: 0 }} />
+                    <div style={{ backgroundColor: project?.color ?? 'transparent', width: 10, height: 10, borderRadius: '2px', flexShrink: 0 }} />
                     <p style={{ color: '#c8b060', fontFamily: 'Georgia, serif', fontSize: '15px' }} className="font-bold truncate flex-1">
-                        {project.name}
+                        {project?.name ?? ''}
                     </p>
 
                     {/* actions */}
@@ -587,7 +616,7 @@ export default function ProjectPage() {
                         </button>
                         {isOwner && (
                             <button onClick={() => setModal({ type: 'board-new' })}
-                                style={{ backgroundColor: project.color, color: '#fff', fontSize: '9px' }}
+                                style={{ backgroundColor: project?.color ?? '#888', color: '#fff', fontSize: '9px' }}
                                 className="uppercase tracking-widest font-bold px-3 py-1.5 rounded-sm cursor-pointer hover:opacity-90 transition-opacity">
                                 + Board
                             </button>
@@ -603,7 +632,7 @@ export default function ProjectPage() {
                             <p style={{ color: '#5a4e28', fontSize: '11px' }} className="uppercase tracking-widest mt-3">No boards yet</p>
                             {isOwner && (
                                 <button onClick={() => setModal({ type: 'board-new' })}
-                                    style={{ color: project.color, borderColor: project.color + '44', fontSize: '9px' }}
+                                    style={{ color: project?.color ?? '#888', borderColor: (project?.color ?? '#888') + '44', fontSize: '9px' }}
                                     className="mt-4 uppercase tracking-widest px-4 py-2 rounded-sm border cursor-pointer hover:opacity-80 transition-opacity">
                                     + Create First Board
                                 </button>
@@ -612,7 +641,7 @@ export default function ProjectPage() {
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
                             {boards.map((b: any) => (
-                                <BoardCard key={b.id} board={b} projectColor={project.color}
+                                <BoardCard key={b.id} board={b} projectColor={project?.color ?? '#888'}
                                     editMode={editMode} isOwner={isOwner}
                                     onClick={() => handleBoardClick(b)} />
                             ))}
@@ -623,8 +652,8 @@ export default function ProjectPage() {
 
             {/* ── Right panel (desktop) ── */}
             <aside className="hidden xl:flex flex-col w-52 flex-shrink-0 overflow-y-auto p-4 gap-4"
-                style={{ backgroundColor: '#0f0f08', borderLeft: '1px solid #1e1e12' }}>
-                <RightPanel project={project} currentUserId={user?.id} onMembersClick={() => setModal({ type: 'members' })} />
+                style={{ backgroundColor: '#0f0f08', borderLeft: '1px solid #1e1e12', opacity: contentLoading ? 0.35 : 1, pointerEvents: contentLoading ? 'none' : undefined, transition: 'opacity 200ms ease' }}>
+                {project && <RightPanel project={project} currentUserId={user?.id} onMembersClick={() => setModal({ type: 'members' })} />}
             </aside>
 
             {/* ── Modals ── */}

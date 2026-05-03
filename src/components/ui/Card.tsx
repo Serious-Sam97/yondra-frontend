@@ -3,6 +3,10 @@
 import { useRef } from "react";
 import { CardInterface } from "@/interfaces/CardInterface";
 import { Draggable } from "../shared/Draggable";
+import { initLight, getLightShadow } from "@/lib/lightSource";
+
+// Boot the global light tracker the moment this module loads client-side
+initLight();
 
 const AVATAR_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107', '#00BCD4', '#E91E63'];
 
@@ -18,7 +22,7 @@ const EASE_EXPO = 'cubic-bezier(0.16, 1, 0.3, 1)';
 function resetCard(el: HTMLDivElement, transition = `transform 400ms ${SPRING}, box-shadow 400ms ${SPRING}`) {
     el.style.transition = transition;
     el.style.transform  = '';
-    el.style.boxShadow  = '3px 3px 8px rgba(0,0,0,0.35)';
+    el.style.boxShadow  = getLightShadow();  // shadow direction follows global light
     el.style.zIndex     = '';
 }
 
@@ -63,13 +67,16 @@ function DueDateBadge({ dueDate }: { dueDate: string }) {
     );
 }
 
-function cardAgeOpacity(updatedAt?: string | null): number {
-    if (!updatedAt) return 1;
+// Cards age visually: more sepia + faded as days-since-touch increases.
+// Touching a card (edit/move) resets the clock.
+function cardAge(updatedAt?: string | null): { opacity: number; filter: string } {
+    if (!updatedAt) return { opacity: 1, filter: 'none' };
     const days = (Date.now() - new Date(updatedAt).getTime()) / 86400000;
-    if (days < 3) return 1;
-    if (days < 7) return 0.82;
-    if (days < 14) return 0.65;
-    return 0.48;
+    if (days < 4)  return { opacity: 1,    filter: 'none' };
+    if (days < 7)  return { opacity: 0.93, filter: 'sepia(0.18)' };
+    if (days < 14) return { opacity: 0.84, filter: 'sepia(0.35)' };
+    if (days < 30) return { opacity: 0.72, filter: 'sepia(0.55) brightness(0.96)' };
+    return                { opacity: 0.58, filter: 'sepia(0.75) brightness(0.90) contrast(0.95)' };
 }
 
 function blendWithCream(hex: string, amount = 0.18): string {
@@ -90,7 +97,7 @@ export function Card({ id, name, description, assigned_user, created_by, tags, d
     const doneItems = (checklist_items ?? []).filter(i => i.is_done).length;
     const totalItems = (checklist_items ?? []).length;
     const primaryTagColor = tags?.[0]?.color ?? null;
-    const opacity = cardAgeOpacity(updated_at);
+    const { opacity, filter } = cardAge(updated_at);
 
     const cardBackground = primaryTagColor
         ? blendWithCream(primaryTagColor)
@@ -166,12 +173,13 @@ export function Card({ id, name, description, assigned_user, created_by, tags, d
                 onPointerLeave={handlePointerLeave}
                 style={{
                     background: cardBackground,
-                    boxShadow: '3px 3px 8px rgba(0,0,0,0.35)',
+                    boxShadow: getLightShadow(),
                     fontFamily: 'Georgia, serif',
                     minHeight: '120px',
                     position: 'relative',
                     borderLeft: priorityColor ? `3px solid ${priorityColor}` : undefined,
                     opacity,
+                    filter: filter !== 'none' ? filter : undefined,
                     willChange: 'transform',
                 }}
                 className="sticky-note cursor-pointer rounded-sm flex flex-col"
