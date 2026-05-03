@@ -578,7 +578,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             )}
 
             {/* Desktop toolbar — vertical on kanban/list, horizontal bottom bar on calendar/analytics */}
-            {(viewMode === 'kanban' || viewMode === 'list') ? (
+            {viewMode === 'kanban' ? (
                 <div className="hidden lg:flex flex-col items-end gap-2 fixed z-40" style={{ right: '24px', bottom: '96px' }}>
                     <ToolBtn icon="🏷" label="Tags" onClick={() => setIsTagsOpen(true)} />
                     {!isDemo && <ToolBtn icon="📋" label="Activity" onClick={handleOpenActivity} />}
