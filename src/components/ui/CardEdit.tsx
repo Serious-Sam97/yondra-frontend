@@ -322,13 +322,13 @@ const CardEdit: React.FC<CardEditProps> = ({
         : 'linear-gradient(to bottom, #e6d800, #f5e642)';
     const glueTextColor = primaryTagColor ? 'rgba(255,255,255,0.85)' : '#a89800';
 
-    const tabs = isNew
+    const tabs: Array<'details' | 'checklist' | 'subtasks' | 'comments'> = isNew
         ? []
-        : (['details', 'checklist', 'subtasks', 'comments'] as const)
+        : ['details', 'checklist', 'subtasks', 'comments']
 
     // Measure tab button positions for sliding indicator
     useEffect(() => {
-        const idx = tabs.indexOf(activeTab as any)
+        const idx = tabs.indexOf(activeTab)
         const btn = tabRefs.current[idx]
         if (btn) setTabIndicator({ left: btn.offsetLeft, width: btn.offsetWidth })
     }, [activeTab, tabs.length])
