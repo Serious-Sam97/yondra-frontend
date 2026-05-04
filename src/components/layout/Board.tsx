@@ -701,7 +701,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                                 <span className="text-[9px] uppercase tracking-widest text-gray-600 font-bold">Tools</span>
                             )}
                         </div>
-                        <div className="flex justify-evenly px-2 pb-8 pt-1">
+                        <div className="flex flex-wrap justify-evenly px-2 pb-8 pt-1 gap-y-1">
                             <MobileToolBtn icon="🏷" label="Tags" onClick={() => { setIsTagsOpen(true); setIsToolbarOpen(false); }} />
                             {!isDemo && <MobileToolBtn icon="📋" label="Activity" onClick={() => { handleOpenActivity(); setIsToolbarOpen(false); }} />}
                             {!isDemo && <MobileToolBtn icon="💬" label="Chat" onClick={() => { handleOpenChat(); setIsToolbarOpen(false); }} />}
