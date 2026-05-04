@@ -658,7 +658,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                     {!isDemo && <ToolBtn icon="💬" label="Chat" onClick={handleOpenChat} />}
                     <ToolBtn icon="🗂" label="Archived" onClick={handleOpenArchived} />
                     <ToolBtn icon="🎨" label="Background" onClick={() => setIsBgOpen(true)} />
-                    {!isReadOnly && <ToolBtn icon="⚙" label="Config" onClick={() => setIsBoardConfigOpen(true)} />}
+                    {!isDemo && <ToolBtn icon="⚙" label="Config" onClick={() => setIsBoardConfigOpen(true)} />}
                 </div>
             ) : (
                 <div className="hidden lg:flex flex-row items-center gap-2 fixed z-40" style={{ bottom: '28px', left: '50%', transform: 'translateX(-50%)' }}>
@@ -668,7 +668,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                         ...(!isDemo ? [{ icon: '💬', label: 'Chat',       onClick: handleOpenChat }] : []),
                         { icon: '🗂', label: 'Archived',   onClick: handleOpenArchived },
                         { icon: '🎨', label: 'Background', onClick: () => setIsBgOpen(true) },
-                        ...(!isReadOnly ? [{ icon: '⚙', label: 'Config', onClick: () => setIsBoardConfigOpen(true) }] : []),
+                        ...(!isDemo ? [{ icon: '⚙', label: 'Config', onClick: () => setIsBoardConfigOpen(true) }] : []),
                     ].map(({ icon, label, onClick }) => (
                         <button key={label} onClick={onClick} title={label}
                             className="btn-physical w-10 h-10 rounded-lg bg-gray-900/95 border border-gray-700 flex items-center justify-center hover:border-amber-400/60 hover:bg-gray-800 cursor-pointer text-lg shadow-lg backdrop-blur-sm"
@@ -707,7 +707,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                             {!isDemo && <MobileToolBtn icon="💬" label="Chat" onClick={() => { handleOpenChat(); setIsToolbarOpen(false); }} />}
                             <MobileToolBtn icon="🗂" label="Archived" onClick={() => { handleOpenArchived(); setIsToolbarOpen(false); }} />
                             <MobileToolBtn icon="🎨" label="Background" onClick={() => { setIsBgOpen(true); setIsToolbarOpen(false); }} />
-                            {!isReadOnly && <MobileToolBtn icon="⚙" label="Config" onClick={() => { setIsBoardConfigOpen(true); setIsToolbarOpen(false); }} />}
+                            {!isDemo && <MobileToolBtn icon="⚙" label="Config" onClick={() => { setIsBoardConfigOpen(true); setIsToolbarOpen(false); }} />}
                         </div>
                     </div>
                 </div>
