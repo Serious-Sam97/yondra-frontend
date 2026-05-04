@@ -1,6 +1,7 @@
 'use client'
 
 import { DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
 import { Card } from "../ui/Card";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Section } from "../ui/Section";
@@ -34,6 +35,7 @@ import { hapticPick, hapticDrop } from "@/lib/haptics";
 import { initGyroscope, requestGyroscopePermission } from "@/lib/lightSource";
 import { initGravityField } from "@/lib/gravityField";
 import { triggerInkSplash } from "@/components/ui/SpringTrail";
+import { BoardConfig } from "@/components/ui/BoardConfig";
 
 const SECTION_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107'];
 
@@ -79,6 +81,7 @@ function initials(name: string): string {
     return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
+
 interface BoardProps extends BoardInterface {
     size: string;
     isDemo?: boolean;
@@ -114,6 +117,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const [wipLimits, setWipLimits] = useState<Record<number, number | null>>({});
     const [boardBg, setBoardBg] = useState<string>('');
     const [isBgOpen, setIsBgOpen] = useState(false);
+    const [isBoardConfigOpen, setIsBoardConfigOpen] = useState(false);
     const [boardTemplates, setBoardTemplates] = useState<any[]>([]);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatMessages, setChatMessages] = useState<any[]>([]);
@@ -224,6 +228,16 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                     setSections(prev => prev.filter(s => s.id !== e.payload.id));
                     setCards(prev => prev.filter(c => c.section_id !== e.payload.id));
                     break;
+                case 'sections.reordered': {
+                    const ids: number[] = e.payload.section_ids;
+                    setSections(prev => {
+                        const map = new Map(prev.map(s => [s.id, s]));
+                        const sorted = ids.map(id => map.get(id)).filter(Boolean) as typeof prev;
+                        const rest   = prev.filter(s => !ids.includes(s.id));
+                        return [...sorted, ...rest];
+                    });
+                    break;
+                }
                 case 'message.created':
                     setChatMessages(prev => prev.some(m => m.id === e.payload.id) ? prev : [...prev, e.payload]);
                     break;
@@ -294,13 +308,13 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         if (filterTagId !== null) filtered = filtered.filter(card => (card.tags ?? []).some((t: any) => t.id === filterTagId));
         if (searchQuery.trim()) {
             const q = searchQuery.trim().toLowerCase();
-            filtered = filtered.filter(card => card.name.toLowerCase().includes(q) || (card.description ?? '').toLowerCase().includes(q));
+            filtered = filtered.filter(card => card.name?.toLowerCase().includes(q) || (card.description ?? '').toLowerCase().includes(q));
         }
         return filtered;
     };
 
     const totalCards = cardsProp.length;
-    const doneSection = sections.find(s => s.name.toLowerCase() === 'done');
+    const doneSection = sections.find(s => s.name?.toLowerCase() === 'done');
     const doneCards = doneSection ? cardsProp.filter(c => c.section_id === doneSection.id).length : 0;
 
     // --- Card management ---
@@ -549,7 +563,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                 if (filterTagId !== null) filtered = filtered.filter((c: any) => (c.tags ?? []).some((t: any) => t.id === filterTagId));
                 if (searchQuery.trim()) {
                     const q = searchQuery.trim().toLowerCase();
-                    filtered = filtered.filter((c: any) => c.name.toLowerCase().includes(q) || (c.description ?? '').toLowerCase().includes(q));
+                    filtered = filtered.filter((c: any) => c.name?.toLowerCase().includes(q) || (c.description ?? '').toLowerCase().includes(q));
                 }
                 return <ListView cards={filtered} sections={sections} users={boardUsers} onCardClick={handleClick} />;
             })()}
@@ -644,6 +658,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                     {!isDemo && <ToolBtn icon="💬" label="Chat" onClick={handleOpenChat} />}
                     <ToolBtn icon="🗂" label="Archived" onClick={handleOpenArchived} />
                     <ToolBtn icon="🎨" label="Background" onClick={() => setIsBgOpen(true)} />
+                    {!isReadOnly && <ToolBtn icon="⚙" label="Config" onClick={() => setIsBoardConfigOpen(true)} />}
                 </div>
             ) : (
                 <div className="hidden lg:flex flex-row items-center gap-2 fixed z-40" style={{ bottom: '28px', left: '50%', transform: 'translateX(-50%)' }}>
@@ -653,6 +668,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                         ...(!isDemo ? [{ icon: '💬', label: 'Chat',       onClick: handleOpenChat }] : []),
                         { icon: '🗂', label: 'Archived',   onClick: handleOpenArchived },
                         { icon: '🎨', label: 'Background', onClick: () => setIsBgOpen(true) },
+                        ...(!isReadOnly ? [{ icon: '⚙', label: 'Config', onClick: () => setIsBoardConfigOpen(true) }] : []),
                     ].map(({ icon, label, onClick }) => (
                         <button key={label} onClick={onClick} title={label}
                             className="btn-physical w-10 h-10 rounded-lg bg-gray-900/95 border border-gray-700 flex items-center justify-center hover:border-amber-400/60 hover:bg-gray-800 cursor-pointer text-lg shadow-lg backdrop-blur-sm"
@@ -691,6 +707,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                             {!isDemo && <MobileToolBtn icon="💬" label="Chat" onClick={() => { handleOpenChat(); setIsToolbarOpen(false); }} />}
                             <MobileToolBtn icon="🗂" label="Archived" onClick={() => { handleOpenArchived(); setIsToolbarOpen(false); }} />
                             <MobileToolBtn icon="🎨" label="Background" onClick={() => { setIsBgOpen(true); setIsToolbarOpen(false); }} />
+                            {!isReadOnly && <MobileToolBtn icon="⚙" label="Config" onClick={() => { setIsBoardConfigOpen(true); setIsToolbarOpen(false); }} />}
                         </div>
                     </div>
                 </div>
@@ -844,6 +861,18 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                             ))}
                         </div>
                     </div>
+                </Modal>
+            )}
+
+            {/* Board config modal */}
+            {isBoardConfigOpen && (
+                <Modal>
+                    <BoardConfig
+                        boardId={id}
+                        sections={sections}
+                        onClose={() => setIsBoardConfigOpen(false)}
+                        onSectionsReordered={setSections}
+                    />
                 </Modal>
             )}
 

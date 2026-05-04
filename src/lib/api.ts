@@ -83,6 +83,10 @@ export async function updateSection(boardId: number, sectionId: number, name: st
   return apiFetch(`/api/boards/${boardId}/sections/${sectionId}`, { method: 'PUT', body: JSON.stringify({ name }) });
 }
 
+export async function reorderSections(boardId: number, sectionIds: number[]) {
+  return apiFetch(`/api/boards/${boardId}/sections/reorder`, { method: 'POST', body: JSON.stringify({ section_ids: sectionIds }) });
+}
+
 // --- Tags ---
 
 export async function createTag(boardId: number, data: { name: string; color: string }) {
