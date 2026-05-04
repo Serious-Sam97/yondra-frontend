@@ -17,9 +17,8 @@ export function Draggable({ id, children }: { id: string; children: React.ReactN
                 border: 'none',
                 padding: 0,
                 textAlign: 'left',
-                touchAction: 'none',      // prevent browser scroll hijacking touch drag
-                userSelect: 'none',       // prevent text selection on long-press
-                WebkitUserSelect: 'none', // Safari
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
             }}
         >
             {children}

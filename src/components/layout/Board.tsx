@@ -405,7 +405,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
     const sensors = useSensors(
         useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
-        useSensor(TouchSensor,  { activationConstraint: { delay: 200, tolerance: 8 } })
+        useSensor(TouchSensor,  { activationConstraint: { delay: 350, tolerance: 5 } })
     );
 
     function handleDragStart(event: any) {
