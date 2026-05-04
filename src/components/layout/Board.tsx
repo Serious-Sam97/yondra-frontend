@@ -32,6 +32,8 @@ import {
 import { playPickup, playDrop } from "@/lib/sound";
 import { hapticPick, hapticDrop } from "@/lib/haptics";
 import { initGyroscope, requestGyroscopePermission } from "@/lib/lightSource";
+import { initGravityField } from "@/lib/gravityField";
+import { triggerInkSplash } from "@/components/ui/SpringTrail";
 
 const SECTION_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107'];
 
@@ -125,8 +127,9 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     // Board gravity tilt — the board tilts toward wherever the card is being dragged
     const kanbanRef      = useRef<HTMLDivElement>(null);
     const gyroRequested  = useRef(false);
+    const lastPointerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-    useEffect(() => { initGyroscope(); }, []);
+    useEffect(() => { initGyroscope(); initGravityField(); }, []);
 
     const applyTilt = useCallback((clientX: number, clientY: number) => {
         const el = kanbanRef.current;
@@ -149,7 +152,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     // on the container stops firing. Listen on window instead while a card is active.
     useEffect(() => {
         if (!activeCard) return;
-        const onMove = (e: PointerEvent) => applyTilt(e.clientX, e.clientY);
+        const onMove = (e: PointerEvent) => { lastPointerRef.current = { x: e.clientX, y: e.clientY }; applyTilt(e.clientX, e.clientY); };
         window.addEventListener('pointermove', onMove, { passive: true });
         return () => window.removeEventListener('pointermove', onMove);
     }, [activeCard, applyTilt]);
@@ -682,7 +685,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                                 <span className="text-[9px] uppercase tracking-widest text-gray-600 font-bold">Tools</span>
                             )}
                         </div>
-                        <div className="flex justify-around px-6 pb-8 pt-1">
+                        <div className="flex justify-evenly px-2 pb-8 pt-1">
                             <MobileToolBtn icon="🏷" label="Tags" onClick={() => { setIsTagsOpen(true); setIsToolbarOpen(false); }} />
                             {!isDemo && <MobileToolBtn icon="📋" label="Activity" onClick={() => { handleOpenActivity(); setIsToolbarOpen(false); }} />}
                             {!isDemo && <MobileToolBtn icon="💬" label="Chat" onClick={() => { handleOpenChat(); setIsToolbarOpen(false); }} />}
@@ -928,7 +931,10 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     function handleDragEnd(event: any) {
         setActiveCard(null);
         resetTilt();
-        if (event.over) { playDrop(); hapticDrop(); }
+        if (event.over) {
+            playDrop(); hapticDrop();
+            triggerInkSplash(lastPointerRef.current.x, lastPointerRef.current.y);
+        }
         const sectionSelected = sections.find(section => section.name === event.over?.id);
         if (!sectionSelected) return;
         const selectedCardId = Number(event.active.id.split('-')[1]);

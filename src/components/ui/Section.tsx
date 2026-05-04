@@ -13,7 +13,9 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
     const [wipInput, setWipInput] = useState('')
     const [shaking, setShaking] = useState(false)
     const wipInputRef = useRef<HTMLInputElement>(null)
+    const cardListRef = useRef<HTMLDivElement>(null)
     const prevOverLimit = useRef(false)
+    const prevCount = useRef(cards.length)
 
     const commitRename = () => {
         const trimmed = editValue.trim()
@@ -42,6 +44,19 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
     const overLimit = wipLimit != null && count > wipLimit
     const countColor = overLimit ? '#ef4444' : atLimit ? '#f97316' : '#6b7280'
     const countBg    = overLimit ? '#ef444422' : atLimit ? '#f9731622' : '#1f2937'
+
+    // Ring animation when a card lands in this column — direct DOM to restart reliably
+    useEffect(() => {
+        if (cards.length > prevCount.current) {
+            const el = cardListRef.current
+            if (el) {
+                el.classList.remove('col-ring')
+                void el.offsetWidth  // force reflow so browser sees the removal
+                el.classList.add('col-ring')
+            }
+        }
+        prevCount.current = cards.length
+    }, [cards.length])
 
     // Shake + sound when a card pushes the column over its WIP limit
     useEffect(() => {
@@ -160,7 +175,7 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
             )}
 
             {/* Card list */}
-            <div style={{ backgroundColor: color + '33', borderColor: color + '55' }} className="border rounded-xl p-2 flex-1 max-h-[50vh] md:max-h-[calc(100vh-320px)] overflow-y-auto">
+            <div ref={cardListRef} style={{ backgroundColor: color + '33', borderColor: color + '55' }} className="border rounded-xl p-2 flex-1 max-h-[50vh] md:max-h-[calc(100vh-320px)] overflow-y-auto">
                 <Droppable style={style} key={id} id={name}>
                     {cards.map((card: CardInterface) => (
                         <div key={card.id} onClick={() => handleClick(card)}>

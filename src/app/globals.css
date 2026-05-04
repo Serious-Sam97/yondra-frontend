@@ -215,3 +215,12 @@ input[type="number"]:focus {
   100% { transform: translateX(0); }
 }
 .wip-shake { animation: wip-shake 0.46s var(--ease-expo) both; }
+
+/* ─── Card drop column resonance ───────────────────────────────────────────── */
+@keyframes col-ring {
+  0%   { box-shadow: inset 0 0 0 0px rgba(200,176,96,0);   }
+  18%  { box-shadow: inset 0 0 0 2px rgba(200,176,96,0.55); }
+  55%  { box-shadow: inset 0 0 0 1px rgba(200,176,96,0.20); }
+  100% { box-shadow: inset 0 0 0 0px rgba(200,176,96,0);   }
+}
+.col-ring { animation: col-ring 0.55s var(--ease-expo) both; }
