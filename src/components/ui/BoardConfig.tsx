@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { DndContext, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { reorderSections } from '@/lib/api'
@@ -25,14 +25,16 @@ function SortableRow({ section, index, color }: { section: Section; index: numbe
             style={{
                 transform: CSS.Transform.toString(transform),
                 transition: transition ?? undefined,
-                opacity: isDragging ? 0.4 : 1,
+                zIndex: isDragging ? 10 : undefined,
+                boxShadow: isDragging ? '0 8px 24px rgba(0,0,0,0.5)' : undefined,
             }}
-            className="flex items-center gap-3 bg-gray-800 rounded-lg px-3 py-2.5"
+            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 ${isDragging ? 'bg-gray-700 border border-amber-400/30' : 'bg-gray-800'}`}
         >
             <button
                 {...attributes}
                 {...listeners}
-                className="text-gray-500 hover:text-gray-300 cursor-grab active:cursor-grabbing touch-none flex-shrink-0 p-1 -m-1"
+                style={{ touchAction: 'none' }}
+                className="text-gray-500 hover:text-gray-300 cursor-grab active:cursor-grabbing flex-shrink-0 p-1 -m-1"
                 tabIndex={-1}
                 aria-label="Drag to reorder"
             >
@@ -52,7 +54,6 @@ function SortableRow({ section, index, color }: { section: Section; index: numbe
 export function BoardConfig({ boardId, sections: initialSections, onClose, onSectionsReordered }: BoardConfigProps) {
     const [sections, setSections] = useState(initialSections)
     const [saving, setSaving] = useState(false)
-    const [activeId, setActiveId] = useState<number | null>(null)
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -60,7 +61,6 @@ export function BoardConfig({ boardId, sections: initialSections, onClose, onSec
     )
 
     const handleDragEnd = (event: any) => {
-        setActiveId(null)
         const { active, over } = event
         if (!over || active.id === over.id) return
         const oldIndex = sections.findIndex(s => s.id === active.id)
@@ -81,8 +81,6 @@ export function BoardConfig({ boardId, sections: initialSections, onClose, onSec
         }
     }
 
-    const activeSection = activeId != null ? sections.find(s => s.id === activeId) : null
-
     return (
         <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-[95vw] max-w-sm flex flex-col gap-6">
             <div className="flex items-center justify-between">
@@ -90,14 +88,9 @@ export function BoardConfig({ boardId, sections: initialSections, onClose, onSec
                 <button onClick={onClose} className="text-gray-500 hover:text-white cursor-pointer transition-colors">✕</button>
             </div>
 
-            {/* Section order */}
             <div className="flex flex-col gap-3">
                 <p className="text-[10px] uppercase tracking-widest text-gray-600 font-bold">Section Order</p>
-                <DndContext
-                    sensors={sensors}
-                    onDragStart={e => setActiveId(e.active.id as number)}
-                    onDragEnd={handleDragEnd}
-                >
+                <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
                     <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
                         <div className="flex flex-col gap-2">
                             {sections.map((s, i) => (
@@ -110,20 +103,6 @@ export function BoardConfig({ boardId, sections: initialSections, onClose, onSec
                             ))}
                         </div>
                     </SortableContext>
-                    <DragOverlay dropAnimation={null}>
-                        {activeSection && (
-                            <div className="flex items-center gap-3 bg-gray-750 border border-amber-400/30 rounded-lg px-3 py-2.5 shadow-2xl">
-                                <div className="text-gray-400 flex-shrink-0">
-                                    <svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor">
-                                        <circle cx="3" cy="3"  r="1.5"/><circle cx="9" cy="3"  r="1.5"/>
-                                        <circle cx="3" cy="8"  r="1.5"/><circle cx="9" cy="8"  r="1.5"/>
-                                        <circle cx="3" cy="13" r="1.5"/><circle cx="9" cy="13" r="1.5"/>
-                                    </svg>
-                                </div>
-                                <span className="text-xs uppercase tracking-widest font-bold text-gray-200">{activeSection.name}</span>
-                            </div>
-                        )}
-                    </DragOverlay>
                 </DndContext>
                 <p className="text-[10px] text-gray-600">Hold and drag a row to reorder</p>
             </div>
