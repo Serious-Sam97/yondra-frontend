@@ -1,0 +1,9 @@
+.git
+.next
+node_modules
+out
+android
+.env*.local
+.env
+npm-debug.log*
+README.md
