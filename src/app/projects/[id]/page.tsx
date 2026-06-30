@@ -31,8 +31,8 @@ function timeAgo(d: string) {
 function Avatar({ user, size = 22 }: { user: { id: number; name: string }; size?: number }) {
     return (
         <div title={user.name}
-            style={{ backgroundColor: AVATAR_COLORS[user.id % AVATAR_COLORS.length], width: size, height: size, fontSize: size * 0.42 }}
-            className="rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 border-2 border-[#1a1a12]">
+            style={{ backgroundColor: AVATAR_COLORS[user.id % AVATAR_COLORS.length], width: size, height: size, fontSize: size * 0.42, borderColor: 'var(--cf-edge, #4a463f)' }}
+            className="cf-mono rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 border-2 shadow-[0_2px_6px_rgba(0,0,0,0.5)]">
             {initials(user.name)}
         </div>
     );
@@ -45,17 +45,19 @@ function FolderTab({ project, active, onClick, isMember }: { project: any; activ
         <button onClick={onClick} className="w-full text-left focus:outline-none">
             <div style={{
                 borderLeftColor: active ? project.color : 'transparent',
-                backgroundColor: active ? project.color + '18' : 'transparent',
-            }} className="flex items-center gap-2.5 px-3 py-2.5 border-l-4 hover:bg-[#1e1e12] transition-colors duration-100 cursor-pointer">
-                <div style={{ backgroundColor: project.color + '33', color: project.color, width: 26, height: 26, fontSize: '12px' }}
-                     className="rounded-sm flex items-center justify-center font-bold flex-shrink-0">
+                backgroundColor: active ? 'var(--cf-graphite, #2b2a26)' : 'transparent',
+                boxShadow: active ? `inset 0 0 0 1px var(--cf-edge, #4a463f)` : undefined,
+            }} className="flex items-center gap-2.5 px-3 py-2.5 border-l-4 rounded-r-lg hover:bg-[#1c1a16] transition-colors duration-100 cursor-pointer">
+                <span className="cf-led flex-shrink-0" style={{ backgroundColor: project.color, boxShadow: `0 0 6px ${project.color}` }} />
+                <div style={{ backgroundColor: 'var(--cf-graphite, #2b2a26)', color: 'var(--cf-text, #e8e4d6)', width: 26, height: 26, fontSize: '12px', borderColor: 'var(--cf-edge, #4a463f)' }}
+                     className="cf-mono rounded-md flex items-center justify-center font-bold flex-shrink-0 border">
                     {project.name[0].toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                    <p style={{ color: active ? project.color : '#b8a060', fontSize: '12px' }} className="font-bold truncate leading-tight">
+                    <p style={{ color: active ? 'var(--cf-text, #e8e4d6)' : 'var(--cf-text-muted, #a39d8c)', fontSize: '12px' }} className="font-bold truncate leading-tight">
                         {project.name}
                     </p>
-                    <p style={{ color: '#5a4e28', fontSize: '9px' }} className="truncate">
+                    <p style={{ color: 'var(--cf-text-muted, #a39d8c)', fontSize: '9px' }} className="cf-mono truncate">
                         {project.boards_count ?? 0} board{project.boards_count !== 1 ? 's' : ''}
                         {isMember && <span className="ml-1">· member</span>}
                     </p>
@@ -73,35 +75,32 @@ function BoardCard({ board, projectColor, editMode, isOwner, onClick }: {
     const cardCount = board.cards_count ?? 0;
     return (
         <div onClick={onClick}
-            className={`group relative cursor-pointer flex flex-col overflow-hidden rounded-sm transition-all duration-150 hover:-translate-y-0.5 ${editMode && isOwner ? 'ring-2 ring-yellow-400/40' : ''}`}
-            style={{
-                background: 'linear-gradient(165deg, #f0e8cc 0%, #e8ddb8 40%, #dfd2a4 100%)',
-                boxShadow: '3px 3px 0 rgba(0,0,0,0.5), 1px 1px 0 rgba(0,0,0,0.2)',
-                fontFamily: 'Georgia, serif',
-                border: `1px solid ${projectColor}44`,
-                minHeight: '140px',
-            }}
+            className={`glass-card ${editMode && isOwner ? 'glass-card--ring' : ''} group relative cursor-pointer flex flex-col overflow-hidden transition-all duration-150 hover:-translate-y-0.5`}
+            style={{ minHeight: '140px' }}
         >
-            <div style={{ backgroundColor: projectColor, height: '8px' }} className="w-full flex-shrink-0" />
+            <div style={{ backgroundColor: projectColor, height: '6px', boxShadow: `inset 0 -1px 0 rgba(0,0,0,0.35)` }} className="w-full flex-shrink-0" />
             <div className="px-4 pt-3 pb-4 flex flex-col flex-1 gap-2">
                 <div className="flex items-start justify-between gap-1">
-                    <p style={{ color: '#1a1206', fontSize: '13px' }} className="font-bold leading-snug flex-1">{board.name}</p>
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className="cf-led flex-shrink-0" style={{ backgroundColor: projectColor, boxShadow: `0 0 6px ${projectColor}` }} />
+                        <p style={{ color: 'var(--cf-ink, #2a2620)', fontSize: '13px' }} className="font-bold leading-snug flex-1 truncate">{board.name}</p>
+                    </div>
                     {editMode && isOwner && (
-                        <span style={{ fontSize: '9px', color: '#b45309' }} className="font-bold uppercase tracking-wide opacity-60 group-hover:opacity-100 flex-shrink-0">edit</span>
+                        <span style={{ fontSize: '9px', color: 'var(--cf-red, #ff5a4d)' }} className="cf-mono font-bold uppercase tracking-wide opacity-70 group-hover:opacity-100 flex-shrink-0">edit</span>
                     )}
                 </div>
                 {board.description && (
-                    <p style={{ color: '#6b5a30', fontSize: '11px' }} className="line-clamp-2 leading-snug">{board.description}</p>
+                    <p style={{ color: 'var(--cf-text-muted, #6a6453)', fontSize: '11px' }} className="line-clamp-2 leading-snug">{board.description}</p>
                 )}
                 <div className="mt-auto pt-2 flex items-center justify-between">
-                    <span style={{ color: '#8a7040', fontSize: '9px' }} className="uppercase tracking-widest font-bold">
+                    <span style={{ color: 'var(--cf-text-muted, #6a6453)', fontSize: '9px' }} className="cf-mono uppercase tracking-widest font-bold">
                         {cardCount} card{cardCount !== 1 ? 's' : ''}
                     </span>
-                    <span style={{ color: '#b8a068', fontSize: '9px' }}>
+                    <span style={{ color: 'var(--cf-text-muted, #6a6453)', fontSize: '9px' }} className="cf-mono">
                         {board.updated_at ? timeAgo(board.updated_at) : ''}
                     </span>
                 </div>
-                <div className="h-0.5 rounded-full overflow-hidden" style={{ backgroundColor: '#c8b06030' }}>
+                <div className="h-1 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(42,38,32,0.15)' }}>
                     <div style={{ width: cardCount > 0 ? `${Math.min(cardCount * 8, 100)}%` : '0%', backgroundColor: projectColor }}
                          className="h-full rounded-full" />
                 </div>
@@ -112,11 +111,6 @@ function BoardCard({ board, projectColor, editMode, isOwner, onClick }: {
                     </div>
                 )}
             </div>
-            <div style={{
-                position: 'absolute', bottom: 0, right: 0, width: 0, height: 0, borderStyle: 'solid',
-                borderWidth: '0 0 12px 12px',
-                borderColor: `transparent transparent ${projectColor}66 transparent`,
-            }} />
         </div>
     );
 }
@@ -138,42 +132,44 @@ function ProjectEditModal({ project, onSave, onDelete, onClose }: { project: any
     }
 
     return (
-        <div className="rounded-sm p-6 w-[90vw] max-w-md flex flex-col gap-5"
-            style={{ background: 'linear-gradient(165deg, #f0e8cc, #e8ddb8)', boxShadow: '5px 5px 0 rgba(0,0,0,0.6)', fontFamily: 'Georgia, serif', border: `1px solid ${color}55` }}>
-            <div style={{ borderBottomColor: color + '44' }} className="border-b-2 pb-3">
-                <p style={{ color: '#8a7a40', fontSize: '10px' }} className="uppercase tracking-[0.25em] font-bold">Edit Project</p>
+        <div className="aero-menu rounded-2xl p-6 w-[90vw] max-w-md flex flex-col gap-5 relative">
+            <span className="cf-screw" style={{ position: 'absolute', top: 8, left: 8 }} />
+            <span className="cf-screw" style={{ position: 'absolute', top: 8, right: 8 }} />
+            <span className="cf-screw" style={{ position: 'absolute', bottom: 8, left: 8 }} />
+            <span className="cf-screw" style={{ position: 'absolute', bottom: 8, right: 8 }} />
+            <div style={{ borderBottom: '1px solid var(--cf-edge, #4a463f)' }} className="pb-3 flex items-center gap-2">
+                <span className="cf-led" style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}` }} />
+                <p style={{ color: 'var(--cf-text-muted, #a39d8c)', fontSize: '10px' }} className="cf-label uppercase tracking-[0.25em] font-bold">Edit project</p>
             </div>
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
-                    <label style={{ color: '#6b5a30', fontSize: '10px' }} className="uppercase tracking-widest font-bold">Name</label>
+                    <label style={{ fontSize: '10px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-label uppercase tracking-widest font-bold">Name</label>
                     <input autoFocus value={name} onChange={e => setName(e.target.value)}
-                        style={{ fontFamily: 'Georgia, serif', color: '#1a1206', backgroundColor: '#faf4e0', borderColor: '#c8b060' }}
-                        className="border rounded-sm px-3 py-2 text-sm focus:outline-none" />
+                        className="glass-input cf-lcd text-sm" />
                 </div>
                 <div className="flex flex-col gap-1">
-                    <label style={{ color: '#6b5a30', fontSize: '10px' }} className="uppercase tracking-widest font-bold">Description</label>
+                    <label style={{ fontSize: '10px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-label uppercase tracking-widest font-bold">Description</label>
                     <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2}
-                        style={{ fontFamily: 'Georgia, serif', color: '#1a1206', backgroundColor: '#faf4e0', borderColor: '#c8b060' }}
-                        className="border rounded-sm px-3 py-2 text-sm resize-none focus:outline-none" />
+                        className="glass-input cf-lcd text-sm resize-none" />
                 </div>
                 <div className="flex flex-col gap-2">
-                    <label style={{ color: '#6b5a30', fontSize: '10px' }} className="uppercase tracking-widest font-bold">Color</label>
+                    <label style={{ fontSize: '10px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-label uppercase tracking-widest font-bold">Color</label>
                     <div className="flex gap-2 flex-wrap">
                         {PROJECT_COLORS.map(c => (
                             <button key={c} type="button" onClick={() => setColor(c)}
-                                style={{ backgroundColor: c, width: 22, height: 22, borderRadius: '3px' }}
-                                className={`border-2 transition-all ${color === c ? 'border-[#1a1206] scale-125' : 'border-transparent'}`} />
+                                style={{ backgroundColor: c, width: 22, height: 22, borderRadius: '6px', borderColor: color === c ? 'var(--cf-phosphor, #9aa67e)' : 'var(--cf-edge, #4a463f)', boxShadow: color === c ? `0 0 10px ${c}` : undefined }}
+                                className={`border-2 transition-all ${color === c ? 'scale-125' : ''}`} />
                         ))}
                     </div>
                 </div>
-                <div className="flex items-center justify-between pt-2 border-t border-[#c8b060]/40">
-                    <button type="button" onClick={onDelete} style={{ color: '#b91c1c', fontSize: '10px' }}
-                        className="uppercase tracking-widest font-bold cursor-pointer hover:underline">Delete</button>
+                <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid var(--cf-edge, #4a463f)' }}>
+                    <button type="button" onClick={onDelete}
+                        className="aero-btn aero-btn--magenta uppercase tracking-widest font-bold px-4 py-1.5 text-[10px]">Delete</button>
                     <div className="flex gap-3">
-                        <button type="button" onClick={onClose} style={{ color: '#8a7040', fontSize: '10px' }}
-                            className="uppercase tracking-widest font-bold cursor-pointer hover:underline">Cancel</button>
-                        <button type="submit" disabled={loading || !name.trim()} style={{ backgroundColor: color, color: '#fff', fontSize: '10px' }}
-                            className="uppercase tracking-widest font-bold px-4 py-1.5 rounded-sm cursor-pointer disabled:opacity-50">
+                        <button type="button" onClick={onClose}
+                            className="aero-btn aero-btn--ghost uppercase tracking-widest font-bold px-4 py-1.5 text-[10px]">Cancel</button>
+                        <button type="submit" disabled={loading || !name.trim()}
+                            className="aero-btn aero-btn--cyan uppercase tracking-widest font-bold px-5 py-1.5 text-[10px]">
                             {loading ? '…' : 'Save'}
                         </button>
                     </div>
@@ -206,48 +202,50 @@ function BoardFormModal({ board, projectId, projectColor, ownedProjects, onSave,
     }
 
     return (
-        <div className="rounded-sm p-6 w-[90vw] max-w-md flex flex-col gap-5"
-            style={{ background: 'linear-gradient(165deg, #f0e8cc, #e8ddb8)', boxShadow: '5px 5px 0 rgba(0,0,0,0.6)', fontFamily: 'Georgia, serif', border: `1px solid ${accentColor}55` }}>
-            <div style={{ borderBottomColor: accentColor + '44' }} className="border-b-2 pb-3">
-                <p style={{ color: '#8a7a40', fontSize: '10px' }} className="uppercase tracking-[0.25em] font-bold">{isNew ? 'New Board' : 'Edit Board'}</p>
+        <div className="aero-menu rounded-2xl p-6 w-[90vw] max-w-md flex flex-col gap-5 relative">
+            <span className="cf-screw" style={{ position: 'absolute', top: 8, left: 8 }} />
+            <span className="cf-screw" style={{ position: 'absolute', top: 8, right: 8 }} />
+            <span className="cf-screw" style={{ position: 'absolute', bottom: 8, left: 8 }} />
+            <span className="cf-screw" style={{ position: 'absolute', bottom: 8, right: 8 }} />
+            <div style={{ borderBottom: '1px solid var(--cf-edge, #4a463f)' }} className="pb-3 flex items-center gap-2">
+                <span className="cf-led" style={{ backgroundColor: accentColor, boxShadow: `0 0 8px ${accentColor}` }} />
+                <p style={{ fontSize: '10px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-label uppercase tracking-[0.25em] font-bold">{isNew ? 'New Board' : 'Edit Board'}</p>
             </div>
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
-                    <label style={{ color: '#6b5a30', fontSize: '10px' }} className="uppercase tracking-widest font-bold">Name</label>
+                    <label style={{ fontSize: '10px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-label uppercase tracking-widest font-bold">Name</label>
                     <input autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="Board name…"
-                        style={{ fontFamily: 'Georgia, serif', color: '#1a1206', backgroundColor: '#faf4e0', borderColor: '#c8b060' }}
-                        className="border rounded-sm px-3 py-2 text-sm focus:outline-none" />
+                        className="glass-input cf-lcd text-sm" />
                 </div>
                 <div className="flex flex-col gap-1">
-                    <label style={{ color: '#6b5a30', fontSize: '10px' }} className="uppercase tracking-widest font-bold">Description</label>
+                    <label style={{ fontSize: '10px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-label uppercase tracking-widest font-bold">Description</label>
                     <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional…" rows={2}
-                        style={{ fontFamily: 'Georgia, serif', color: '#1a1206', backgroundColor: '#faf4e0', borderColor: '#c8b060' }}
-                        className="border rounded-sm px-3 py-2 text-sm resize-none focus:outline-none" />
+                        className="glass-input cf-lcd text-sm resize-none" />
                 </div>
                 {ownedProjects.length > 1 && (
                     <div className="flex flex-col gap-1">
-                        <label style={{ color: '#6b5a30', fontSize: '10px' }} className="uppercase tracking-widest font-bold">Project</label>
+                        <label style={{ fontSize: '10px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-label uppercase tracking-widest font-bold">Project</label>
                         <div className="flex items-center gap-2">
-                            <div style={{ backgroundColor: accentColor, width: 8, height: 8, borderRadius: '2px', flexShrink: 0 }} />
+                            <span className="cf-led flex-shrink-0" style={{ backgroundColor: accentColor, boxShadow: `0 0 8px ${accentColor}` }} />
                             <select value={targetProjectId} onChange={e => setTargetProjectId(Number(e.target.value))}
-                                style={{ fontFamily: 'Georgia, serif', color: '#1a1206', backgroundColor: '#faf4e0', borderColor: '#c8b060', fontSize: '12px' }}
-                                className="flex-1 border rounded-sm px-3 py-1.5 focus:outline-none cursor-pointer">
-                                {ownedProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                style={{ fontSize: '12px' }}
+                                className="glass-input cf-lcd flex-1 cursor-pointer">
+                                {ownedProjects.map(p => <option key={p.id} value={p.id} className="text-black">{p.name}</option>)}
                             </select>
                         </div>
-                        {moved && <p style={{ color: '#b45309', fontSize: '9px' }} className="uppercase tracking-widest">↳ Will move to "{targetProject?.name}"</p>}
+                        {moved && <p style={{ fontSize: '9px', color: 'var(--cf-amber, #ffb000)' }} className="cf-mono uppercase tracking-widest">↳ Will move to "{targetProject?.name}"</p>}
                     </div>
                 )}
-                <div className="flex items-center justify-between pt-2 border-t border-[#c8b060]/40">
+                <div className="flex items-center justify-between pt-2" style={{ borderTop: '1px solid var(--cf-edge, #4a463f)' }}>
                     {onDelete ? (
-                        <button type="button" onClick={onDelete} style={{ color: '#b91c1c', fontSize: '10px' }}
-                            className="uppercase tracking-widest font-bold cursor-pointer hover:underline">Delete</button>
+                        <button type="button" onClick={onDelete}
+                            className="aero-btn aero-btn--magenta uppercase tracking-widest font-bold px-4 py-1.5 text-[10px]">Delete</button>
                     ) : <div />}
                     <div className="flex gap-3">
-                        <button type="button" onClick={onClose} style={{ color: '#8a7040', fontSize: '10px' }}
-                            className="uppercase tracking-widest font-bold cursor-pointer hover:underline">Cancel</button>
-                        <button type="submit" disabled={loading || !name.trim()} style={{ backgroundColor: accentColor, color: '#fff', fontSize: '10px' }}
-                            className="uppercase tracking-widest font-bold px-4 py-1.5 rounded-sm cursor-pointer disabled:opacity-50">
+                        <button type="button" onClick={onClose}
+                            className="aero-btn aero-btn--ghost uppercase tracking-widest font-bold px-4 py-1.5 text-[10px]">Cancel</button>
+                        <button type="submit" disabled={loading || !name.trim()}
+                            className="aero-btn aero-btn--cyan uppercase tracking-widest font-bold px-5 py-1.5 text-[10px]">
                             {loading ? '…' : moved ? 'Move & Save' : 'Save'}
                         </button>
                     </div>
@@ -277,56 +275,62 @@ function MembersModal({ project, currentUserId, onUpdate, onClose }: { project: 
     const isOwner = project.owner_id === currentUserId;
 
     return (
-        <div className="rounded-sm p-6 w-[90vw] max-w-lg flex flex-col gap-5"
-            style={{ background: 'linear-gradient(165deg, #f0e8cc, #e8ddb8)', boxShadow: '5px 5px 0 rgba(0,0,0,0.6)', fontFamily: 'Georgia, serif', border: `1px solid ${project.color}55` }}>
-            <div style={{ borderBottomColor: project.color + '44' }} className="border-b-2 pb-3 flex items-center justify-between">
-                <p style={{ color: '#8a7a40', fontSize: '10px' }} className="uppercase tracking-[0.25em] font-bold">{project.name} · Members</p>
-                <button onClick={onClose} style={{ color: '#8a7040', fontSize: '10px' }} className="uppercase tracking-widest font-bold cursor-pointer hover:underline">Close</button>
+        <div className="aero-menu rounded-2xl p-6 w-[90vw] max-w-lg flex flex-col gap-5 relative">
+            <span className="cf-screw" style={{ position: 'absolute', top: 8, left: 8 }} />
+            <span className="cf-screw" style={{ position: 'absolute', top: 8, right: 8 }} />
+            <span className="cf-screw" style={{ position: 'absolute', bottom: 8, left: 8 }} />
+            <span className="cf-screw" style={{ position: 'absolute', bottom: 8, right: 8 }} />
+            <div style={{ borderBottom: '1px solid var(--cf-edge, #4a463f)' }} className="pb-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                    <span className="cf-led flex-shrink-0" style={{ backgroundColor: project.color, boxShadow: `0 0 8px ${project.color}` }} />
+                    <p style={{ fontSize: '10px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-label uppercase tracking-[0.25em] font-bold truncate">{project.name} · Members</p>
+                </div>
+                <button onClick={onClose} style={{ fontSize: '10px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-mono uppercase tracking-widest font-bold cursor-pointer hover:underline flex-shrink-0">Close</button>
             </div>
             <div className="flex flex-col gap-2 max-h-52 overflow-y-auto">
                 {project.members?.map((m: any) => (
                     <div key={m.id} className="flex items-center gap-3">
                         <Avatar user={m} size={22} />
                         <div className="flex-1 min-w-0">
-                            <p style={{ color: '#1a1206', fontSize: '12px' }} className="font-bold truncate">{m.name}</p>
-                            <p style={{ color: '#8a7040', fontSize: '9px' }}>{m.email}</p>
+                            <p style={{ fontSize: '12px', color: 'var(--cf-text, #e8e4d6)' }} className="font-bold truncate">{m.name}</p>
+                            <p style={{ fontSize: '9px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-mono truncate">{m.email}</p>
                         </div>
                         {m.id === project.owner_id ? (
-                            <span style={{ color: project.color, fontSize: '9px' }} className="uppercase tracking-widest font-bold">owner</span>
+                            <span className="aero-pill" style={{ fontSize: '9px' }}>owner</span>
                         ) : isOwner ? (
                             <div className="flex items-center gap-2">
                                 <select value={m.role ?? 'member'}
                                     onChange={e => updateProjectMember(project.id, m.id, e.target.value as any).then(onUpdate)}
-                                    style={{ fontSize: '9px', backgroundColor: '#faf4e0', borderColor: '#c8b060', color: '#333' }}
-                                    className="border rounded px-1 py-0.5 cursor-pointer">
-                                    <option value="member">member</option>
-                                    <option value="viewer">viewer</option>
+                                    style={{ fontSize: '9px' }}
+                                    className="glass-input cf-lcd px-1 py-0.5 cursor-pointer">
+                                    <option value="member" className="text-black">member</option>
+                                    <option value="viewer" className="text-black">viewer</option>
                                 </select>
                                 <button onClick={() => removeProjectMember(project.id, m.id).then(() => onUpdate({ ...project, members: project.members.filter((x: any) => x.id !== m.id) }))}
-                                    style={{ color: '#b91c1c', fontSize: '11px' }} className="font-bold cursor-pointer hover:opacity-70">✕</button>
+                                    style={{ fontSize: '11px', color: 'var(--cf-red, #ff5a4d)' }} className="cf-mono font-bold cursor-pointer hover:opacity-70">✕</button>
                             </div>
                         ) : (
-                            <span style={{ color: '#8a7040', fontSize: '9px' }} className="uppercase tracking-widest">{m.role ?? 'member'}</span>
+                            <span className="aero-pill" style={{ fontSize: '9px' }}>{m.role ?? 'member'}</span>
                         )}
                     </div>
                 ))}
             </div>
             {isOwner && (
-                <form onSubmit={handleAdd} className="flex flex-col gap-2 border-t border-[#c8b060]/40 pt-4">
-                    <label style={{ color: '#6b5a30', fontSize: '10px' }} className="uppercase tracking-widest font-bold">Invite by email</label>
-                    {error && <p style={{ color: '#b91c1c', fontSize: '10px' }}>{error}</p>}
+                <form onSubmit={handleAdd} className="flex flex-col gap-2 pt-4" style={{ borderTop: '1px solid var(--cf-edge, #4a463f)' }}>
+                    <label style={{ fontSize: '10px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-label uppercase tracking-widest font-bold">Invite by email</label>
+                    {error && <p style={{ fontSize: '10px', color: 'var(--cf-red, #ff5a4d)' }} className="cf-mono">{error}</p>}
                     <div className="flex gap-2">
                         <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="user@example.com"
-                            style={{ fontFamily: 'Georgia, serif', color: '#1a1206', backgroundColor: '#faf4e0', borderColor: '#c8b060', fontSize: '12px' }}
-                            className="flex-1 border rounded-sm px-3 py-1.5 focus:outline-none" />
+                            style={{ fontSize: '12px' }}
+                            className="glass-input cf-lcd flex-1" />
                         <select value={role} onChange={e => setRole(e.target.value as any)}
-                            style={{ fontSize: '10px', backgroundColor: '#faf4e0', borderColor: '#c8b060', color: '#333' }}
-                            className="border rounded-sm px-2 py-1.5 cursor-pointer">
-                            <option value="member">member</option>
-                            <option value="viewer">viewer</option>
+                            style={{ fontSize: '10px' }}
+                            className="glass-input cf-lcd px-2 py-1.5 cursor-pointer">
+                            <option value="member" className="text-black">member</option>
+                            <option value="viewer" className="text-black">viewer</option>
                         </select>
-                        <button type="submit" disabled={loading || !email.trim()} style={{ backgroundColor: project.color, color: '#fff', fontSize: '10px' }}
-                            className="uppercase tracking-widest font-bold px-3 py-1.5 rounded-sm cursor-pointer disabled:opacity-50">
+                        <button type="submit" disabled={loading || !email.trim()}
+                            className="aero-btn aero-btn--cyan uppercase tracking-widest font-bold px-4 py-1.5 text-[10px]">
                             {loading ? '…' : 'Add'}
                         </button>
                     </div>
@@ -347,43 +351,43 @@ function RightPanel({ project, currentUserId, onMembersClick }: { project: any; 
     return (
         <div className="flex flex-col gap-4">
             {/* stats */}
-            <div className="rounded-sm overflow-hidden" style={{
-                background: 'rgba(12,11,6,0.82)', border: '1px solid rgba(200,170,60,0.18)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)', fontFamily: 'Georgia, serif',
+            <div className="rounded-xl overflow-hidden" style={{
+                background: 'var(--cf-graphite, #2b2a26)', border: '1px solid var(--cf-edge, #4a463f)',
+                boxShadow: 'inset 0 1px 0 rgba(0,0,0,0.4)',
             }}>
-                <div className="px-4 py-3 border-b border-[#c8aa3c]/12">
-                    <p style={{ color: '#8a7840', fontSize: '9px' }} className="uppercase tracking-widest font-bold">Stats</p>
+                <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--cf-edge, #4a463f)' }}>
+                    <p style={{ fontSize: '9px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-label uppercase tracking-widest font-bold">Stats</p>
                 </div>
                 {[
                     { label: 'Boards', value: project.boards_count ?? 0 },
                     { label: 'Cards', value: totalCards },
                     { label: 'Members', value: members.length },
                 ].map(r => (
-                    <div key={r.label} className="flex items-center justify-between px-4 py-2 border-b border-[#c8aa3c]/08">
-                        <span style={{ color: '#8a7840', fontSize: '9px' }} className="uppercase tracking-widest">{r.label}</span>
-                        <span style={{ color: '#d4bf78', fontSize: '13px' }} className="font-bold">{r.value}</span>
+                    <div key={r.label} className="flex items-center justify-between px-4 py-2" style={{ borderBottom: '1px solid rgba(74,70,63,0.5)' }}>
+                        <span style={{ fontSize: '9px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-label uppercase tracking-widest">{r.label}</span>
+                        <span style={{ fontSize: '13px', color: 'var(--cf-phosphor, #9aa67e)' }} className="cf-mono font-bold chrome-text">{r.value}</span>
                     </div>
                 ))}
             </div>
 
             {/* members */}
-            <div className="rounded-sm overflow-hidden" style={{
-                background: 'rgba(12,11,6,0.82)', border: '1px solid rgba(200,170,60,0.18)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)', fontFamily: 'Georgia, serif',
+            <div className="rounded-xl overflow-hidden" style={{
+                background: 'var(--cf-graphite, #2b2a26)', border: '1px solid var(--cf-edge, #4a463f)',
+                boxShadow: 'inset 0 1px 0 rgba(0,0,0,0.4)',
             }}>
-                <div className="px-4 py-3 border-b border-[#c8aa3c]/12 flex items-center justify-between">
-                    <p style={{ color: '#8a7840', fontSize: '9px' }} className="uppercase tracking-widest font-bold">Members</p>
+                <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid var(--cf-edge, #4a463f)' }}>
+                    <p style={{ fontSize: '9px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-label uppercase tracking-widest font-bold">Members</p>
                     {isOwner && (
-                        <button onClick={onMembersClick} style={{ color: '#c8b060', fontSize: '8px' }}
-                            className="uppercase tracking-widest cursor-pointer hover:underline">Manage</button>
+                        <button onClick={onMembersClick} style={{ fontSize: '8px', color: 'var(--cf-text-muted, #a39d8c)' }}
+                            className="cf-mono uppercase tracking-widest cursor-pointer hover:underline">Manage</button>
                     )}
                 </div>
                 {members.map(m => (
-                    <div key={m.id} className="flex items-center gap-2.5 px-4 py-2.5 border-b border-[#c8aa3c]/06">
+                    <div key={m.id} className="flex items-center gap-2.5 px-4 py-2.5" style={{ borderBottom: '1px solid rgba(74,70,63,0.4)' }}>
                         <Avatar user={m} size={20} />
                         <div className="flex-1 min-w-0">
-                            <p style={{ color: '#c8b878', fontSize: '11px' }} className="font-bold truncate">{m.name}</p>
-                            <p style={{ color: '#5a4e28', fontSize: '8px' }} className="uppercase tracking-wide">
+                            <p style={{ fontSize: '11px', color: 'var(--cf-text, #e8e4d6)' }} className="font-bold truncate">{m.name}</p>
+                            <p style={{ fontSize: '8px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-mono uppercase tracking-wide">
                                 {m.id === project.owner_id ? 'owner' : m.role ?? 'member'}
                             </p>
                         </div>
@@ -466,8 +470,8 @@ export default function ProjectPage() {
     // Full-page spinner only on the very first visit (no sidebar cache yet)
     if (!hasSidebar && contentLoading) {
         return (
-            <div className="min-h-[calc(100vh-56px)] flex items-center justify-center" style={{ backgroundColor: '#0a0a06' }}>
-                <p style={{ color: '#5a4e28', fontFamily: 'Georgia, serif', fontSize: '12px' }} className="uppercase tracking-widest">Loading…</p>
+            <div className="min-h-[calc(100vh-56px)] flex items-center justify-center">
+                <p style={{ fontSize: '12px', color: 'var(--cf-phosphor, #9aa67e)' }} className="cf-mono uppercase tracking-widest chrome-text">Loading…</p>
             </div>
         );
     }
@@ -535,7 +539,7 @@ export default function ProjectPage() {
     // ── render ────────────────────────────────────────────────────────────────
 
     return (
-        <div className="flex h-[calc(100vh-56px)] overflow-hidden" style={{ backgroundColor: '#0a0a06' }}>
+        <div className="flex h-[calc(100vh-56px)] overflow-hidden">
 
             {/* mobile overlay */}
             {sidebarOpen && (
@@ -544,21 +548,21 @@ export default function ProjectPage() {
 
             {/* ── Left sidebar ── */}
             <aside className={`
-                fixed lg:relative z-40 lg:z-auto flex flex-col h-full w-56 flex-shrink-0
-                transition-transform duration-200
+                glass-panel rounded-none z-40 lg:z-auto flex flex-col h-full w-56 flex-shrink-0
+                fixed lg:relative transition-transform duration-200
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-            `} style={{ backgroundColor: '#0f0f08', borderRight: '1px solid #1e1e12' }}>
+            `} style={{ borderRight: '1px solid var(--cf-edge, #4a463f)' }}>
                 {/* sidebar header */}
                 <button onClick={() => router.push('/dashboard')}
-                    className="flex items-center gap-2 px-4 py-4 border-b border-[#1e1e12] hover:bg-[#1a1a10] transition-colors cursor-pointer">
-                    <span style={{ color: '#5a4e28', fontSize: '10px' }}>←</span>
-                    <span style={{ color: '#8a7840', fontSize: '9px' }} className="uppercase tracking-widest font-bold">All Projects</span>
+                    className="flex items-center gap-2 px-4 py-4 hover:bg-[#1c1a16] transition-colors cursor-pointer" style={{ borderBottom: '1px solid var(--cf-edge, #4a463f)' }}>
+                    <span style={{ fontSize: '10px', color: 'var(--cf-text-muted, #a39d8c)' }}>←</span>
+                    <span style={{ fontSize: '9px', color: 'var(--cf-text, #e8e4d6)' }} className="cf-label uppercase tracking-widest font-bold">All Projects</span>
                 </button>
 
                 <div className="flex-1 overflow-y-auto py-1">
                     {ownedProjects.length > 0 && (
                         <>
-                            <p style={{ color: '#3a3220', fontSize: '8px' }} className="px-4 pt-3 pb-1 uppercase tracking-widest">Mine</p>
+                            <p style={{ fontSize: '8px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-label px-4 pt-3 pb-1 uppercase tracking-widest">Mine</p>
                             {ownedProjects.map(p => (
                                 <FolderTab key={p.id} project={p} active={p.id === projectId}
                                     onClick={() => { router.push(`/projects/${p.id}`); setSidebarOpen(false); }} />
@@ -567,7 +571,7 @@ export default function ProjectPage() {
                     )}
                     {memberProjects.length > 0 && (
                         <>
-                            <p style={{ color: '#3a3220', fontSize: '8px' }} className="px-4 pt-4 pb-1 uppercase tracking-widest">Shared</p>
+                            <p style={{ fontSize: '8px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-label px-4 pt-4 pb-1 uppercase tracking-widest">Shared</p>
                             {memberProjects.map(p => (
                                 <FolderTab key={p.id} project={p} active={p.id === projectId} isMember
                                     onClick={() => { router.push(`/projects/${p.id}`); setSidebarOpen(false); }} />
@@ -581,15 +585,15 @@ export default function ProjectPage() {
             <main className="flex-1 flex flex-col overflow-hidden"
                 style={{ opacity: contentLoading ? 0.35 : 1, pointerEvents: contentLoading ? 'none' : undefined, transition: 'opacity 200ms ease' }}>
                 {/* header */}
-                <div className="flex items-center gap-3 px-5 py-3 border-b flex-shrink-0 flex-wrap"
-                    style={{ borderColor: '#1e1e12', backgroundColor: '#0d0d08' }}>
+                <div className="glass-panel rounded-none flex items-center gap-3 px-5 py-3 border-b flex-shrink-0 flex-wrap"
+                    style={{ borderColor: 'var(--cf-edge, #4a463f)' }}>
                     {/* mobile menu */}
-                    <button className="lg:hidden p-1 cursor-pointer" style={{ color: '#c8b060' }}
+                    <button className="lg:hidden p-1 cursor-pointer" style={{ color: 'var(--cf-text, #e8e4d6)' }}
                         onClick={() => setSidebarOpen(s => !s)}>☰</button>
 
                     {/* color dot + project name */}
-                    <div style={{ backgroundColor: project?.color ?? 'transparent', width: 10, height: 10, borderRadius: '2px', flexShrink: 0 }} />
-                    <p style={{ color: '#c8b060', fontFamily: 'Georgia, serif', fontSize: '15px' }} className="font-bold truncate flex-1">
+                    <span className="cf-led flex-shrink-0" style={{ backgroundColor: project?.color ?? 'transparent', boxShadow: project?.color ? `0 0 8px ${project.color}` : undefined }} />
+                    <p style={{ fontSize: '15px' }} className="chrome-text font-bold truncate flex-1">
                         {project?.name ?? ''}
                     </p>
 
@@ -598,26 +602,22 @@ export default function ProjectPage() {
                         {isOwner && (
                             <>
                                 <button onClick={() => setModal({ type: 'members' })}
-                                    style={{ color: '#6b5a28', borderColor: '#2a2418', fontSize: '9px' }}
-                                    className="uppercase tracking-widest px-2 py-1 rounded-sm border hover:border-[#4a3a20] hover:text-[#8a7040] transition-colors cursor-pointer">
+                                    className="aero-btn aero-btn--ghost uppercase tracking-widest font-bold px-3 py-1.5 text-[9px]">
                                     Members
                                 </button>
                                 <button onClick={() => setModal({ type: 'project-edit' })}
-                                    style={{ color: '#6b5a28', borderColor: '#2a2418', fontSize: '9px' }}
-                                    className="uppercase tracking-widest px-2 py-1 rounded-sm border hover:border-[#4a3a20] hover:text-[#8a7040] transition-colors cursor-pointer">
+                                    className="aero-btn aero-btn--ghost uppercase tracking-widest font-bold px-3 py-1.5 text-[9px]">
                                     ⚙ Edit
                                 </button>
                             </>
                         )}
                         <button onClick={() => setEditMode(e => !e)}
-                            style={{ color: editMode ? '#c8b060' : '#4a3a20', borderColor: editMode ? '#c8b06044' : '#2a2418', backgroundColor: editMode ? '#c8b06010' : 'transparent', fontSize: '9px' }}
-                            className="uppercase tracking-widest px-2 py-1 rounded-sm border transition-colors cursor-pointer">
+                            className={`aero-btn ${editMode ? 'aero-btn--magenta' : 'aero-btn--ghost'} uppercase tracking-widest font-bold px-3 py-1.5 text-[9px]`}>
                             ⚙ {editMode ? 'Exit Edit' : 'Edit Mode'}
                         </button>
                         {isOwner && (
                             <button onClick={() => setModal({ type: 'board-new' })}
-                                style={{ backgroundColor: project?.color ?? '#888', color: '#fff', fontSize: '9px' }}
-                                className="uppercase tracking-widest font-bold px-3 py-1.5 rounded-sm cursor-pointer hover:opacity-90 transition-opacity">
+                                className="aero-btn aero-btn--cyan uppercase tracking-widest font-bold px-3 py-1.5 text-[9px]">
                                 + Board
                             </button>
                         )}
@@ -628,12 +628,11 @@ export default function ProjectPage() {
                 <div className="flex-1 overflow-y-auto p-5 md:p-6">
                     {boards.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full text-center">
-                            <p style={{ color: '#2a2418', fontSize: '40px' }}>▦</p>
-                            <p style={{ color: '#5a4e28', fontSize: '11px' }} className="uppercase tracking-widest mt-3">No boards yet</p>
+                            <p style={{ fontSize: '40px', color: 'var(--cf-edge, #4a463f)' }}>▦</p>
+                            <p style={{ fontSize: '11px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-label uppercase tracking-widest mt-3">No boards yet</p>
                             {isOwner && (
                                 <button onClick={() => setModal({ type: 'board-new' })}
-                                    style={{ color: project?.color ?? '#888', borderColor: (project?.color ?? '#888') + '44', fontSize: '9px' }}
-                                    className="mt-4 uppercase tracking-widest px-4 py-2 rounded-sm border cursor-pointer hover:opacity-80 transition-opacity">
+                                    className="aero-btn aero-btn--cyan mt-4 uppercase tracking-widest font-bold px-4 py-2 text-[9px]">
                                     + Create First Board
                                 </button>
                             )}
@@ -651,8 +650,8 @@ export default function ProjectPage() {
             </main>
 
             {/* ── Right panel (desktop) ── */}
-            <aside className="hidden xl:flex flex-col w-52 flex-shrink-0 overflow-y-auto p-4 gap-4"
-                style={{ backgroundColor: '#0f0f08', borderLeft: '1px solid #1e1e12', opacity: contentLoading ? 0.35 : 1, pointerEvents: contentLoading ? 'none' : undefined, transition: 'opacity 200ms ease' }}>
+            <aside className="glass-panel rounded-none hidden xl:flex flex-col w-52 flex-shrink-0 overflow-y-auto p-4 gap-4"
+                style={{ borderLeft: '1px solid var(--cf-edge, #4a463f)', opacity: contentLoading ? 0.35 : 1, pointerEvents: contentLoading ? 'none' : undefined, transition: 'opacity 200ms ease' }}>
                 {project && <RightPanel project={project} currentUserId={user?.id} onMembersClick={() => setModal({ type: 'members' })} />}
             </aside>
 

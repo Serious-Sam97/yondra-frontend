@@ -9,7 +9,8 @@ import { fetchUser } from "@/lib/auth";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const STRIPE_COLORS = ['#4CAF50', '#FFC107', '#FF9800', '#F44336', '#7B1FA2', '#1976D2'];
+// Status-LED indicator strip (cassette-futurism front panel)
+const STRIPE_COLORS = ['var(--cf-phosphor)', 'var(--cf-amber)', 'var(--cf-cyan)', 'var(--cf-red)', 'var(--cf-amber)', 'var(--cf-phosphor)'];
 
 type Params = { id: string };
 
@@ -76,32 +77,33 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
 
     return (
         <div className="min-h-screen px-4 py-6 md:px-8 md:py-8">
-            {/* Rainbow stripe */}
+            {/* Status-LED indicator strip */}
             <div className="flex gap-1 mb-6">
-                {STRIPE_COLORS.map(c => (
-                    <div key={c} style={{ backgroundColor: c }} className="h-1 flex-1 rounded-full"/>
+                {STRIPE_COLORS.map((c, i) => (
+                    <div key={i} style={{ background: c, boxShadow: `0 0 5px ${c}` }} className="h-1 flex-1 rounded-sm"/>
                 ))}
             </div>
 
             {/* Header */}
-            <div className="flex items-start justify-between gap-4 mb-6 md:mb-8 flex-wrap">
+            <div className="glass-panel flex items-start justify-between gap-4 mb-6 md:mb-8 flex-wrap p-5 md:p-6">
                 <div className="min-w-0">
                     <button
                         onClick={() => router.push(isDemo ? '/demo' : board.project_id ? `/projects/${board.project_id}` : '/dashboard')}
-                        className="text-xs uppercase tracking-widest text-gray-500 hover:text-gray-300 mb-3 flex items-center gap-1 cursor-pointer transition-colors duration-150"
+                        className="btn-physical cf-mono text-xs uppercase tracking-widest mb-3 flex items-center gap-1 cursor-pointer transition-colors duration-150 hover:brightness-125"
+                        style={{ color: 'var(--cf-text-muted)' }}
                     >
                         ← {isDemo ? 'Back to demo' : board.project_id ? 'Back to project' : 'Back to boards'}
                     </button>
-                    <p className="text-2xl md:text-4xl font-bold text-white truncate">{board.name || '...'}</p>
+                    <p className="chrome-text text-2xl md:text-4xl font-bold truncate">{board.name || '...'}</p>
                     {board.description && (
-                        <p className="text-gray-500 mt-1 text-sm">{board.description}</p>
+                        <p className="cf-mono mt-1 text-sm" style={{ color: 'var(--cf-text-muted)' }}>{board.description}</p>
                     )}
                 </div>
                 <div className="flex flex-col items-end gap-3 flex-shrink-0">
                     {isOwner && !isDemo && (
                         <button
                             onClick={() => setShareOpen(true)}
-                            className="text-xs uppercase tracking-widest px-3 py-1.5 rounded border border-gray-600 text-gray-400 hover:border-amber-400 hover:text-amber-400 cursor-pointer transition-all duration-200"
+                            className="aero-btn aero-btn--ghost text-xs uppercase tracking-widest px-4 py-2 cursor-pointer"
                         >
                             Share
                         </button>

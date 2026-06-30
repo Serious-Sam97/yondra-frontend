@@ -48,23 +48,13 @@ const SECTION_COLORS: Record<string, string> = {
 const DEFAULT_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107']
 const AVATAR_COLORS  = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107', '#00BCD4', '#E91E63']
 const PRIORITY_OPTS: { value: 'low' | 'medium' | 'high'; label: string; color: string }[] = [
-    { value: 'low',    label: 'Low',    color: '#22c55e' },
-    { value: 'medium', label: 'Medium', color: '#f97316' },
-    { value: 'high',   label: 'High',   color: '#ef4444' },
+    { value: 'low',    label: 'Low',    color: '#9aa67e' },
+    { value: 'medium', label: 'Medium', color: '#ffb000' },
+    { value: 'high',   label: 'High',   color: '#ff5a4d' },
 ]
 
 function getSectionColor(name: string, index: number): string {
     return SECTION_COLORS[name] ?? DEFAULT_COLORS[index % DEFAULT_COLORS.length]
-}
-
-function blendWithCream(hex: string, amount = 0.18): string {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    const nr = Math.round(254 + (r - 254) * amount);
-    const ng = Math.round(249 + (g - 249) * amount);
-    const nb = Math.round(195 + (b - 195) * amount);
-    return `rgb(${nr},${ng},${nb})`;
 }
 
 function initials(name: string): string {
@@ -306,21 +296,8 @@ const CardEdit: React.FC<CardEditProps> = ({
         }
     }
 
-    const currentSection = sections.find(s => s.id === sectionId)
-    const currentSectionIndex = sections.findIndex(s => s.id === sectionId)
-    const currentColor = getSectionColor(currentSection?.name ?? '', currentSectionIndex)
     const doneCount = checklistItems.filter(i => i.is_done).length
     const doneSubtasks = subtasks.filter(s => s.is_done).length
-    const primaryTagColor = selectedTagIds.length > 0
-        ? (tags.find(t => t.id === selectedTagIds[0])?.color ?? null)
-        : null;
-    const cardBackground = primaryTagColor
-        ? blendWithCream(primaryTagColor)
-        : 'linear-gradient(to bottom, #f5e642 0%, #fef08a 6%, #fef9c3 6%)';
-    const glueBackground = primaryTagColor
-        ? primaryTagColor
-        : 'linear-gradient(to bottom, #e6d800, #f5e642)';
-    const glueTextColor = primaryTagColor ? 'rgba(255,255,255,0.85)' : '#a89800';
 
     const tabs: Array<'details' | 'checklist' | 'subtasks' | 'comments'> = isNew
         ? []
@@ -335,40 +312,36 @@ const CardEdit: React.FC<CardEditProps> = ({
 
     return (
         <div
-            style={{
-                background: cardBackground,
-                boxShadow: '4px 4px 12px rgba(0,0,0,0.4), 2px 2px 4px rgba(0,0,0,0.2)',
-                fontFamily: 'Georgia, serif',
-            }}
-            className="flex flex-col w-full min-h-[100svh] sm:min-h-0 sm:w-[95vw] sm:max-w-[480px] sm:rounded-sm sm:h-auto sm:max-h-[90vh] relative"
+            className="aero-menu flex flex-col w-full min-h-[100svh] sm:min-h-0 sm:w-[95vw] sm:max-w-[480px] sm:h-auto sm:max-h-[90vh] relative"
         >
             {/* Glue strip */}
             <div
-                style={{ background: glueBackground }}
-                className="h-8 w-full rounded-t-sm flex items-center justify-between px-4 flex-shrink-0"
+                style={{ borderColor: 'var(--cf-edge)' }}
+                className="h-9 w-full flex items-center justify-between px-4 flex-shrink-0 border-b"
             >
                 <div className="flex items-center gap-2">
-                    <span style={{ color: glueTextColor, fontFamily: 'monospace', fontSize: '11px', letterSpacing: '0.15em' }}>
+                    <span className="cf-led" style={{ background: 'var(--cf-phosphor)', boxShadow: '0 0 6px var(--cf-phosphor)' }} />
+                    <span className="chrome-text" style={{ fontFamily: 'monospace', fontSize: '11px', letterSpacing: '0.15em' }}>
                         {isNew ? 'NEW' : `#${String(id).padStart(4, '0')}`}
                     </span>
                     {!isNew && card?.created_at && (
-                        <span style={{ color: glueTextColor, fontFamily: 'monospace', fontSize: '10px', opacity: 0.7 }}>
+                        <span style={{ fontFamily: 'monospace', fontSize: '10px', color: 'var(--cf-text-muted)' }}>
                             · {new Date(card.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </span>
                     )}
                     {isReadOnly && (
-                        <span style={{ color: glueTextColor, fontFamily: 'monospace', fontSize: '9px', opacity: 0.6, letterSpacing: '0.1em' }}>
+                        <span style={{ fontFamily: 'monospace', fontSize: '9px', letterSpacing: '0.1em', color: 'var(--cf-amber)' }}>
                             · READ ONLY
                         </span>
                     )}
                 </div>
                 <div className="flex items-center gap-3">
                     {!isNew && !isReadOnly && onDelete && (
-                        <button onClick={onDelete} style={{ color: primaryTagColor ? 'rgba(255,200,200,0.9)' : '#cc0000' }} className="text-xs hover:opacity-60 cursor-pointer transition-opacity" title="Archive card">
+                        <button onClick={onDelete} style={{ color: 'var(--cf-red)' }} className="text-xs hover:opacity-60 cursor-pointer transition-opacity" title="Archive card">
                             🗑
                         </button>
                     )}
-                    <button onClick={goBack} style={{ color: glueTextColor }} className="text-sm hover:opacity-60 cursor-pointer transition-opacity leading-none">
+                    <button onClick={goBack} className="text-sm cursor-pointer transition-colors leading-none" style={{ color: 'var(--cf-text-muted)' }}>
                         ✕
                     </button>
                 </div>
@@ -376,21 +349,25 @@ const CardEdit: React.FC<CardEditProps> = ({
 
             {/* Tabs (only for existing cards) */}
             {!isNew && (
-                <div className="relative flex border-b border-yellow-300/40 px-4 pt-2 gap-4 flex-shrink-0" style={{ backgroundColor: cardBackground as string }}>
-                    {tabs.map((tab, i) => (
-                        <button
-                            key={tab}
-                            ref={el => { tabRefs.current[i] = el }}
-                            onClick={() => setActiveTab(tab)}
-                            style={{ color: activeTab === tab ? '#7a6500' : '#bba000', fontSize: '10px' }}
-                            className="btn-physical uppercase tracking-widest font-bold pb-2 cursor-pointer"
-                        >
-                            {tab === 'checklist' && checklistItems.length > 0 ? `checklist ${doneCount}/${checklistItems.length}` :
-                             tab === 'comments' && comments.length > 0 ? `comments ${comments.length}` :
-                             tab === 'subtasks' && subtasks.length > 0 ? `subtasks ${doneSubtasks}/${subtasks.length}` :
-                             tab}
-                        </button>
-                    ))}
+                <div className="relative flex border-b px-4 pt-2 gap-4 flex-shrink-0" style={{ borderColor: 'var(--cf-edge)' }}>
+                    {tabs.map((tab, i) => {
+                        const isActive = activeTab === tab
+                        return (
+                            <button
+                                key={tab}
+                                ref={el => { tabRefs.current[i] = el }}
+                                onClick={() => setActiveTab(tab)}
+                                style={{ color: isActive ? 'var(--cf-phosphor)' : 'var(--cf-text-muted)', fontSize: '10px' }}
+                                className="cf-mono uppercase tracking-widest font-bold pb-2 cursor-pointer transition-colors flex items-center gap-1.5"
+                            >
+                                <span className="cf-led" style={{ width: 6, height: 6, background: isActive ? 'var(--cf-phosphor)' : 'var(--cf-edge)', boxShadow: isActive ? '0 0 6px var(--cf-phosphor)' : 'none' }} />
+                                {tab === 'checklist' && checklistItems.length > 0 ? `checklist ${doneCount}/${checklistItems.length}` :
+                                 tab === 'comments' && comments.length > 0 ? `comments ${comments.length}` :
+                                 tab === 'subtasks' && subtasks.length > 0 ? `subtasks ${doneSubtasks}/${subtasks.length}` :
+                                 tab}
+                            </button>
+                        )
+                    })}
                     {/* Sliding indicator — springs between tabs */}
                     <div style={{
                         position: 'absolute',
@@ -398,8 +375,9 @@ const CardEdit: React.FC<CardEditProps> = ({
                         left: tabIndicator.left,
                         width: tabIndicator.width,
                         height: 2,
-                        backgroundColor: '#7a6500',
+                        backgroundColor: 'var(--cf-phosphor)',
                         borderRadius: 1,
+                        boxShadow: '0 0 8px var(--cf-phosphor)',
                         transition: 'left 240ms cubic-bezier(0.34,1.56,0.64,1), width 240ms cubic-bezier(0.34,1.56,0.64,1)',
                     }} />
                 </div>
@@ -417,8 +395,8 @@ const CardEdit: React.FC<CardEditProps> = ({
                             placeholder="What needs to be done?"
                             rows={2}
                             disabled={isReadOnly}
-                            style={{ color: '#1a1a1a', caretColor: '#1a1a1a' }}
-                            className="w-full bg-transparent text-lg md:text-xl font-bold placeholder-yellow-600/50 focus:outline-none resize-none leading-tight disabled:opacity-70"
+                            style={{ color: 'var(--cf-text)', caretColor: 'var(--cf-phosphor)' }}
+                            className="w-full bg-transparent text-lg md:text-xl font-bold placeholder-white/40 focus:outline-none resize-none leading-tight disabled:opacity-70"
                             value={name}
                             onChange={(e) => {
                                 setName(e.target.value)
@@ -429,7 +407,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                             }}
                         />
 
-                        <div style={{ borderColor: '#d4c200', opacity: 0.5 }} className="border-t"/>
+                        <div style={{ borderColor: 'var(--cf-edge)' }} className="border-t"/>
 
                         <textarea
                             ref={descRef}
@@ -444,8 +422,8 @@ const CardEdit: React.FC<CardEditProps> = ({
                                 )
                             }}
                             placeholder="Add some notes..."
-                            style={{ color: '#333', caretColor: '#333' }}
-                            className="w-full bg-transparent text-sm placeholder-yellow-700/40 focus:outline-none resize-none leading-relaxed disabled:opacity-70"
+                            style={{ color: 'var(--cf-text)', caretColor: 'var(--cf-phosphor)' }}
+                            className="w-full bg-transparent text-sm placeholder-white/35 focus:outline-none resize-none leading-relaxed disabled:opacity-70"
                         />
 
                         {/* Template buttons */}
@@ -453,8 +431,8 @@ const CardEdit: React.FC<CardEditProps> = ({
                             {templates.length > 0 && (
                                 <button
                                     onClick={() => setShowTemplatePicker(v => !v)}
-                                    style={{ fontSize: '9px', borderColor: '#bba000', color: '#7a6500' }}
-                                    className="btn-physical uppercase tracking-widest px-2 py-1 rounded border cursor-pointer font-bold"
+                                    style={{ fontSize: '9px' }}
+                                    className="aero-pill uppercase tracking-widest px-2.5 py-1 cursor-pointer font-bold text-white/80 hover:text-white"
                                 >
                                     From Template ▾
                                 </button>
@@ -462,8 +440,8 @@ const CardEdit: React.FC<CardEditProps> = ({
                             {!isReadOnly && (
                                 <button
                                     onClick={() => setShowSaveTemplate(v => !v)}
-                                    style={{ fontSize: '9px', borderColor: '#bba000', color: '#7a6500' }}
-                                    className="btn-physical uppercase tracking-widest px-2 py-1 rounded border cursor-pointer font-bold"
+                                    style={{ fontSize: '9px' }}
+                                    className="aero-pill uppercase tracking-widest px-2.5 py-1 cursor-pointer font-bold text-white/80 hover:text-white"
                                 >
                                     Save as Template
                                 </button>
@@ -472,21 +450,21 @@ const CardEdit: React.FC<CardEditProps> = ({
 
                         {/* Template picker dropdown */}
                         {showTemplatePicker && templates.length > 0 && (
-                            <div style={{ backgroundColor: 'rgba(255,255,255,0.85)', borderColor: '#d4c200' }} className="border rounded p-2 flex flex-col gap-1">
+                            <div style={{ background: '#1c1a16', borderColor: 'var(--cf-edge)' }} className="border rounded-lg p-2 flex flex-col gap-1">
                                 {templates.map(t => (
                                     <div key={t.id} className="flex items-center justify-between gap-2 group">
                                         <button
                                             onClick={() => handleApplyTemplate(t)}
-                                            style={{ color: '#555', fontSize: '11px' }}
-                                            className="flex-1 text-left hover:text-black cursor-pointer truncate"
+                                            style={{ fontSize: '11px', color: 'var(--cf-text-muted)' }}
+                                            className="cf-mono flex-1 text-left hover:text-[var(--cf-phosphor)] cursor-pointer truncate"
                                         >
                                             {t.name}
                                         </button>
                                         {!isReadOnly && (
                                             <button
                                                 onClick={() => handleDeleteTemplate(t.id)}
-                                                style={{ color: '#ccc', fontSize: '10px' }}
-                                                className="opacity-0 group-hover:opacity-100 hover:text-red-500 cursor-pointer flex-shrink-0 transition-all"
+                                                style={{ fontSize: '10px', color: 'var(--cf-text-muted)' }}
+                                                className="opacity-0 group-hover:opacity-100 hover:text-[var(--cf-red)] cursor-pointer flex-shrink-0 transition-all"
                                             >
                                                 ✕
                                             </button>
@@ -505,52 +483,56 @@ const CardEdit: React.FC<CardEditProps> = ({
                                     onChange={e => setTemplateNameInput(e.target.value)}
                                     onKeyDown={e => { if (e.key === 'Enter') handleSaveTemplate(); if (e.key === 'Escape') setShowSaveTemplate(false) }}
                                     placeholder="Template name..."
-                                    style={{ color: '#333', backgroundColor: 'rgba(255,255,255,0.5)', borderColor: '#d4c200', fontSize: '11px' }}
-                                    className="flex-1 border rounded px-2 py-1 focus:outline-none placeholder-yellow-600/40"
+                                    style={{ fontSize: '11px' }}
+                                    className="glass-input flex-1 px-2 py-1"
                                 />
-                                <button onClick={handleSaveTemplate} style={{ backgroundColor: '#d4c200', color: '#fff', fontSize: '10px' }} className="btn-physical px-2 py-1 rounded font-bold cursor-pointer">Save</button>
+                                <button onClick={handleSaveTemplate} style={{ fontSize: '10px' }} className="aero-btn aero-btn--cyan px-3 py-1 font-bold cursor-pointer">Save</button>
                             </div>
                         )}
 
                         {/* Due date + Priority row */}
                         <div className="flex gap-3 flex-wrap items-center">
                             <div className="flex flex-col gap-1">
-                                <label style={{ color: '#a89800', fontSize: '9px', letterSpacing: '0.1em' }} className="uppercase font-bold">Due date</label>
+                                <label style={{ fontSize: '9px', letterSpacing: '0.1em', color: 'var(--cf-text-muted)' }} className="cf-label uppercase font-bold">Due date</label>
                                 <input
                                     type="date"
                                     disabled={isReadOnly}
                                     value={dueDate}
                                     onChange={e => setDueDate(e.target.value)}
-                                    style={{ color: '#333', backgroundColor: 'rgba(255,255,255,0.5)', borderColor: '#d4c200', fontSize: '12px' }}
-                                    className="border rounded px-2 py-1 focus:outline-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                                    style={{ fontSize: '12px' }}
+                                    className="glass-input px-2 py-1 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                                 />
                             </div>
                             <div className="flex flex-col gap-1">
-                                <label style={{ color: '#a89800', fontSize: '9px', letterSpacing: '0.1em' }} className="uppercase font-bold">Priority</label>
+                                <label style={{ fontSize: '9px', letterSpacing: '0.1em', color: 'var(--cf-text-muted)' }} className="cf-label uppercase font-bold">Priority</label>
                                 <div className="flex gap-1.5">
-                                    {PRIORITY_OPTS.map(opt => (
+                                    {PRIORITY_OPTS.map(opt => {
+                                        const isActive = priority === opt.value
+                                        return (
                                         <button
                                             key={opt.value}
                                             disabled={isReadOnly}
-                                            onClick={() => setPriority(priority === opt.value ? null : opt.value)}
+                                            onClick={() => setPriority(isActive ? null : opt.value)}
                                             style={{
                                                 borderColor: opt.color,
-                                                backgroundColor: priority === opt.value ? opt.color : 'transparent',
-                                                color: priority === opt.value ? '#fff' : opt.color,
+                                                backgroundColor: isActive ? opt.color : '#1c1a16',
+                                                color: isActive ? '#1c1a16' : opt.color,
+                                                boxShadow: isActive ? `0 0 8px ${opt.color}` : 'none',
                                                 fontSize: '9px',
                                             }}
-                                            className="btn-physical uppercase tracking-widest px-2 py-1 rounded-full border cursor-pointer font-bold disabled:opacity-60 disabled:cursor-not-allowed"
+                                            className="cf-mono uppercase tracking-widest px-2 py-1 rounded-sm border cursor-pointer font-bold disabled:opacity-60 disabled:cursor-not-allowed transition-all"
                                         >
                                             {opt.label}
                                         </button>
-                                    ))}
+                                        )
+                                    })}
                                 </div>
                             </div>
                         </div>
 
                         {/* Section */}
                         <div className="flex flex-col gap-1.5">
-                            <label style={{ color: '#a89800', fontSize: '9px', letterSpacing: '0.1em' }} className="uppercase font-bold">Section</label>
+                            <label style={{ fontSize: '9px', letterSpacing: '0.1em', color: 'var(--cf-text-muted)' }} className="cf-label uppercase font-bold">Section</label>
                             <div className="flex gap-2 flex-wrap">
                                 {sections.map((s, i) => {
                                     const color = getSectionColor(s.name, i)
@@ -560,8 +542,8 @@ const CardEdit: React.FC<CardEditProps> = ({
                                             key={s.id}
                                             disabled={isReadOnly}
                                             onClick={() => setSectionId(s.id)}
-                                            style={{ borderColor: color, backgroundColor: isActive ? color : 'transparent', color: isActive ? '#fff' : color, fontSize: '10px' }}
-                                            className="btn-physical uppercase tracking-widest px-3 py-1.5 rounded-full border cursor-pointer font-bold disabled:opacity-60 disabled:cursor-not-allowed"
+                                            style={{ borderColor: color, backgroundColor: isActive ? color : '#1c1a16', color: isActive ? '#1c1a16' : color, boxShadow: isActive ? `0 0 8px ${color}` : 'none', fontSize: '10px' }}
+                                            className="cf-mono uppercase tracking-widest px-3 py-1.5 rounded-sm border cursor-pointer font-bold disabled:opacity-60 disabled:cursor-not-allowed transition-all"
                                         >
                                             {s.name}
                                         </button>
@@ -573,7 +555,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                         {/* Tags */}
                         {tags.length > 0 && (
                             <div className="flex flex-col gap-1.5">
-                                <label style={{ color: '#a89800', fontSize: '9px', letterSpacing: '0.1em' }} className="uppercase font-bold">Tags</label>
+                                <label style={{ fontSize: '9px', letterSpacing: '0.1em', color: 'var(--cf-text-muted)' }} className="cf-label uppercase font-bold">Tags</label>
                                 <div className="flex gap-1.5 flex-wrap">
                                     {tags.map(tag => {
                                         const isActive = selectedTagIds.includes(tag.id)
@@ -582,8 +564,8 @@ const CardEdit: React.FC<CardEditProps> = ({
                                                 key={tag.id}
                                                 disabled={isReadOnly}
                                                 onClick={() => toggleTag(tag.id)}
-                                                style={{ borderColor: tag.color, backgroundColor: isActive ? tag.color : 'transparent', color: isActive ? '#fff' : tag.color, fontSize: '10px' }}
-                                                className="btn-physical uppercase tracking-widest px-2.5 py-1 rounded-full border cursor-pointer font-bold disabled:opacity-60 disabled:cursor-not-allowed"
+                                                style={{ borderColor: tag.color, backgroundColor: isActive ? tag.color : '#1c1a16', color: isActive ? '#1c1a16' : tag.color, boxShadow: isActive ? `0 0 8px ${tag.color}` : 'none', fontSize: '10px' }}
+                                                className="cf-mono uppercase tracking-widest px-2.5 py-1 rounded-sm border cursor-pointer font-bold disabled:opacity-60 disabled:cursor-not-allowed transition-all"
                                             >
                                                 {tag.name}
                                             </button>
@@ -596,7 +578,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                         {/* Assign user */}
                         {users.length > 0 && (
                             <div className="flex flex-col gap-1.5">
-                                <label style={{ color: '#a89800', fontSize: '9px', letterSpacing: '0.1em' }} className="uppercase font-bold">
+                                <label style={{ fontSize: '9px', letterSpacing: '0.1em', color: 'var(--cf-text-muted)' }} className="cf-label uppercase font-bold">
                                     Assign{assignedUserId !== null ? ` · ${users.find(u => u.id === assignedUserId)?.name ?? ''}` : ''}
                                 </label>
                                 <div className="flex gap-2 flex-wrap items-center">
@@ -604,8 +586,8 @@ const CardEdit: React.FC<CardEditProps> = ({
                                         disabled={isReadOnly}
                                         onClick={() => setAssignedUserId(null)}
                                         title="Unassigned"
-                                        style={{ fontSize: '9px', borderColor: '#bbb', color: assignedUserId === null ? '#fff' : '#888', backgroundColor: assignedUserId === null ? '#888' : 'rgba(255,255,255,0.3)', width: 32, height: 32 }}
-                                        className="btn-physical rounded-full border-2 flex items-center justify-center font-bold cursor-pointer disabled:opacity-60 flex-shrink-0"
+                                        style={{ fontSize: '9px', borderColor: 'var(--cf-edge)', color: assignedUserId === null ? 'var(--cf-text)' : 'var(--cf-text-muted)', backgroundColor: assignedUserId === null ? 'var(--cf-graphite)' : '#1c1a16', width: 32, height: 32 }}
+                                        className="cf-mono rounded-sm border-2 flex items-center justify-center font-bold cursor-pointer disabled:opacity-60 flex-shrink-0 transition-all"
                                     >
                                         —
                                     </button>
@@ -618,8 +600,8 @@ const CardEdit: React.FC<CardEditProps> = ({
                                                 disabled={isReadOnly}
                                                 onClick={() => setAssignedUserId(isActive ? null : u.id)}
                                                 title={u.name}
-                                                style={{ borderColor: color, backgroundColor: isActive ? color : 'rgba(255,255,255,0.3)', color: isActive ? '#fff' : color, fontSize: '10px', width: 32, height: 32 }}
-                                                className="btn-physical rounded-full border-2 flex items-center justify-center font-bold cursor-pointer disabled:opacity-60 flex-shrink-0"
+                                                style={{ borderColor: color, backgroundColor: isActive ? color : '#1c1a16', color: isActive ? '#1c1a16' : color, boxShadow: isActive ? `0 0 8px ${color}` : 'none', fontSize: '10px', width: 32, height: 32 }}
+                                                className="cf-mono rounded-sm border-2 flex items-center justify-center font-bold cursor-pointer disabled:opacity-60 flex-shrink-0 transition-all"
                                             >
                                                 {initials(u.name)}
                                             </button>
@@ -633,8 +615,8 @@ const CardEdit: React.FC<CardEditProps> = ({
                         {!isReadOnly && (
                             <button
                                 onClick={handleSubmit}
-                                style={{ backgroundColor: currentColor, color: '#fff', fontFamily: 'monospace', letterSpacing: '0.1em', fontSize: '11px' }}
-                                className="btn-physical w-full py-2.5 rounded font-bold uppercase cursor-pointer hover:opacity-90 mt-2 flex-shrink-0"
+                                style={{ fontFamily: 'monospace', letterSpacing: '0.1em', fontSize: '11px' }}
+                                className="aero-btn aero-btn--cyan w-full py-2.5 font-bold uppercase cursor-pointer mt-2 flex-shrink-0"
                             >
                                 {isNew ? 'Pin it' : 'Save'}
                             </button>
@@ -646,7 +628,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                 {!isNew && activeTab === 'checklist' && (
                     <div className="flex flex-col gap-2">
                         {checklistItems.length === 0 && (
-                            <p style={{ color: '#999', fontSize: '12px' }} className="text-center py-4">No items yet. Add one below.</p>
+                            <p style={{ fontSize: '12px', color: 'var(--cf-text-muted)' }} className="cf-mono text-center py-4">No items yet. Add one below.</p>
                         )}
                         {checklistItems.map(item => (
                             <div key={item.id} className="flex items-center gap-2 group">
@@ -657,12 +639,12 @@ const CardEdit: React.FC<CardEditProps> = ({
                                         checked={item.is_done}
                                         disabled={isReadOnly}
                                         onChange={() => handleToggleItem(item)}
-                                        className="cursor-pointer accent-yellow-600 w-4 h-4 disabled:cursor-not-allowed"
+                                        className="cursor-pointer accent-[var(--cf-phosphor)] w-4 h-4 disabled:cursor-not-allowed"
                                     />
                                 </div>
                                 <span
                                     style={{
-                                        color: item.is_done ? '#999' : '#222',
+                                        color: item.is_done ? 'var(--cf-text-muted)' : 'var(--cf-text)',
                                         textDecoration: item.is_done ? 'line-through' : 'none',
                                         fontSize: '13px',
                                         flex: 1,
@@ -674,8 +656,8 @@ const CardEdit: React.FC<CardEditProps> = ({
                                 {!isReadOnly && (
                                     <button
                                         onClick={() => handleDeleteItem(item)}
-                                        style={{ color: '#ccc', fontSize: '10px' }}
-                                        className="btn-physical opacity-0 group-hover:opacity-100 hover:text-red-500 cursor-pointer"
+                                        style={{ fontSize: '10px', color: 'var(--cf-text-muted)' }}
+                                        className="opacity-0 group-hover:opacity-100 hover:text-[var(--cf-red)] cursor-pointer"
                                     >
                                         ✕
                                     </button>
@@ -686,13 +668,13 @@ const CardEdit: React.FC<CardEditProps> = ({
                         {/* Progress bar */}
                         {checklistItems.length > 0 && (
                             <div className="flex items-center gap-2 mt-1">
-                                <div className="flex-1 h-1.5 bg-yellow-200 rounded-full overflow-hidden">
+                                <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--cf-screen)' }}>
                                     <div
-                                        style={{ width: `${(doneCount / checklistItems.length) * 100}%`, backgroundColor: '#22c55e' }}
+                                        style={{ width: `${(doneCount / checklistItems.length) * 100}%`, backgroundColor: 'var(--cf-phosphor)', boxShadow: '0 0 6px var(--cf-phosphor)' }}
                                         className="h-full rounded-full transition-all duration-300"
                                     />
                                 </div>
-                                <span style={{ fontSize: '10px', color: '#999' }}>{doneCount}/{checklistItems.length}</span>
+                                <span style={{ fontSize: '10px', color: 'var(--cf-text-muted)' }} className="cf-mono">{doneCount}/{checklistItems.length}</span>
                             </div>
                         )}
 
@@ -704,13 +686,13 @@ const CardEdit: React.FC<CardEditProps> = ({
                                     onChange={e => setNewChecklistText(e.target.value)}
                                     onKeyDown={e => { if (e.key === 'Enter') handleAddChecklistItem() }}
                                     placeholder="Add item..."
-                                    style={{ color: '#333', backgroundColor: 'rgba(255,255,255,0.5)', borderColor: '#d4c200', fontSize: '12px' }}
-                                    className="flex-1 border rounded px-2 py-1.5 focus:outline-none placeholder-yellow-600/40"
+                                    style={{ fontSize: '12px' }}
+                                    className="glass-input flex-1 px-2 py-1.5"
                                 />
                                 <button
                                     onClick={handleAddChecklistItem}
-                                    style={{ backgroundColor: '#d4c200', color: '#fff', fontSize: '11px' }}
-                                    className="btn-physical px-3 py-1.5 rounded font-bold cursor-pointer"
+                                    style={{ fontSize: '11px' }}
+                                    className="aero-btn aero-btn--cyan px-3 py-1.5 font-bold cursor-pointer"
                                 >
                                     +
                                 </button>
@@ -722,9 +704,9 @@ const CardEdit: React.FC<CardEditProps> = ({
                 {/* Subtasks tab */}
                 {!isNew && activeTab === 'subtasks' && (
                     <div className="flex flex-col gap-2">
-                        {loadingSubtasks && <p style={{ color: '#999', fontSize: '12px' }} className="text-center py-4">Loading...</p>}
+                        {loadingSubtasks && <p style={{ fontSize: '12px', color: 'var(--cf-text-muted)' }} className="cf-mono text-center py-4">Loading...</p>}
                         {!loadingSubtasks && subtasks.length === 0 && (
-                            <p style={{ color: '#999', fontSize: '12px' }} className="text-center py-4">No subtasks yet.</p>
+                            <p style={{ fontSize: '12px', color: 'var(--cf-text-muted)' }} className="cf-mono text-center py-4">No subtasks yet.</p>
                         )}
                         {subtasks.map(s => (
                             <div key={s.id} className="flex items-center gap-2">
@@ -734,10 +716,10 @@ const CardEdit: React.FC<CardEditProps> = ({
                                         checked={s.is_done}
                                         disabled={isReadOnly}
                                         onChange={() => handleToggleSubtask(s)}
-                                        className="cursor-pointer accent-yellow-600 w-4 h-4 disabled:cursor-not-allowed"
+                                        className="cursor-pointer accent-[var(--cf-phosphor)] w-4 h-4 disabled:cursor-not-allowed"
                                     />
                                 </div>
-                                <span style={{ color: s.is_done ? '#999' : '#222', textDecoration: s.is_done ? 'line-through' : 'none', fontSize: '13px', flex: 1, transition: 'color 200ms ease' }}>
+                                <span style={{ color: s.is_done ? 'var(--cf-text-muted)' : 'var(--cf-text)', textDecoration: s.is_done ? 'line-through' : 'none', fontSize: '13px', flex: 1, transition: 'color 200ms ease' }}>
                                     {s.name}
                                 </span>
                             </div>
@@ -746,13 +728,13 @@ const CardEdit: React.FC<CardEditProps> = ({
                         {/* Progress bar */}
                         {subtasks.length > 0 && (
                             <div className="flex items-center gap-2 mt-1">
-                                <div className="flex-1 h-1.5 bg-yellow-200 rounded-full overflow-hidden">
+                                <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--cf-screen)' }}>
                                     <div
-                                        style={{ width: `${(doneSubtasks / subtasks.length) * 100}%`, backgroundColor: '#22c55e' }}
+                                        style={{ width: `${(doneSubtasks / subtasks.length) * 100}%`, backgroundColor: 'var(--cf-phosphor)', boxShadow: '0 0 6px var(--cf-phosphor)' }}
                                         className="h-full rounded-full transition-all duration-300"
                                     />
                                 </div>
-                                <span style={{ fontSize: '10px', color: '#999' }}>{doneSubtasks}/{subtasks.length}</span>
+                                <span style={{ fontSize: '10px', color: 'var(--cf-text-muted)' }} className="cf-mono">{doneSubtasks}/{subtasks.length}</span>
                             </div>
                         )}
 
@@ -764,13 +746,13 @@ const CardEdit: React.FC<CardEditProps> = ({
                                     onChange={e => setNewSubtaskName(e.target.value)}
                                     onKeyDown={e => { if (e.key === 'Enter') handleAddSubtask() }}
                                     placeholder="Add subtask..."
-                                    style={{ color: '#333', backgroundColor: 'rgba(255,255,255,0.5)', borderColor: '#d4c200', fontSize: '12px' }}
-                                    className="flex-1 border rounded px-2 py-1.5 focus:outline-none placeholder-yellow-600/40"
+                                    style={{ fontSize: '12px' }}
+                                    className="glass-input flex-1 px-2 py-1.5"
                                 />
                                 <button
                                     onClick={handleAddSubtask}
-                                    style={{ backgroundColor: '#d4c200', color: '#fff', fontSize: '11px' }}
-                                    className="btn-physical px-3 py-1.5 rounded font-bold cursor-pointer"
+                                    style={{ fontSize: '11px' }}
+                                    className="aero-btn aero-btn--cyan px-3 py-1.5 font-bold cursor-pointer"
                                 >
                                     +
                                 </button>
@@ -792,20 +774,20 @@ const CardEdit: React.FC<CardEditProps> = ({
                                         onChange={e => handleCommentChange(e.target.value)}
                                         placeholder="Write a comment... (type @ to mention)"
                                         rows={2}
-                                        style={{ color: '#333', backgroundColor: 'rgba(255,255,255,0.5)', borderColor: '#d4c200', fontSize: '12px' }}
-                                        className="w-full border rounded px-3 py-2 focus:outline-none resize-none placeholder-yellow-600/40"
+                                        style={{ fontSize: '12px' }}
+                                        className="glass-input w-full px-3 py-2 resize-none"
                                     />
                                     {/* @mention dropdown — positioned below the textarea */}
                                     {mentionUsers.length > 0 && (
-                                        <div style={{ backgroundColor: 'rgba(255,255,255,0.95)', borderColor: '#d4c200', zIndex: 10 }} className="absolute top-full left-0 right-0 border rounded shadow-lg flex flex-col">
+                                        <div style={{ background: '#1c1a16', borderColor: 'var(--cf-edge)', zIndex: 10 }} className="absolute top-full left-0 right-0 border rounded-lg shadow-lg flex flex-col">
                                             {mentionUsers.map(u => (
                                                 <button
                                                     key={u.id}
                                                     onMouseDown={e => { e.preventDefault(); handlePickMention(u); }}
-                                                    style={{ fontSize: '12px', color: '#333' }}
-                                                    className="px-3 py-2 text-left hover:bg-yellow-100 cursor-pointer transition-colors"
+                                                    style={{ fontSize: '12px', color: 'var(--cf-text)' }}
+                                                    className="cf-mono px-3 py-2 text-left hover:bg-white/5 cursor-pointer transition-colors"
                                                 >
-                                                    @{u.name.split(' ')[0]} <span style={{ color: '#999', fontSize: '10px' }}>{u.name}</span>
+                                                    @{u.name.split(' ')[0]} <span style={{ fontSize: '10px', color: 'var(--cf-text-muted)' }}>{u.name}</span>
                                                 </button>
                                             ))}
                                         </div>
@@ -814,52 +796,50 @@ const CardEdit: React.FC<CardEditProps> = ({
                                 <button
                                     onClick={handleAddComment}
                                     disabled={!newComment.trim()}
-                                    style={{ backgroundColor: '#d4c200', color: '#fff', fontSize: '11px' }}
-                                    className="btn-physical self-end px-4 py-1.5 rounded font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                                    style={{ fontSize: '11px' }}
+                                    className="aero-btn aero-btn--cyan self-end px-4 py-1.5 font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
                                     Post
                                 </button>
                             </div>
                         )}
                         {isDemo && (
-                            <p style={{ color: '#999', fontSize: '12px' }} className="text-center py-2">Comments are not available in demo mode.</p>
+                            <p style={{ fontSize: '12px', color: 'var(--cf-text-muted)' }} className="cf-mono text-center py-2">Comments are not available in demo mode.</p>
                         )}
 
                         {/* Thread */}
-                        {loadingComments && <p style={{ color: '#999', fontSize: '12px' }} className="text-center">Loading...</p>}
+                        {loadingComments && <p style={{ fontSize: '12px', color: 'var(--cf-text-muted)' }} className="cf-mono text-center">Loading...</p>}
                         {comments.map(comment => (
                             <div key={comment.id} className="flex flex-col gap-0.5 group">
                                 <div className="flex items-center gap-2">
-                                    <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#555' }}>{comment.user?.name}</span>
-                                    <span style={{ fontSize: '10px', color: '#aaa' }}>
+                                    <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--cf-text)' }}>{comment.user?.name}</span>
+                                    <span style={{ fontSize: '10px', color: 'var(--cf-text-muted)' }} className="cf-mono">
                                         {new Date(comment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                     <button
                                         onClick={() => handleDeleteComment(comment.id)}
-                                        style={{ color: '#ccc', fontSize: '10px' }}
-                                        className="ml-auto opacity-0 group-hover:opacity-100 hover:text-red-500 cursor-pointer transition-all"
+                                        style={{ fontSize: '10px', color: 'var(--cf-text-muted)' }}
+                                        className="ml-auto opacity-0 group-hover:opacity-100 hover:text-[var(--cf-red)] cursor-pointer transition-all"
                                     >
                                         ✕
                                     </button>
                                 </div>
-                                <p style={{ fontSize: '12px', color: '#333', lineHeight: '1.4' }}>
+                                <p style={{ fontSize: '12px', lineHeight: '1.4', color: 'var(--cf-text)' }}>
                                     {comment.body.split(/(@\w+)/g).map((part, i) =>
                                         /^@\w+$/.test(part)
-                                            ? <span key={i} style={{ color: '#a07800', fontWeight: 'bold' }}>{part}</span>
+                                            ? <span key={i} style={{ color: 'var(--cf-phosphor)', fontWeight: 'bold' }}>{part}</span>
                                             : part
                                     )}
                                 </p>
-                                <div style={{ borderColor: '#e6d800', opacity: 0.3 }} className="border-b mt-1"/>
+                                <div style={{ borderColor: 'var(--cf-edge)' }} className="border-b mt-1"/>
                             </div>
                         ))}
                         {!loadingComments && !isDemo && comments.length === 0 && (
-                            <p style={{ color: '#999', fontSize: '12px' }} className="text-center py-2">No comments yet.</p>
+                            <p style={{ fontSize: '12px', color: 'var(--cf-text-muted)' }} className="cf-mono text-center py-2">No comments yet.</p>
                         )}
                     </div>
                 )}
             </div>
-
-            <div style={{ position: 'absolute', bottom: 0, right: 0, width: 0, height: 0, borderStyle: 'solid', borderWidth: '0 0 20px 20px', borderColor: 'transparent transparent rgba(0,0,0,0.15) transparent' }}/>
         </div>
     )
 }

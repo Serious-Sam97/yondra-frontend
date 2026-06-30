@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 const AVATAR_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107', '#00BCD4', '#E91E63']
-const STRIPE_COLORS = ['#4CAF50', '#FFC107', '#FF9800', '#F44336', '#7B1FA2', '#1976D2']
+const STRIPE_COLORS = ['#9aa67e', '#ffb000', '#ff5a4d', '#6fe0ff', '#9aa67e', '#ffb000']
 
 function initials(name: string): string {
     return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -84,7 +84,7 @@ export default function ProfilePage() {
     if (!user) {
         return (
             <div className="flex items-center justify-center min-h-screen">
-                <div className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"/>
+                <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--cf-phosphor)', borderTopColor: 'transparent' }}/>
             </div>
         )
     }
@@ -94,17 +94,18 @@ export default function ProfilePage() {
     return (
         <div className="min-h-screen px-4 py-6 md:px-8 md:py-10 max-w-2xl mx-auto">
 
-            {/* Rainbow stripe */}
-            <div className="flex gap-1 mb-6">
-                {STRIPE_COLORS.map(c => (
-                    <div key={c} style={{ backgroundColor: c }} className="h-1 flex-1 rounded-full"/>
+            {/* LED status strip */}
+            <div className="flex gap-1.5 mb-6">
+                {STRIPE_COLORS.map((c, i) => (
+                    <div key={i} style={{ backgroundColor: c, boxShadow: `0 0 6px ${c}` }} className="h-1.5 flex-1 rounded-sm"/>
                 ))}
             </div>
 
             {/* Back */}
             <button
                 onClick={() => router.push('/dashboard')}
-                className="text-xs uppercase tracking-widest text-gray-500 hover:text-gray-300 mb-8 flex items-center gap-1 cursor-pointer transition-colors duration-150"
+                className="cf-label mb-8 flex items-center gap-1 cursor-pointer transition-colors duration-150"
+                style={{ color: 'var(--cf-text-muted)' }}
             >
                 ← Back to boards
             </button>
@@ -112,49 +113,57 @@ export default function ProfilePage() {
             {/* Avatar + name */}
             <div className="flex items-center gap-5 mb-10">
                 <div
-                    style={{ backgroundColor: color, width: 72, height: 72, fontSize: 28 }}
-                    className="rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-lg"
+                    style={{ backgroundColor: color, width: 72, height: 72, fontSize: 28, border: '2px solid var(--cf-edge)', boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.35)' }}
+                    className="rounded-2xl flex items-center justify-center text-white font-bold flex-shrink-0 cf-mono"
                 >
                     {initials(user.name)}
                 </div>
                 <div>
-                    <p className="text-2xl md:text-3xl font-bold text-white">{user.name}</p>
-                    <p className="text-gray-500 text-sm mt-0.5">{user.email}</p>
+                    <p className="text-2xl md:text-3xl font-bold" style={{ color: 'var(--cf-text)' }}>{user.name}</p>
+                    <p className="text-sm mt-0.5 cf-mono" style={{ color: 'var(--cf-text-muted)' }}>{user.email}</p>
                 </div>
             </div>
 
             <div className="flex flex-col gap-6">
 
                 {/* Personal info */}
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-5">
-                    <p className="text-xs uppercase tracking-widest text-gray-500">Personal Info</p>
+                <div className="glass-panel p-6 flex flex-col gap-5">
+                    <p className="cf-label" style={{ color: 'var(--cf-phosphor)' }}>Personal info</p>
 
                     {profileFeedback && (
-                        <div className={`text-sm px-4 py-2 rounded-lg border ${
-                            profileFeedback.type === 'success'
-                                ? 'bg-green-500/10 border-green-500/40 text-green-400'
-                                : 'bg-red-500/10 border-red-500/40 text-red-400'
-                        }`}>
-                            {profileFeedback.message}
-                        </div>
+                        profileFeedback.type === 'success' ? (
+                            <div
+                                className="text-sm px-4 py-2 rounded-xl cf-mono"
+                                style={{ background: 'rgba(154,166,126,0.14)', border: '1px solid var(--cf-phosphor)', color: 'var(--cf-phosphor)' }}
+                            >
+                                {profileFeedback.message}
+                            </div>
+                        ) : (
+                            <div
+                                className="text-sm px-4 py-2 rounded-xl cf-mono"
+                                style={{ background: 'rgba(255,90,77,0.16)', border: '1px solid var(--cf-red)', color: 'var(--cf-red)' }}
+                            >
+                                {profileFeedback.message}
+                            </div>
+                        )
                     )}
 
                     <div className="flex flex-col gap-4">
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Name</label>
+                            <label className="cf-label block mb-2">Name</label>
                             <input
                                 value={name}
                                 onChange={e => setName(e.target.value)}
-                                className="bg-gray-800 border border-gray-700 px-3 py-2.5 rounded-lg w-full text-white focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm"
+                                className="glass-input"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Email</label>
+                            <label className="cf-label block mb-2">Email</label>
                             <input
                                 type="email"
                                 value={email}
                                 onChange={e => setEmail(e.target.value)}
-                                className="bg-gray-800 border border-gray-700 px-3 py-2.5 rounded-lg w-full text-white focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm"
+                                className="glass-input"
                             />
                         </div>
                     </div>
@@ -162,55 +171,63 @@ export default function ProfilePage() {
                     <button
                         onClick={handleProfileSave}
                         disabled={profileLoading || (!name.trim() || !email.trim())}
-                        className="self-end text-xs uppercase tracking-widest font-bold px-5 py-2.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-black disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all duration-150"
+                        className="aero-btn aero-btn--cyan self-end px-5 py-2.5"
                     >
-                        {profileLoading ? 'Saving...' : 'Save Changes'}
+                        {profileLoading ? 'Saving…' : 'Save changes'}
                     </button>
                 </div>
 
                 {/* Change password */}
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-5">
-                    <p className="text-xs uppercase tracking-widest text-gray-500">Change Password</p>
+                <div className="glass-panel p-6 flex flex-col gap-5">
+                    <p className="cf-label" style={{ color: 'var(--cf-phosphor)' }}>Change password</p>
 
                     {passwordFeedback && (
-                        <div className={`text-sm px-4 py-2 rounded-lg border ${
-                            passwordFeedback.type === 'success'
-                                ? 'bg-green-500/10 border-green-500/40 text-green-400'
-                                : 'bg-red-500/10 border-red-500/40 text-red-400'
-                        }`}>
-                            {passwordFeedback.message}
-                        </div>
+                        passwordFeedback.type === 'success' ? (
+                            <div
+                                className="text-sm px-4 py-2 rounded-xl cf-mono"
+                                style={{ background: 'rgba(154,166,126,0.14)', border: '1px solid var(--cf-phosphor)', color: 'var(--cf-phosphor)' }}
+                            >
+                                {passwordFeedback.message}
+                            </div>
+                        ) : (
+                            <div
+                                className="text-sm px-4 py-2 rounded-xl cf-mono"
+                                style={{ background: 'rgba(255,90,77,0.16)', border: '1px solid var(--cf-red)', color: 'var(--cf-red)' }}
+                            >
+                                {passwordFeedback.message}
+                            </div>
+                        )
                     )}
 
                     <div className="flex flex-col gap-4">
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Current Password</label>
+                            <label className="cf-label block mb-2">Current password</label>
                             <input
                                 type="password"
                                 value={currentPassword}
                                 onChange={e => setCurrentPassword(e.target.value)}
                                 placeholder="••••••••"
-                                className="bg-gray-800 border border-gray-700 px-3 py-2.5 rounded-lg w-full text-white focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm"
+                                className="glass-input"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">New Password</label>
+                            <label className="cf-label block mb-2">New password</label>
                             <input
                                 type="password"
                                 value={newPassword}
                                 onChange={e => setNewPassword(e.target.value)}
                                 placeholder="••••••••"
-                                className="bg-gray-800 border border-gray-700 px-3 py-2.5 rounded-lg w-full text-white focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm"
+                                className="glass-input"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm text-gray-400 mb-1">Confirm New Password</label>
+                            <label className="cf-label block mb-2">Confirm new password</label>
                             <input
                                 type="password"
                                 value={confirmPassword}
                                 onChange={e => setConfirmPassword(e.target.value)}
                                 placeholder="••••••••"
-                                className="bg-gray-800 border border-gray-700 px-3 py-2.5 rounded-lg w-full text-white focus:outline-none focus:ring-2 focus:ring-amber-400 text-sm"
+                                className="glass-input"
                             />
                         </div>
                     </div>
@@ -218,23 +235,23 @@ export default function ProfilePage() {
                     <button
                         onClick={handlePasswordSave}
                         disabled={passwordLoading || (!currentPassword || !newPassword || !confirmPassword)}
-                        className="self-end text-xs uppercase tracking-widest font-bold px-5 py-2.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-black disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all duration-150"
+                        className="aero-btn aero-btn--cyan self-end px-5 py-2.5"
                     >
-                        {passwordLoading ? 'Updating...' : 'Update Password'}
+                        {passwordLoading ? 'Updating…' : 'Update password'}
                     </button>
                 </div>
 
                 {/* Danger zone */}
-                <div className="bg-gray-900 border border-red-900/40 rounded-2xl p-6 flex items-center justify-between gap-4">
+                <div className="glass-panel p-6 flex items-center justify-between gap-4">
                     <div>
-                        <p className="text-xs uppercase tracking-widest text-gray-500 mb-1">Session</p>
-                        <p className="text-sm text-gray-400">Sign out from your account on this device.</p>
+                        <p className="cf-label mb-1" style={{ color: 'var(--cf-phosphor)' }}>Session</p>
+                        <p className="text-sm cf-mono" style={{ color: 'var(--cf-text-muted)' }}>Sign out from your account on this device.</p>
                     </div>
                     <button
                         onClick={handleLogout}
-                        className="text-xs uppercase tracking-widest font-bold px-4 py-2.5 rounded-lg border border-red-700 text-red-400 hover:bg-red-600 hover:text-white hover:border-red-600 cursor-pointer transition-all duration-150 flex-shrink-0"
+                        className="aero-btn aero-btn--magenta px-4 py-2.5 flex-shrink-0"
                     >
-                        Sign Out
+                        Sign out
                     </button>
                 </div>
             </div>

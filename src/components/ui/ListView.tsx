@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 
-const SECTION_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107']
-const AVATAR_COLORS  = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107', '#00BCD4', '#E91E63']
-const PRIORITY_COLOR: Record<string, string> = { high: '#ef4444', medium: '#f97316', low: '#22c55e' }
+const SECTION_COLORS = ['#9aa67e', '#ffb000', '#6fe0ff', '#ff5a4d', '#c08bff', '#ffd24a']
+const AVATAR_COLORS  = ['#9aa67e', '#ffb000', '#6fe0ff', '#ff5a4d', '#c08bff', '#ffd24a', '#6fe0ff', '#ff8fa3']
+const PRIORITY_COLOR: Record<string, string> = { high: '#ff5a4d', medium: '#ffb000', low: '#9aa67e' }
 
 type SortKey = 'name' | 'section' | 'priority' | 'due_date'
 type SortDir = 'asc' | 'desc'
@@ -62,7 +62,8 @@ export function ListView({ cards, sections, users, onCardClick }: ListViewProps)
     const ColHeader = ({ k, label, className = '' }: { k: SortKey; label: string; className?: string }) => (
         <div
             onClick={() => toggleSort(k)}
-            className={`px-3 py-2.5 text-[10px] uppercase tracking-widest text-gray-600 font-bold flex items-center cursor-pointer hover:text-gray-400 transition-colors select-none ${className}`}
+            className={`cf-label px-3 py-2.5 text-[10px] uppercase tracking-widest font-bold flex items-center cursor-pointer transition-colors select-none ${className}`}
+            style={{ color: 'var(--cf-text-muted)' }}
         >
             {label}<SortIcon k={k} />
         </div>
@@ -71,23 +72,23 @@ export function ListView({ cards, sections, users, onCardClick }: ListViewProps)
     return (
         <div className="flex flex-col pb-8">
             {/* Header */}
-            <div className="grid grid-cols-[28px_1fr_auto_auto] md:grid-cols-[28px_1fr_140px_auto_110px_36px] border border-gray-800 rounded-t-lg overflow-hidden bg-gray-900/60">
-                <div className="px-2 py-2.5 text-[10px] uppercase tracking-widest text-gray-600 font-bold flex items-center justify-center" title="Priority">
+            <div className="grid grid-cols-[28px_1fr_auto_auto] md:grid-cols-[28px_1fr_140px_auto_110px_36px] aero-column rounded-b-none overflow-hidden" style={{ borderBottom: '1px solid var(--cf-edge)' }}>
+                <div className="cf-label px-2 py-2.5 text-[10px] uppercase tracking-widest font-bold flex items-center justify-center" style={{ color: 'var(--cf-text-muted)' }} title="Priority">
                     P
                 </div>
-                <ColHeader k="name" label="Name" className="border-l border-gray-800" />
-                <ColHeader k="section" label="Section" className="border-l border-gray-800 hidden md:flex" />
-                <div className="px-3 py-2.5 text-[10px] uppercase tracking-widest text-gray-600 font-bold border-l border-gray-800 hidden md:flex items-center">
+                <ColHeader k="name" label="Name" className="md:border-l md:border-white/15" />
+                <ColHeader k="section" label="Section" className="md:border-l md:border-white/15 hidden md:flex" />
+                <div className="cf-label px-3 py-2.5 text-[10px] uppercase tracking-widest font-bold md:border-l md:border-white/15 hidden md:flex items-center" style={{ color: 'var(--cf-text-muted)' }}>
                     Tags
                 </div>
-                <ColHeader k="due_date" label="Due" className="border-l border-gray-800" />
-                <div className="px-2 py-2.5 border-l border-gray-800 hidden md:flex items-center" />
+                <ColHeader k="due_date" label="Due" className="md:border-l md:border-white/15" />
+                <div className="px-2 py-2.5 md:border-l md:border-white/15 hidden md:flex items-center" />
             </div>
 
             {/* Rows */}
-            <div className="border-l border-r border-b border-gray-800 rounded-b-lg overflow-hidden">
+            <div className="aero-column rounded-t-none overflow-hidden">
                 {sorted.length === 0 && (
-                    <p className="text-center text-gray-700 text-xs uppercase tracking-widest py-12">No cards match the current filters</p>
+                    <p className="cf-label text-center text-xs uppercase tracking-widest py-12" style={{ color: 'var(--cf-text-muted)' }}>No cards match the current filters</p>
                 )}
                 {sorted.map(card => {
                     const sIdx    = sections.findIndex(s => s.id === card.section_id)
@@ -102,40 +103,41 @@ export function ListView({ cards, sections, users, onCardClick }: ListViewProps)
                         <button
                             key={card.id}
                             onClick={() => onCardClick(card)}
-                            className="grid grid-cols-[28px_1fr_auto_auto] md:grid-cols-[28px_1fr_140px_auto_110px_36px] w-full text-left hover:bg-gray-800/40 transition-colors cursor-pointer group border-b border-gray-800/60 last:border-0"
+                            className="grid grid-cols-[28px_1fr_auto_auto] md:grid-cols-[28px_1fr_140px_auto_110px_36px] w-full text-left hover:bg-white/10 transition-colors cursor-pointer group last:border-0"
+                            style={{ borderBottom: '1px solid var(--cf-edge)' }}
                         >
                             {/* Priority */}
                             <div className="flex items-center justify-center py-3">
                                 <div
-                                    className="w-2 h-2 rounded-full flex-shrink-0"
-                                    style={{ backgroundColor: card.priority ? PRIORITY_COLOR[card.priority] : '#374151' }}
+                                    className="cf-led w-2 h-2 rounded-full flex-shrink-0"
+                                    style={{ backgroundColor: card.priority ? PRIORITY_COLOR[card.priority] : 'var(--cf-edge)', boxShadow: card.priority ? `0 0 8px ${PRIORITY_COLOR[card.priority]}` : 'none' }}
                                 />
                             </div>
 
                             {/* Name */}
-                            <div className="px-3 py-3 flex items-center min-w-0 border-l border-gray-800/40">
-                                <span className="text-gray-200 text-sm truncate group-hover:text-white transition-colors leading-snug">
+                            <div className="px-3 py-3 flex items-center min-w-0 md:border-l md:border-white/10">
+                                <span className="cf-mono text-sm truncate transition-colors leading-snug" style={{ color: 'var(--cf-text)' }}>
                                     {card.name}
                                 </span>
                             </div>
 
                             {/* Section */}
-                            <div className="px-3 py-3 hidden md:flex items-center border-l border-gray-800/40">
+                            <div className="px-3 py-3 hidden md:flex items-center md:border-l md:border-white/10">
                                 <span
-                                    className="text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full whitespace-nowrap"
-                                    style={{ color: sColor, backgroundColor: sColor + '18' }}
+                                    className="aero-pill cf-mono text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 whitespace-nowrap"
+                                    style={{ color: sColor, borderColor: sColor + '88', boxShadow: `0 0 8px ${sColor}55` }}
                                 >
                                     {section?.name ?? '—'}
                                 </span>
                             </div>
 
                             {/* Tags */}
-                            <div className="px-3 py-3 hidden md:flex items-center gap-1 border-l border-gray-800/40">
+                            <div className="px-3 py-3 hidden md:flex items-center gap-1 md:border-l md:border-white/10">
                                 {(card.tags ?? []).slice(0, 2).map((tag: any) => (
                                     <span
                                         key={tag.id}
-                                        className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap"
-                                        style={{ backgroundColor: tag.color + '22', color: tag.color }}
+                                        className="aero-pill cf-mono text-[9px] uppercase tracking-wide px-1.5 py-0.5 font-bold whitespace-nowrap"
+                                        style={{ color: tag.color, borderColor: tag.color + '88', boxShadow: `0 0 7px ${tag.color}55` }}
                                     >
                                         {tag.name}
                                     </span>
@@ -143,28 +145,31 @@ export function ListView({ cards, sections, users, onCardClick }: ListViewProps)
                             </div>
 
                             {/* Due date */}
-                            <div className="px-3 py-3 flex items-center border-l border-gray-800/40">
+                            <div className="px-3 py-3 flex items-center md:border-l md:border-white/10">
                                 {due ? (
-                                    <span className={`text-[11px] font-mono whitespace-nowrap ${isOverdue ? 'text-red-400' : isDueToday ? 'text-amber-400' : 'text-gray-500'}`}>
+                                    <span
+                                        className="cf-lcd text-[11px] whitespace-nowrap"
+                                        style={{ color: isOverdue ? 'var(--cf-red)' : isDueToday ? 'var(--cf-amber)' : 'var(--cf-text-muted)' }}
+                                    >
                                         {due}
                                     </span>
                                 ) : (
-                                    <span className="text-gray-800 text-sm">—</span>
+                                    <span style={{ color: 'var(--cf-edge)' }} className="text-sm">—</span>
                                 )}
                             </div>
 
                             {/* Assignee */}
-                            <div className="px-1 py-3 hidden md:flex items-center justify-center border-l border-gray-800/40">
+                            <div className="px-1 py-3 hidden md:flex items-center justify-center md:border-l md:border-white/10">
                                 {user ? (
                                     <div
-                                        className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0"
-                                        style={{ backgroundColor: AVATAR_COLORS[user.id % AVATAR_COLORS.length] }}
+                                        className="cf-mono w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0"
+                                        style={{ backgroundColor: AVATAR_COLORS[user.id % AVATAR_COLORS.length], color: 'var(--cf-ink)', border: '1px solid var(--cf-edge)' }}
                                         title={user.name}
                                     >
                                         {initials(user.name)}
                                     </div>
                                 ) : (
-                                    <div className="w-6 h-6 rounded-full border border-gray-800 flex-shrink-0" />
+                                    <div className="w-6 h-6 rounded-full flex-shrink-0" style={{ border: '1px solid var(--cf-edge)' }} />
                                 )}
                             </div>
                         </button>
@@ -173,7 +178,7 @@ export function ListView({ cards, sections, users, onCardClick }: ListViewProps)
             </div>
 
             {sorted.length > 0 && (
-                <p className="text-gray-700 text-[10px] uppercase tracking-widest text-right pt-2">
+                <p className="cf-label text-[10px] uppercase tracking-widest text-right pt-2" style={{ color: 'var(--cf-text-muted)' }}>
                     {sorted.length} card{sorted.length !== 1 ? 's' : ''}
                 </p>
             )}

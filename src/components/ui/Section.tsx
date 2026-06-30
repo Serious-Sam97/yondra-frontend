@@ -42,8 +42,10 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
     const count = cards.length
     const atLimit  = wipLimit != null && count === wipLimit
     const overLimit = wipLimit != null && count > wipLimit
-    const countColor = overLimit ? '#ef4444' : atLimit ? '#f97316' : '#6b7280'
-    const countBg    = overLimit ? '#ef444422' : atLimit ? '#f9731622' : '#1f2937'
+    // Status LED cycles green (nominal) / amber (at limit) / red (over limit)
+    const ledColor = overLimit ? 'var(--cf-red)' : atLimit ? 'var(--cf-amber)' : 'var(--cf-phosphor)'
+    const countColor = overLimit ? 'var(--cf-red)' : atLimit ? 'var(--cf-amber)' : 'var(--cf-text)'
+    const countBg    = '#1c1a16'
 
     // Ring animation when a card lands in this column — direct DOM to restart reliably
     useEffect(() => {
@@ -81,12 +83,15 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
 
     return (
         <div
-            className={`flex flex-col w-64 flex-shrink-0 group/section ${shaking ? 'wip-shake' : ''}`}
+            className={`aero-column flex flex-col w-64 flex-shrink-0 group/section pb-2 ${shaking ? 'wip-shake' : ''}`}
             style={{ transform: shaking ? undefined : `translateY(${sag}px)`, transition: shaking ? 'none' : 'transform 600ms cubic-bezier(0.16,1,0.3,1)' }}
         >
-            {/* Column header */}
-            <div className="flex items-center gap-2 mb-3 px-1">
-                <div style={{ backgroundColor: color }} className="w-2 h-2 rounded-full flex-shrink-0"/>
+            {/* Column header — status LED + mono label + readout count */}
+            <div className="flex items-center gap-2 mb-3 px-3 pt-2">
+                <span
+                    style={{ background: ledColor, boxShadow: `0 0 6px ${ledColor}, 0 0 11px ${ledColor}` }}
+                    className="cf-led flex-shrink-0"
+                />
 
                 {editing ? (
                     <input
@@ -98,11 +103,13 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
                             if (e.key === 'Enter') commitRename()
                             if (e.key === 'Escape') { setEditValue(name); setEditing(false) }
                         }}
-                        className="flex-1 bg-transparent text-xs uppercase tracking-widest font-bold text-gray-300 focus:outline-none border-b border-amber-400 min-w-0"
+                        className="cf-mono flex-1 bg-transparent text-xs uppercase tracking-widest font-bold focus:outline-none border-b min-w-0"
+                        style={{ color: 'var(--cf-text)', borderColor: 'var(--cf-phosphor)' }}
                     />
                 ) : (
                     <p
-                        className="text-xs uppercase tracking-widest font-bold text-gray-300 cursor-pointer hover:text-white truncate"
+                        className="cf-label cursor-pointer truncate"
+                        style={{ color: 'var(--cf-text)', fontSize: '12px', fontWeight: 700 }}
                         onDoubleClick={() => { setEditValue(name); setEditing(true) }}
                         title="Double-click to rename"
                     >
@@ -110,10 +117,10 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
                     </p>
                 )}
 
-                {/* Count / WIP badge */}
+                {/* Count / WIP readout */}
                 <span
-                    style={{ color: countColor, backgroundColor: countBg, borderColor: countColor + '44' }}
-                    className="ml-auto text-xs px-2 py-0.5 rounded-full flex-shrink-0 border font-bold"
+                    style={{ color: countColor, backgroundColor: countBg, fontSize: '11px', letterSpacing: '0.06em' }}
+                    className="cf-mono ml-auto px-2 py-0.5 rounded-sm flex-shrink-0 tabular-nums"
                     title={wipLimit != null ? `${count} / ${wipLimit} WIP limit` : `${count} cards`}
                 >
                     {wipLimit != null ? `${count}/${wipLimit}` : count}
@@ -123,7 +130,8 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
                 {onSetWipLimit && (
                     <button
                         onClick={openWipEdit}
-                        className="btn-physical opacity-0 group-hover/section:opacity-100 text-gray-600 hover:text-amber-400 text-xs cursor-pointer leading-none flex-shrink-0"
+                        className="btn-physical opacity-0 group-hover/section:opacity-100 text-xs cursor-pointer leading-none flex-shrink-0"
+                        style={{ color: 'var(--cf-text-muted)' }}
                         title="Set WIP limit"
                     >
                         ⚙
@@ -133,7 +141,8 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
                 {onDelete && (
                     <button
                         onClick={onDelete}
-                        className="btn-physical opacity-0 group-hover/section:opacity-100 text-gray-600 hover:text-red-400 text-xs cursor-pointer leading-none ml-1 flex-shrink-0"
+                        className="btn-physical opacity-0 group-hover/section:opacity-100 text-xs cursor-pointer leading-none ml-1 flex-shrink-0"
+                        style={{ color: 'var(--cf-text-muted)' }}
                         title="Delete section"
                     >
                         ✕
@@ -143,7 +152,7 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
 
             {/* WIP limit inline editor */}
             {editingWip && (
-                <div className="flex items-center gap-2 mb-2 px-1">
+                <div className="flex items-center gap-2 mb-2 px-3">
                     <input
                         ref={wipInputRef}
                         type="number"
@@ -155,27 +164,33 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
                             if (e.key === 'Escape') setEditingWip(false)
                         }}
                         placeholder="Limit..."
-                        className="w-20 bg-gray-800 border border-gray-600 text-white text-xs px-2 py-1 rounded focus:outline-none focus:border-amber-400"
+                        className="glass-input w-20 text-xs px-2 py-1"
                     />
-                    <button onClick={commitWip} className="btn-physical text-xs text-amber-400 font-bold cursor-pointer hover:text-amber-300">Set</button>
-                    <button onClick={() => { onSetWipLimit?.(null); setEditingWip(false); }} className="btn-physical text-xs text-gray-500 cursor-pointer hover:text-gray-300">Clear</button>
+                    <button onClick={commitWip} className="btn-physical cf-mono text-xs font-bold uppercase cursor-pointer hover:brightness-110" style={{ color: 'var(--cf-phosphor)' }}>Set</button>
+                    <button onClick={() => { onSetWipLimit?.(null); setEditingWip(false); }} className="btn-physical cf-mono text-xs uppercase cursor-pointer hover:brightness-110" style={{ color: 'var(--cf-text-muted)' }}>Clear</button>
                 </div>
             )}
 
             {/* WIP warning banner */}
             {overLimit && (
-                <div className="mb-2 px-2 py-1 bg-red-900/40 border border-red-700/50 rounded-lg text-xs text-red-400 font-bold uppercase tracking-widest">
+                <div
+                    className="cf-mono mx-3 mb-2 px-2 py-1 rounded-sm text-xs font-bold uppercase tracking-widest"
+                    style={{ color: 'var(--cf-red)', background: '#0d1410', border: '1px solid var(--cf-red)' }}
+                >
                     ⚠ WIP limit exceeded
                 </div>
             )}
             {atLimit && (
-                <div className="mb-2 px-2 py-1 bg-orange-900/40 border border-orange-700/50 rounded-lg text-xs text-orange-400 font-bold uppercase tracking-widest">
+                <div
+                    className="cf-mono mx-3 mb-2 px-2 py-1 rounded-sm text-xs font-bold uppercase tracking-widest"
+                    style={{ color: 'var(--cf-amber)', background: '#0d1410', border: '1px solid var(--cf-amber)' }}
+                >
                     WIP limit reached
                 </div>
             )}
 
             {/* Card list */}
-            <div ref={cardListRef} style={{ backgroundColor: color + '33', borderColor: color + '55' }} className="border rounded-xl p-2 flex-1 max-h-[50vh] md:max-h-[calc(100vh-320px)] overflow-y-auto">
+            <div ref={cardListRef} className="mx-2 rounded-xl p-2 flex-1 max-h-[50vh] md:max-h-[calc(100vh-320px)] overflow-y-auto">
                 <Droppable style={style} key={id} id={name}>
                     {cards.map((card: CardInterface) => (
                         <div key={card.id} onClick={() => handleClick(card)}>

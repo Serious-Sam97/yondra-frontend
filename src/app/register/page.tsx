@@ -37,25 +37,42 @@ export default function RegisterPage () {
     }
 
     return (
-        <div className="flex items-center justify-center min-h-[90vh] px-4 py-8">
-            <div className="w-full max-w-md">
+        <div className="min-h-[90vh] flex items-center justify-center px-4 py-8">
+            <div className="relative z-10 w-full max-w-md">
                 <div className="flex flex-col items-center mb-8">
-                    <Image src={YondraIcon} alt="logo" width={60} height={60} className="rounded-xl mb-3"/>
-                    <p className="text-2xl md:text-3xl font-bold">Create your account</p>
-                    <p className="text-gray-400 mt-1 text-sm">Join Yondra and start organizing</p>
+                    <Image
+                        src={YondraIcon}
+                        alt="logo"
+                        width={56}
+                        height={56}
+                        className="rounded-2xl mb-4"
+                        style={{ boxShadow: '0 0 24px rgba(154,166,126,0.45)' }}
+                    />
+                    <p className="chrome-text text-2xl font-medium">YONDRA</p>
+                    <p className="text-2xl font-bold mt-3" style={{ color: 'var(--cf-text)' }}>
+                        Create your account
+                    </p>
+                    <p className="mt-1 text-sm cf-mono" style={{ color: 'var(--cf-text-muted)' }}>Join Yondra and start organizing</p>
                 </div>
 
-                <div className="bg-gray-800 p-6 md:p-8 rounded-2xl shadow-lg flex flex-col gap-5">
+                <div className="glass-panel p-6 md:p-8" style={{ position: 'relative' }}>
+                    <span className="cf-screw" style={{ position: 'absolute', top: 8, left: 8 }} />
+                    <span className="cf-screw" style={{ position: 'absolute', top: 8, right: 8 }} />
+                    <span className="cf-screw" style={{ position: 'absolute', bottom: 8, left: 8 }} />
+                    <span className="cf-screw" style={{ position: 'absolute', bottom: 8, right: 8 }} />
                     {error && (
-                        <div className="bg-red-500/20 border border-red-500 text-red-300 text-sm px-4 py-2 rounded-lg">
+                        <div
+                            className="text-sm px-4 py-2 rounded-xl mb-6 cf-mono"
+                            style={{ background: 'rgba(255,90,77,0.16)', border: '1px solid var(--cf-red)', color: 'var(--cf-red)' }}
+                        >
                             {error}
                         </div>
                     )}
 
-                    <div>
-                        <label className="block text-sm text-gray-400 mb-1">Name</label>
+                    <div className="mb-5">
+                        <label className="cf-label block mb-2">Name</label>
                         <input
-                            className="bg-gray-900 p-3 rounded-lg w-full text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="glass-input"
                             type="text"
                             placeholder="Your name"
                             value={name}
@@ -64,10 +81,10 @@ export default function RegisterPage () {
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm text-gray-400 mb-1">Email</label>
+                    <div className="mb-5">
+                        <label className="cf-label block mb-2">Email</label>
                         <input
-                            className="bg-gray-900 p-3 rounded-lg w-full text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="glass-input"
                             type="email"
                             placeholder="you@example.com"
                             value={email}
@@ -76,10 +93,10 @@ export default function RegisterPage () {
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm text-gray-400 mb-1">Password</label>
+                    <div className="mb-5">
+                        <label className="cf-label block mb-2">Password</label>
                         <input
-                            className="bg-gray-900 p-3 rounded-lg w-full text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="glass-input"
                             type="password"
                             placeholder="••••••••"
                             value={password}
@@ -88,10 +105,10 @@ export default function RegisterPage () {
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm text-gray-400 mb-1">Confirm Password</label>
+                    <div className="mb-7">
+                        <label className="cf-label block mb-2">Confirm password</label>
                         <input
-                            className="bg-gray-900 p-3 rounded-lg w-full text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="glass-input"
                             type="password"
                             placeholder="••••••••"
                             value={passwordConfirmation}
@@ -103,14 +120,14 @@ export default function RegisterPage () {
                     <button
                         onClick={registerAction}
                         disabled={loading}
-                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-3 rounded-lg transition-colors duration-200 cursor-pointer"
+                        className="aero-btn aero-btn--cyan w-full py-3"
                     >
-                        {loading ? 'Creating account...' : 'Create account'}
+                        {loading ? 'Creating account…' : 'Create account'}
                     </button>
 
-                    <p className="text-center text-gray-400 text-sm">
+                    <p className="text-center text-sm mt-5 cf-mono" style={{ color: 'var(--cf-text-muted)' }}>
                         Already have an account?{' '}
-                        <a href="/login" className="text-blue-400 hover:underline">Sign in</a>
+                        <a href="/login" style={{ color: 'var(--cf-phosphor)' }} className="hover:underline">Sign in</a>
                     </p>
                 </div>
             </div>

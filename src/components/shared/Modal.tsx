@@ -7,7 +7,7 @@ interface ModalI {
 
 const Modal: React.FC<ModalI> = ({ children, mobileFullscreen = false }) => {
     return (
-        <div className={`modal-backdrop fixed inset-0 z-50 bg-black/70 flex justify-center ${
+        <div className={`modal-backdrop fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex justify-center ${
             mobileFullscreen
                 ? 'items-start overflow-y-auto sm:items-center sm:overflow-hidden'
                 : 'items-center'

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Section } from "../ui/Section";
 import { BoardInterface, SharedUser } from "@/interfaces/BoardInterface";
 import { TagInterface } from "@/interfaces/TagInterface";
+import { useConsole } from "@/contexts/ConsoleContext";
 import CardEdit from "../ui/CardEdit";
 import Modal from "../shared/Modal";
 import {
@@ -42,11 +43,11 @@ const SECTION_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '
 function ToolBtn({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
     return (
         <div className="flex items-center gap-2">
-            <span className="text-[9px] uppercase tracking-widest text-gray-500 whitespace-nowrap">
+            <span className="cf-mono text-[9px] uppercase tracking-widest whitespace-nowrap" style={{ color: 'var(--cf-text-muted)' }}>
                 {label}
             </span>
             <button onClick={onClick}
-                className="btn-physical w-10 h-10 rounded-lg bg-gray-900/95 border border-gray-700 flex items-center justify-center hover:border-amber-400/60 hover:bg-gray-800 cursor-pointer text-lg shadow-lg backdrop-blur-sm">
+                className="aero-btn aero-btn--ghost w-10 h-10 flex items-center justify-center cursor-pointer text-lg">
                 {icon}
             </button>
         </div>
@@ -56,9 +57,9 @@ function ToolBtn({ icon, label, onClick }: { icon: string; label: string; onClic
 function MobileToolBtn({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
     return (
         <button onClick={onClick}
-            className="btn-physical flex flex-col items-center gap-1.5 py-3 px-4 rounded-xl hover:bg-gray-800 cursor-pointer">
+            className="aero-btn aero-btn--ghost flex flex-col items-center gap-1.5 py-3 px-4 rounded-xl cursor-pointer">
             <span className="text-2xl">{icon}</span>
-            <span className="text-[9px] uppercase tracking-widest text-gray-500">{label}</span>
+            <span className="cf-mono text-[9px] uppercase tracking-widest" style={{ color: 'var(--cf-text-muted)' }}>{label}</span>
         </button>
     );
 }
@@ -127,6 +128,20 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const touchStartY = useRef<number>(0);
     const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'calendar' | 'analytics'>('kanban');
     const [isCommandOpen, setIsCommandOpen] = useState(false);
+
+    // ── feed the header console: track where the user is + what they're doing ──
+    const { setLocation, pushActivity } = useConsole();
+    useEffect(() => {
+        const v = viewMode === 'kanban' ? 'BOARD' : viewMode.toUpperCase();
+        setLocation(`${name || 'BOARD'} / ${v}`);
+        return () => setLocation(null);
+    }, [name, viewMode, setLocation]);
+    useEffect(() => {
+        pushActivity(`view: ${viewMode === 'kanban' ? 'board' : viewMode}`);
+    }, [viewMode, pushActivity]);
+    useEffect(() => {
+        if (selectedCard && isCardVisible) pushActivity(`opened “${selectedCard.name ?? 'card'}”`);
+    }, [selectedCard, isCardVisible, pushActivity]);
 
     // Board gravity tilt — the board tilts toward wherever the card is being dragged
     const kanbanRef      = useRef<HTMLDivElement>(null);
@@ -437,26 +452,26 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             )}
 
             {/* Top bar: search + shortcuts */}
-            <div className="flex items-center gap-3 mb-4 flex-wrap">
+            <div className="glass-panel flex items-center gap-3 mb-4 flex-wrap px-3 py-2.5 rounded-2xl">
                 <div className="relative flex-1 min-w-[160px] max-w-xs">
                     <input
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                         placeholder="Search cards..."
-                        className="w-full bg-gray-800 border border-gray-700 text-white text-xs px-3 py-2 pl-8 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-400 placeholder-gray-600"
+                        className="glass-input w-full text-xs px-3 py-2 pl-8"
                     />
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-600 text-xs pointer-events-none">🔍</span>
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: 'var(--cf-phosphor)' }}>🔍</span>
                 </div>
 
-                {/* Progress counter */}
+                {/* Progress counter — LCD strip */}
                 {totalCards > 0 && (
-                    <span className="text-xs text-gray-500 flex-shrink-0">
+                    <span className="cf-screen cf-mono text-xs flex-shrink-0 px-2.5 py-1" style={{ color: 'var(--cf-phosphor)' }}>
                         {doneCards}/{totalCards} done
                     </span>
                 )}
 
-                {/* View toggle */}
-                <div className="flex items-center border border-gray-700 rounded-lg p-0.5 flex-shrink-0">
+                {/* View toggle — hardware toggle keys with status LEDs */}
+                <div className="flex items-center gap-1 flex-shrink-0">
                     {([
                         { key: 'kanban',    label: '▦ Board' },
                         { key: 'list',      label: '☰ List' },
@@ -464,28 +479,29 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                         { key: 'analytics', label: '📊 Stats' },
                     ] as const).map(({ key, label }) => (
                         <button key={key} onClick={() => setViewMode(key)}
-                            className={`btn-physical text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-md font-bold cursor-pointer ${
-                                viewMode === key
-                                    ? 'bg-amber-400 text-black'
-                                    : 'text-gray-500 hover:text-gray-300'
-                            }`}>
+                            style={viewMode === key
+                                ? { background: 'var(--cf-edge)', borderColor: 'var(--cf-phosphor)', color: 'var(--cf-text)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 0 8px rgba(154,166,126,0.35)' }
+                                : { color: 'var(--cf-text-muted)' }}
+                            className="aero-pill cf-mono text-[10px] uppercase tracking-widest px-2.5 py-1 font-bold cursor-pointer transition-colors inline-flex items-center gap-1.5">
+                            <span className="cf-led" style={{ background: viewMode === key ? 'var(--cf-phosphor)' : 'var(--cf-edge)', boxShadow: viewMode === key ? '0 0 6px var(--cf-phosphor)' : 'none' }} />
                             {label}
                         </button>
                     ))}
                 </div>
 
-                <div className="hidden md:flex items-center gap-3 text-gray-600 flex-shrink-0 ml-auto">
+                <div className="hidden md:flex items-center gap-3 flex-shrink-0 ml-auto" style={{ color: 'var(--cf-text-muted)' }}>
                     <button
                         onClick={() => setIsCommandOpen(true)}
-                        className="flex items-center gap-1.5 text-gray-600 hover:text-gray-400 transition-colors cursor-pointer"
+                        className="flex items-center gap-1.5 cursor-pointer transition-colors"
+                        style={{ color: 'var(--cf-text-muted)' }}
                     >
-                        <kbd className="text-xs bg-gray-800 border border-gray-700 text-amber-400 px-2 py-1 rounded font-mono">⌘K</kbd>
-                        <span className="text-xs uppercase tracking-widest">Search</span>
+                        <kbd className="cf-mono text-xs glass-input px-2 py-1" style={{ color: 'var(--cf-phosphor)' }}>⌘K</kbd>
+                        <span className="cf-mono text-xs uppercase tracking-widest">Search</span>
                     </button>
-                    <span className="text-gray-800">·</span>
-                    <p className="text-xs uppercase tracking-widest">Press</p>
-                    <kbd className="text-xs bg-gray-800 border border-gray-700 text-amber-400 px-2 py-1 rounded font-mono">C</kbd>
-                    <p className="text-xs uppercase tracking-widest">to add</p>
+                    <span style={{ color: 'var(--cf-edge)' }}>·</span>
+                    <p className="cf-mono text-xs uppercase tracking-widest">Press</p>
+                    <kbd className="cf-mono text-xs glass-input px-2 py-1" style={{ color: 'var(--cf-phosphor)' }}>C</kbd>
+                    <p className="cf-mono text-xs uppercase tracking-widest">to add</p>
                 </div>
             </div>
 
@@ -498,12 +514,12 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                     <>
                         <button
                             onClick={() => { setFilterUserId(null); setFilterTagId(null); }}
-                            className={`btn-physical text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border font-bold cursor-pointer ${
-                                filterUserId === null && filterTagId === null
-                                    ? 'bg-white text-gray-900 border-white'
-                                    : 'text-gray-500 border-gray-700 hover:border-gray-400 hover:text-gray-300'
-                            }`}
+                            style={filterUserId === null && filterTagId === null
+                                ? { background: 'var(--cf-edge)', borderColor: 'var(--cf-phosphor)', color: 'var(--cf-text)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 0 8px rgba(154,166,126,0.35)' }
+                                : { color: 'var(--cf-text-muted)' }}
+                            className="aero-pill cf-mono text-xs uppercase tracking-widest px-3 py-1.5 font-bold cursor-pointer transition-colors inline-flex items-center gap-1.5"
                         >
+                            <span className="cf-led" style={{ background: filterUserId === null && filterTagId === null ? 'var(--cf-phosphor)' : 'var(--cf-edge)', boxShadow: filterUserId === null && filterTagId === null ? '0 0 6px var(--cf-phosphor)' : 'none' }} />
                             All
                         </button>
                         {boardUsers.map((user) => {
@@ -513,12 +529,12 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                                 <button
                                     key={user.id}
                                     onClick={() => setFilterUserId(isActive ? null : user.id)}
-                                    style={{ borderColor: color, backgroundColor: isActive ? color : 'transparent', color: isActive ? '#fff' : color }}
-                                    className="btn-physical text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border font-bold cursor-pointer flex items-center gap-1.5"
+                                    style={{ borderColor: color, backgroundColor: isActive ? color : 'var(--cf-graphite)', color: isActive ? '#1c1a16' : color }}
+                                    className="cf-mono text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border font-bold cursor-pointer flex items-center gap-1.5"
                                 >
                                     <span
-                                        style={{ backgroundColor: isActive ? 'rgba(255,255,255,0.3)' : color, fontSize: '9px', width: '16px', height: '16px' }}
-                                        className="rounded-full flex items-center justify-center text-white font-bold flex-shrink-0"
+                                        style={{ backgroundColor: isActive ? 'rgba(0,0,0,0.25)' : color, fontSize: '9px', width: '16px', height: '16px', color: isActive ? '#1c1a16' : '#1c1a16' }}
+                                        className="rounded-full flex items-center justify-center font-bold flex-shrink-0"
                                     >
                                         {initials(user.name)}
                                     </span>
@@ -536,8 +552,8 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                         <button
                             key={tag.id}
                             onClick={() => setFilterTagId(isActive ? null : tag.id)}
-                            style={{ borderColor: tag.color, backgroundColor: isActive ? tag.color : 'transparent', color: isActive ? '#fff' : tag.color, fontSize: '10px' }}
-                            className="btn-physical uppercase tracking-widest px-2.5 py-1.5 rounded-full border cursor-pointer font-bold"
+                            style={{ borderColor: tag.color, backgroundColor: isActive ? tag.color : 'var(--cf-graphite)', color: isActive ? '#1c1a16' : tag.color, fontSize: '10px' }}
+                            className="cf-mono uppercase tracking-widest px-2.5 py-1.5 rounded-full border cursor-pointer font-bold"
                         >
                             {tag.name}
                         </button>
@@ -604,19 +620,20 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                                         if (e.key === 'Escape') { setIsAddingSection(false); setNewSectionName(''); }
                                     }}
                                     placeholder="Section name..."
-                                    className="bg-gray-800 border border-gray-600 text-white text-xs uppercase tracking-widest px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder-gray-600 w-full"
+                                    className="glass-input cf-mono text-xs uppercase tracking-widest px-3 py-2 w-full"
                                 />
                                 <div className="flex gap-2">
-                                    <button onClick={handleAddSection} className="btn-physical flex-1 text-xs uppercase tracking-widest font-bold text-black bg-amber-400 hover:bg-amber-300 py-1.5 rounded-lg cursor-pointer">Add</button>
-                                    <button onClick={() => { setIsAddingSection(false); setNewSectionName(''); }} className="btn-physical flex-1 text-xs uppercase tracking-widest text-gray-400 hover:text-white border border-gray-700 hover:border-gray-400 py-1.5 rounded-lg cursor-pointer">Cancel</button>
+                                    <button onClick={handleAddSection} className="aero-btn aero-btn--cyan flex-1 text-xs uppercase tracking-widest font-bold py-1.5 cursor-pointer">Add</button>
+                                    <button onClick={() => { setIsAddingSection(false); setNewSectionName(''); }} className="aero-btn aero-btn--ghost flex-1 text-xs uppercase tracking-widest py-1.5 cursor-pointer">Cancel</button>
                                 </div>
                             </div>
                         ) : (
                             <button
                                 onClick={() => setIsAddingSection(true)}
-                                className="btn-physical flex items-center gap-2 text-xs uppercase tracking-widest text-gray-600 hover:text-gray-300 border-2 border-dashed border-gray-700 hover:border-gray-500 rounded-xl px-4 py-3 cursor-pointer w-full"
+                                style={{ borderColor: 'var(--cf-edge)', color: 'var(--cf-text-muted)' }}
+                                className="cf-mono flex items-center justify-center gap-2 text-xs uppercase tracking-widest border-2 border-dashed rounded-xl px-4 py-3 cursor-pointer w-full transition-colors hover:opacity-100"
                             >
-                                <span className="text-lg leading-none">+</span> Add Section
+                                <span className="text-lg leading-none">+</span> Add section
                             </button>
                         )}
                     </div>}
@@ -643,9 +660,17 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             {!isReadOnly && (
                 <button
                     onClick={() => setIsCardVisible(true)}
-                    className="fab-physical fixed bottom-16 lg:bottom-6 right-6 w-14 h-14 bg-amber-400 hover:bg-amber-300 text-black rounded-full flex items-center justify-center shadow-2xl cursor-pointer text-2xl font-bold z-40"
+                    style={{
+                        background: 'linear-gradient(to bottom, #3a3730 0%, #2b2a26 50%, #1c1a16 100%)',
+                        border: '1px solid var(--cf-edge)',
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 0 16px rgba(154,166,126,0.45), 0 8px 22px rgba(0,0,0,0.55)',
+                        color: 'var(--cf-phosphor)',
+                        textShadow: '0 0 8px rgba(154,166,126,0.6)',
+                    }}
+                    className="fab-physical fixed bottom-16 lg:bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center cursor-pointer text-2xl font-bold z-40"
                     title="Add ticket"
                 >
+                    <span className="cf-led absolute top-2 right-2" style={{ background: 'var(--cf-phosphor)', boxShadow: '0 0 6px var(--cf-phosphor)' }} />
                     +
                 </button>
             )}
@@ -671,7 +696,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                         ...(!isDemo ? [{ icon: '⚙', label: 'Config', onClick: () => setIsBoardConfigOpen(true) }] : []),
                     ].map(({ icon, label, onClick }) => (
                         <button key={label} onClick={onClick} title={label}
-                            className="btn-physical w-10 h-10 rounded-lg bg-gray-900/95 border border-gray-700 flex items-center justify-center hover:border-amber-400/60 hover:bg-gray-800 cursor-pointer text-lg shadow-lg backdrop-blur-sm"
+                            className="aero-btn aero-btn--ghost w-10 h-10 flex items-center justify-center cursor-pointer text-lg"
                         >
                             {icon}
                         </button>
@@ -694,11 +719,11 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                         if (delta < -40) setIsToolbarOpen(false);
                     }}
                 >
-                    <div className="bg-gray-900 border-t border-gray-700 rounded-t-2xl">
+                    <div className="aero-menu border-t rounded-t-2xl rounded-b-none">
                         <div className="flex items-center justify-center gap-2 pt-3 pb-2 cursor-pointer" onClick={() => setIsToolbarOpen(s => !s)}>
-                            <div className="w-10 h-1 rounded-full bg-gray-600 flex-shrink-0" />
+                            <div className="w-10 h-1 rounded-full flex-shrink-0" style={{ background: 'var(--cf-edge)' }} />
                             {!isToolbarOpen && (
-                                <span className="text-[9px] uppercase tracking-widest text-gray-600 font-bold">Tools</span>
+                                <span className="cf-mono text-[9px] uppercase tracking-widest font-bold" style={{ color: 'var(--cf-text-muted)' }}>Tools</span>
                             )}
                         </div>
                         <div className="flex flex-wrap justify-evenly px-2 pb-8 pt-1 gap-y-1">
@@ -716,26 +741,29 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             {/* Tags modal */}
             {isTagsOpen && (
                 <Modal>
-                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-[95vw] max-w-sm flex flex-col gap-5">
+                    <div className="aero-menu p-6 w-[95vw] max-w-sm flex flex-col gap-5">
                         <div className="flex items-center justify-between">
-                            <p className="text-xs uppercase tracking-widest text-gray-400">Board Tags</p>
-                            <button onClick={() => setIsTagsOpen(false)} className="text-gray-500 hover:text-white cursor-pointer transition-colors">✕</button>
+                            <p className="cf-mono text-xs uppercase tracking-widest" style={{ color: 'var(--cf-phosphor)' }}>Board tags</p>
+                            <button onClick={() => setIsTagsOpen(false)} className="cursor-pointer transition-colors" style={{ color: 'var(--cf-text-muted)' }}>✕</button>
                         </div>
 
                         <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
                             {tags.length === 0 && (
-                                <p className="text-gray-600 text-xs text-center py-3">No tags yet. Create one below.</p>
+                                <p className="cf-mono text-xs text-center py-3" style={{ color: 'var(--cf-text-muted)' }}>No tags yet. Create one below.</p>
                             )}
                             {tags.map(tag => (
-                                <div key={tag.id} className="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2.5">
+                                <div key={tag.id} className="flex items-center justify-between rounded-lg px-3 py-2.5" style={{ background: 'var(--cf-graphite)' }}>
                                     <div className="flex items-center gap-2">
                                         <div style={{ backgroundColor: tag.color }} className="w-3 h-3 rounded-full flex-shrink-0"/>
-                                        <span style={{ color: tag.color }} className="text-sm font-bold uppercase tracking-wide">{tag.name}</span>
+                                        <span style={{ color: tag.color }} className="cf-mono text-sm font-bold uppercase tracking-wide">{tag.name}</span>
                                     </div>
                                     {!isReadOnly && (
                                         <button
                                             onClick={() => handleDeleteTag(tag.id)}
-                                            className="text-xs text-gray-600 hover:text-red-400 cursor-pointer transition-colors ml-2"
+                                            className="text-xs cursor-pointer transition-colors ml-2 hover:opacity-100"
+                                            style={{ color: 'var(--cf-text-muted)' }}
+                                            onMouseEnter={e => (e.currentTarget.style.color = 'var(--cf-red)')}
+                                            onMouseLeave={e => (e.currentTarget.style.color = 'var(--cf-text-muted)')}
                                         >
                                             ✕
                                         </button>
@@ -744,13 +772,13 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                             ))}
                         </div>
 
-                        {!isReadOnly && <div className="flex flex-col gap-3 border-t border-gray-800 pt-4">
+                        {!isReadOnly && <div className="flex flex-col gap-3 border-t pt-4" style={{ borderColor: 'var(--cf-edge)' }}>
                             <input
                                 value={newTagName}
                                 onChange={e => setNewTagName(e.target.value)}
                                 onKeyDown={e => { if (e.key === 'Enter') handleCreateTag(); }}
                                 placeholder="Tag name..."
-                                className="bg-gray-800 border border-gray-700 text-white text-sm px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder-gray-600 w-full"
+                                className="glass-input cf-mono text-sm px-3 py-2 w-full"
                             />
                             <div className="flex gap-2 flex-wrap">
                                 {TAG_PALETTE.map(color => (
@@ -758,16 +786,16 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                                         key={color}
                                         onClick={() => setNewTagColor(color)}
                                         style={{ backgroundColor: color }}
-                                        className={`btn-physical w-7 h-7 rounded-full cursor-pointer ${newTagColor === color ? 'ring-2 ring-white ring-offset-2 ring-offset-gray-900 scale-110' : 'opacity-70 hover:opacity-100'}`}
+                                        className={`w-7 h-7 rounded-full cursor-pointer border border-[var(--cf-edge)] ${newTagColor === color ? 'ring-2 ring-[var(--cf-phosphor)] ring-offset-2 ring-offset-[var(--cf-ink)] scale-110' : 'opacity-70 hover:opacity-100'}`}
                                     />
                                 ))}
                             </div>
                             <button
                                 onClick={handleCreateTag}
                                 disabled={!newTagName.trim()}
-                                className="btn-physical text-xs uppercase tracking-widest font-bold text-black bg-amber-400 hover:bg-amber-300 disabled:opacity-40 disabled:cursor-not-allowed py-2 rounded-lg cursor-pointer"
+                                className="aero-btn aero-btn--cyan text-xs uppercase tracking-widest font-bold py-2 cursor-pointer"
                             >
-                                + Create Tag
+                                + Create tag
                             </button>
                         </div>}
                     </div>
@@ -777,21 +805,21 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             {/* Activity modal */}
             {isActivityOpen && (
                 <Modal>
-                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-[95vw] max-w-md flex flex-col gap-4" style={{ maxHeight: '80vh' }}>
+                    <div className="aero-menu p-6 w-[95vw] max-w-md flex flex-col gap-4" style={{ maxHeight: '80vh' }}>
                         <div className="flex items-center justify-between flex-shrink-0">
-                            <p className="text-xs uppercase tracking-widest text-gray-400">Activity Log</p>
-                            <button onClick={() => setIsActivityOpen(false)} className="text-gray-500 hover:text-white cursor-pointer transition-colors">✕</button>
+                            <p className="cf-mono text-xs uppercase tracking-widest" style={{ color: 'var(--cf-phosphor)' }}>Activity log</p>
+                            <button onClick={() => setIsActivityOpen(false)} className="cursor-pointer transition-colors" style={{ color: 'var(--cf-text-muted)' }}>✕</button>
                         </div>
                         <div className="flex flex-col gap-3 overflow-y-auto">
                             {activityLog.length === 0 && (
-                                <p className="text-gray-600 text-xs text-center py-6">No activity yet.</p>
+                                <p className="cf-mono text-xs text-center py-6" style={{ color: 'var(--cf-text-muted)' }}>No activity yet.</p>
                             )}
                             {activityLog.map((entry: any) => (
                                 <div key={entry.id} className="flex items-start gap-3">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0 mt-1.5"/>
+                                    <div className="cf-led flex-shrink-0 mt-1.5" style={{ background: 'var(--cf-phosphor)', boxShadow: '0 0 6px var(--cf-phosphor)' }}/>
                                     <div className="flex flex-col gap-0.5">
-                                        <p className="text-gray-300 text-xs">{entry.description}</p>
-                                        <p className="text-gray-600 text-xs">
+                                        <p className="cf-mono text-xs" style={{ color: 'var(--cf-text)' }}>{entry.description}</p>
+                                        <p className="cf-mono text-xs" style={{ color: 'var(--cf-text-muted)' }}>
                                             {new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                         </p>
                                     </div>
@@ -805,28 +833,28 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             {/* Archived cards modal */}
             {isArchivedOpen && (
                 <Modal>
-                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-[95vw] max-w-md flex flex-col gap-4" style={{ maxHeight: '80vh' }}>
+                    <div className="aero-menu p-6 w-[95vw] max-w-md flex flex-col gap-4" style={{ maxHeight: '80vh' }}>
                         <div className="flex items-center justify-between flex-shrink-0">
-                            <p className="text-xs uppercase tracking-widest text-gray-400">Archived Cards</p>
-                            <button onClick={() => setIsArchivedOpen(false)} className="text-gray-500 hover:text-white cursor-pointer transition-colors">✕</button>
+                            <p className="cf-mono text-xs uppercase tracking-widest" style={{ color: 'var(--cf-phosphor)' }}>Archived cards</p>
+                            <button onClick={() => setIsArchivedOpen(false)} className="cursor-pointer transition-colors" style={{ color: 'var(--cf-text-muted)' }}>✕</button>
                         </div>
                         <div className="flex flex-col gap-3 overflow-y-auto">
                             {archivedCards.length === 0 && (
-                                <p className="text-gray-600 text-xs text-center py-6">No archived cards.</p>
+                                <p className="cf-mono text-xs text-center py-6" style={{ color: 'var(--cf-text-muted)' }}>No archived cards.</p>
                             )}
                             {archivedCards.map((card: any) => (
-                                <div key={card.id} className="flex items-center justify-between bg-gray-800 rounded-lg px-4 py-3 gap-3">
+                                <div key={card.id} className="flex items-center justify-between rounded-lg px-4 py-3 gap-3" style={{ background: 'var(--cf-graphite)' }}>
                                     <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                                        <p className="text-white text-sm font-semibold truncate">{card.name}</p>
+                                        <p className="cf-mono text-sm font-semibold truncate" style={{ color: 'var(--cf-text)' }}>{card.name}</p>
                                         {card.archived_at && (
-                                            <p className="text-gray-500 text-xs">
+                                            <p className="cf-mono text-xs" style={{ color: 'var(--cf-text-muted)' }}>
                                                 Archived {new Date(card.archived_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                             </p>
                                         )}
                                     </div>
                                     <button
                                         onClick={() => handleRestoreCard(card)}
-                                        className="btn-physical text-xs uppercase tracking-widest font-bold text-amber-400 border border-amber-700 hover:bg-amber-400 hover:text-black px-3 py-1.5 rounded-lg cursor-pointer flex-shrink-0"
+                                        className="aero-btn aero-btn--ghost text-xs uppercase tracking-widest font-bold px-3 py-1.5 cursor-pointer flex-shrink-0"
                                     >
                                         Restore
                                     </button>
@@ -840,21 +868,24 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             {/* Background picker modal */}
             {isBgOpen && (
                 <Modal>
-                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-[95vw] max-w-sm flex flex-col gap-5">
+                    <div className="aero-menu p-6 w-[95vw] max-w-sm flex flex-col gap-5">
                         <div className="flex items-center justify-between">
-                            <p className="text-xs uppercase tracking-widest text-gray-400">Board Background</p>
-                            <button onClick={() => setIsBgOpen(false)} className="text-gray-500 hover:text-white cursor-pointer transition-colors">✕</button>
+                            <p className="cf-mono text-xs uppercase tracking-widest" style={{ color: 'var(--cf-phosphor)' }}>Board background</p>
+                            <button onClick={() => setIsBgOpen(false)} className="cursor-pointer transition-colors" style={{ color: 'var(--cf-text-muted)' }}>✕</button>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             {BG_OPTIONS.map(opt => (
                                 <button
                                     key={opt.value}
                                     onClick={() => handleSetBg(opt.value)}
-                                    className={`btn-physical flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-left ${boardBg === opt.value ? 'border-amber-400 text-amber-400' : 'border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-200'}`}
+                                    style={boardBg === opt.value
+                                        ? { borderColor: 'var(--cf-phosphor)', color: 'var(--cf-text)', background: 'var(--cf-graphite)', boxShadow: '0 0 10px rgba(154,166,126,0.4)' }
+                                        : { borderColor: 'var(--cf-edge)', color: 'var(--cf-text-muted)', background: 'var(--cf-graphite)' }}
+                                    className="cf-mono flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-left transition-colors hover:opacity-100"
                                 >
                                     <div
-                                        style={{ background: opt.value || '#111827' }}
-                                        className="w-5 h-5 rounded flex-shrink-0 border border-gray-600"
+                                        style={{ background: opt.value || '#111827', borderColor: 'var(--cf-edge)' }}
+                                        className="w-5 h-5 rounded flex-shrink-0 border"
                                     />
                                     <span className="text-xs font-bold uppercase tracking-wide truncate">{opt.label}</span>
                                 </button>
@@ -892,15 +923,15 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             {/* Delete section modal */}
             {sectionToDelete && (
                 <Modal>
-                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-[90%] max-w-sm flex flex-col gap-6">
+                    <div className="aero-menu p-6 w-[90%] max-w-sm flex flex-col gap-6">
                         <div className="flex flex-col items-center text-center gap-3">
-                            <p className="text-3xl">⚠</p>
-                            <p className="text-white font-bold text-lg">Delete "{sectionToDelete.name}"?</p>
-                            <p className="text-gray-500 text-sm">All cards in this section will be permanently deleted.</p>
+                            <p className="text-3xl" style={{ color: 'var(--cf-amber)' }}>⚠</p>
+                            <p className="cf-mono font-bold text-lg" style={{ color: 'var(--cf-text)' }}>Delete "{sectionToDelete.name}"?</p>
+                            <p className="cf-mono text-sm" style={{ color: 'var(--cf-text-muted)' }}>All cards in this section will be permanently deleted.</p>
                         </div>
                         <div className="flex justify-between">
-                            <button onClick={() => setSectionToDelete(null)} className="btn-physical text-xs uppercase tracking-widest text-gray-400 hover:text-white border border-gray-700 hover:border-gray-400 px-4 py-2 rounded-lg cursor-pointer">Go back</button>
-                            <button onClick={handleDeleteSection} className="btn-physical text-xs uppercase tracking-widest font-bold text-white bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg cursor-pointer">Yes, delete</button>
+                            <button onClick={() => setSectionToDelete(null)} className="aero-btn aero-btn--ghost text-xs uppercase tracking-widest px-4 py-2 cursor-pointer">Go back</button>
+                            <button onClick={handleDeleteSection} className="aero-btn aero-btn--magenta text-xs uppercase tracking-widest font-bold px-4 py-2 cursor-pointer">Yes, delete</button>
                         </div>
                     </div>
                 </Modal>
@@ -909,15 +940,15 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             {/* Archive card confirm modal */}
             {cardToDelete && (
                 <Modal>
-                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-[90%] max-w-sm flex flex-col gap-6">
+                    <div className="aero-menu p-6 w-[90%] max-w-sm flex flex-col gap-6">
                         <div className="flex flex-col items-center text-center gap-3">
                             <p className="text-3xl">🗂</p>
-                            <p className="text-white font-bold text-lg">Archive this card?</p>
-                            <p className="text-gray-500 text-sm">"{cardToDelete.name}" will be moved to the archive. You can restore it later.</p>
+                            <p className="cf-mono font-bold text-lg" style={{ color: 'var(--cf-text)' }}>Archive this card?</p>
+                            <p className="cf-mono text-sm" style={{ color: 'var(--cf-text-muted)' }}>"{cardToDelete.name}" will be moved to the archive. You can restore it later.</p>
                         </div>
                         <div className="flex justify-between">
-                            <button onClick={() => setCardToDelete(null)} className="btn-physical text-xs uppercase tracking-widest text-gray-400 hover:text-white border border-gray-700 hover:border-gray-400 px-4 py-2 rounded-lg cursor-pointer">Go back</button>
-                            <button onClick={handleArchiveCard} className="btn-physical text-xs uppercase tracking-widest font-bold text-white bg-amber-600 hover:bg-amber-500 px-4 py-2 rounded-lg cursor-pointer">Archive it</button>
+                            <button onClick={() => setCardToDelete(null)} className="aero-btn aero-btn--ghost text-xs uppercase tracking-widest px-4 py-2 cursor-pointer">Go back</button>
+                            <button onClick={handleArchiveCard} className="aero-btn aero-btn--cyan text-xs uppercase tracking-widest font-bold px-4 py-2 cursor-pointer">Archive it</button>
                         </div>
                     </div>
                 </Modal>

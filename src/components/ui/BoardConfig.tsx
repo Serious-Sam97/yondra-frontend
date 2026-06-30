@@ -28,25 +28,25 @@ function SortableRow({ section, index, color }: { section: Section; index: numbe
                 zIndex: isDragging ? 10 : undefined,
                 boxShadow: isDragging ? '0 8px 24px rgba(0,0,0,0.5)' : undefined,
             }}
-            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 ${isDragging ? 'bg-gray-700 border border-amber-400/30' : 'bg-gray-800'}`}
+            className="glass-card flex items-center gap-3 rounded-lg px-3 py-2.5"
         >
             <button
                 {...attributes}
                 {...listeners}
                 style={{ touchAction: 'none' }}
-                className="text-gray-500 hover:text-gray-300 cursor-grab active:cursor-grabbing flex-shrink-0 p-1 -m-1"
+                className="cursor-grab active:cursor-grabbing flex-shrink-0 p-1 -m-1 hover:opacity-70"
                 tabIndex={-1}
                 aria-label="Drag to reorder"
             >
-                <svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor">
+                <svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor" style={{ color: 'rgba(42,38,32,0.5)' }}>
                     <circle cx="3" cy="3"  r="1.5"/><circle cx="9" cy="3"  r="1.5"/>
                     <circle cx="3" cy="8"  r="1.5"/><circle cx="9" cy="8"  r="1.5"/>
                     <circle cx="3" cy="13" r="1.5"/><circle cx="9" cy="13" r="1.5"/>
                 </svg>
             </button>
-            <div style={{ backgroundColor: color }} className="w-2 h-2 rounded-full flex-shrink-0" />
-            <span className="text-xs uppercase tracking-widest font-bold text-gray-300 flex-1 truncate">{section.name}</span>
-            <span className="text-[10px] text-gray-600">{index + 1}</span>
+            <div style={{ backgroundColor: color }} className="neon-dot w-2 h-2 rounded-full flex-shrink-0" />
+            <span className="cf-label text-xs uppercase tracking-widest font-bold flex-1 truncate" style={{ color: 'var(--cf-ink)' }}>{section.name}</span>
+            <span className="cf-mono text-[10px]" style={{ color: 'rgba(42,38,32,0.5)' }}>{index + 1}</span>
         </div>
     )
 }
@@ -82,14 +82,17 @@ export function BoardConfig({ boardId, sections: initialSections, onClose, onSec
     }
 
     return (
-        <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-[95vw] max-w-sm flex flex-col gap-6">
+        <div className="aero-menu p-6 w-[95vw] max-w-sm flex flex-col gap-6">
             <div className="flex items-center justify-between">
-                <p className="text-xs uppercase tracking-widest text-gray-400 font-bold">Board Config</p>
-                <button onClick={onClose} className="text-gray-500 hover:text-white cursor-pointer transition-colors">✕</button>
+                <div className="flex items-center gap-2">
+                    <span className="cf-led" style={{ background: 'var(--cf-phosphor)', boxShadow: '0 0 6px var(--cf-phosphor)' }} />
+                    <p className="cf-label text-xs uppercase tracking-widest font-bold" style={{ color: 'var(--cf-text-muted)' }}>Board config</p>
+                </div>
+                <button onClick={onClose} className="cursor-pointer transition-colors" style={{ color: 'var(--cf-text-muted)' }}>✕</button>
             </div>
 
             <div className="flex flex-col gap-3">
-                <p className="text-[10px] uppercase tracking-widest text-gray-600 font-bold">Section Order</p>
+                <p className="cf-label text-[10px] uppercase tracking-widest font-bold" style={{ color: 'var(--cf-text-muted)' }}>Section order</p>
                 <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
                     <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
                         <div className="flex flex-col gap-2">
@@ -104,17 +107,17 @@ export function BoardConfig({ boardId, sections: initialSections, onClose, onSec
                         </div>
                     </SortableContext>
                 </DndContext>
-                <p className="text-[10px] text-gray-600">Hold and drag a row to reorder</p>
+                <p className="cf-mono text-[10px]" style={{ color: 'var(--cf-text-muted)' }}>Hold and drag a row to reorder</p>
             </div>
 
-            <div className="border-t border-gray-800 pt-4 flex justify-end gap-3">
-                <button onClick={onClose} className="btn-physical text-xs uppercase tracking-widest text-gray-500 hover:text-white border border-gray-700 hover:border-gray-500 px-4 py-2 rounded-lg cursor-pointer">
+            <div className="border-t pt-4 flex justify-end gap-3" style={{ borderColor: 'var(--cf-edge)' }}>
+                <button onClick={onClose} className="aero-btn aero-btn--ghost text-xs uppercase tracking-widest px-4 py-2">
                     Cancel
                 </button>
                 <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="btn-physical text-xs uppercase tracking-widest font-bold text-black bg-amber-400 hover:bg-amber-300 disabled:opacity-50 px-4 py-2 rounded-lg cursor-pointer"
+                    className="aero-btn aero-btn--cyan text-xs uppercase tracking-widest font-bold disabled:opacity-50 px-4 py-2"
                 >
                     {saving ? 'Saving…' : 'Save'}
                 </button>

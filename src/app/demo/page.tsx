@@ -6,7 +6,8 @@ import { loadDemoBoards, createDemoBoard, deleteDemoBoard, updateDemoBoard, Demo
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from "react";
 
-const STRIPE_COLORS = ['#4CAF50', '#FFC107', '#FF9800', '#F44336', '#7B1FA2', '#1976D2'];
+const CF_LEDS = ['#9aa67e', '#ffb000', '#6fe0ff'];
+const NEON_GLOW = ['neon-glow-cyan', 'neon-glow-magenta', 'neon-glow-lime'];
 
 export default function DemoPage () {
     const router = useRouter();
@@ -51,78 +52,81 @@ export default function DemoPage () {
         <div className="min-h-screen px-4 py-6 md:px-8 md:py-10 max-w-6xl mx-auto">
 
             {/* Header */}
-            <div className="mb-10">
-                <div className="flex gap-1 mb-2">
-                    {STRIPE_COLORS.map(c => (
-                        <div key={c} style={{ backgroundColor: c }} className="h-1 flex-1 rounded-full"/>
+            <div className="mb-10 glass-panel relative px-5 py-5">
+                <span className="cf-screw" style={{ position: 'absolute', top: 8, left: 8 }} />
+                <span className="cf-screw" style={{ position: 'absolute', top: 8, right: 8 }} />
+                <div className="flex gap-2 mb-3">
+                    {CF_LEDS.map(c => (
+                        <span key={c} className="cf-led" style={{ backgroundColor: c, boxShadow: `0 0 8px ${c}` }} />
                     ))}
+                    <span className="cf-label" style={{ color: 'var(--cf-text-muted)' }}>PWR · LINK · DISK</span>
                 </div>
-                <p className="text-xs uppercase tracking-[0.3em] text-gray-500 mb-1">Demo mode</p>
-                <p className="text-3xl md:text-5xl font-bold tracking-tight">Your Boards</p>
-                <p className="text-gray-500 text-sm mt-2">Everything is saved in your browser. <span className="text-amber-400 cursor-pointer hover:underline" onClick={() => router.push('/login')}>Sign up</span> to keep your data.</p>
+                <p className="cf-label text-xs uppercase tracking-[0.3em] mb-1" style={{ color: 'var(--cf-amber)' }}>Demo mode</p>
+                <p className="chrome-text cf-mono text-3xl md:text-5xl font-bold tracking-tight">YOUR BOARDS</p>
+                <p className="text-sm mt-2" style={{ color: 'var(--cf-text-muted)' }}>Everything is saved in your browser. <span className="cf-mono cursor-pointer hover:underline" style={{ color: 'var(--cf-phosphor)' }} onClick={() => router.push('/login')}>Sign up</span> to keep your data.</p>
             </div>
 
             {/* Toolbar */}
-            <div className="flex justify-between items-center mb-6 gap-3 flex-wrap">
+            <div className="glass-panel flex justify-between items-center mb-6 gap-3 flex-wrap px-4 py-3">
                 <div className="flex items-center gap-3">
-                    <p className="text-xs uppercase tracking-widest text-gray-500">Demo Boards</p>
+                    <span className="cf-led" style={{ backgroundColor: 'var(--cf-phosphor)', boxShadow: '0 0 8px var(--cf-phosphor)' }} />
+                    <p className="cf-label text-xs uppercase tracking-widest" style={{ color: 'var(--cf-text-muted)' }}>DEMO BOARDS</p>
                     <button
                         onClick={() => setEditMode(!editMode)}
                         type="button"
-                        className={`text-xs uppercase tracking-widest px-3 py-1.5 rounded border cursor-pointer transition-all duration-200 ${
-                            editMode
-                                ? 'border-amber-400 text-amber-400 bg-amber-400/10'
-                                : 'border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-200'
-                        }`}
+                        className={`aero-btn text-xs px-3 py-1.5 ${editMode ? 'aero-btn--magenta' : 'aero-btn--ghost'}`}
                     >
-                        ⚙ Edit Mode
+                        Edit mode
                     </button>
                 </div>
                 <button
                     onClick={() => { setBoardSelected(null); setModalIsVisible(true); }}
                     type="button"
-                    className="text-xs uppercase tracking-widest px-4 py-2 rounded border-2 border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-black font-bold cursor-pointer transition-all duration-200"
+                    className="aero-btn aero-btn--cyan text-xs px-4 py-2"
                 >
-                    + New Board
+                    + New board
                 </button>
             </div>
 
             {/* Board Grid */}
             {boards.length === 0 ? (
-                <div className="border-2 border-dashed border-gray-700 rounded-xl flex flex-col items-center justify-center py-24 text-center">
-                    <p className="text-4xl mb-3">▦</p>
-                    <p className="text-gray-500 text-sm uppercase tracking-widest">No boards yet</p>
-                    <p className="text-gray-600 text-xs mt-1">Click <span className="text-amber-400">+ New Board</span> to get started</p>
+                <div className="aero-column flex flex-col items-center justify-center py-24 text-center">
+                    <p className="cf-mono text-4xl mb-3" style={{ color: 'var(--cf-phosphor)' }}>▦</p>
+                    <p className="cf-mono text-sm uppercase tracking-widest" style={{ color: 'var(--cf-text)' }}>NO BOARDS YET</p>
+                    <p className="cf-label text-xs mt-1" style={{ color: 'var(--cf-text-muted)' }}>Click <span style={{ color: 'var(--cf-phosphor)' }}>+ NEW BOARD</span> to get started</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                     {boards.map((board, i) => {
-                        const color = STRIPE_COLORS[i % STRIPE_COLORS.length];
+                        const color = CF_LEDS[i % CF_LEDS.length];
+                        const glow = NEON_GLOW[i % NEON_GLOW.length];
                         return (
                             <div
                                 key={board.id}
                                 onClick={() => handleOpenBoard(board)}
-                                className={`group relative bg-gray-900 border border-gray-800 rounded-xl overflow-hidden cursor-pointer transition-all duration-200 hover:border-gray-600 hover:shadow-lg hover:-translate-y-0.5 ${editMode ? 'ring-2 ring-amber-400/40' : ''}`}
+                                className={`glass-card group relative overflow-hidden cursor-pointer hover:-translate-y-0.5 ${editMode ? 'glass-card--ring' : ''}`}
                             >
-                                <div style={{ backgroundColor: color }} className="h-1.5 w-full"/>
+                                <div style={{ backgroundColor: color, boxShadow: `0 0 10px ${color}` }} className="h-1.5 w-full"/>
+                                <span className="cf-screw" style={{ position: 'absolute', top: 10, right: 10 }} />
                                 <div className="p-5">
                                     <div className="flex items-start justify-between mb-3">
-                                        <div
-                                            style={{ backgroundColor: color + '22', color }}
-                                            className="text-xs uppercase tracking-widest px-2 py-0.5 rounded font-bold"
+                                        <span
+                                            className="aero-pill cf-mono text-xs uppercase tracking-widest px-2.5 py-0.5 font-bold"
+                                            style={{ borderColor: color, color }}
                                         >
-                                            Demo
-                                        </div>
+                                            <span className={`neon-dot ${glow}`} style={{ backgroundColor: color }}/>
+                                            DEMO
+                                        </span>
                                         {editMode && (
-                                            <span className="text-xs text-amber-400 uppercase tracking-widest">edit</span>
+                                            <span className="cf-mono text-xs uppercase tracking-widest" style={{ color: 'var(--cf-red)' }}>edit</span>
                                         )}
                                     </div>
-                                    <p className="text-white font-bold text-lg leading-tight mb-2">{board.name}</p>
-                                    <p className="text-gray-500 text-sm line-clamp-2">{board.description}</p>
+                                    <p className="cf-mono font-bold text-lg leading-tight mb-2" style={{ color: 'var(--cf-ink)' }}>{board.name}</p>
+                                    <p className="text-sm line-clamp-2" style={{ color: '#6a6453' }}>{board.description}</p>
                                 </div>
                                 <div className="px-5 pb-4 flex items-center gap-2">
-                                    <div style={{ backgroundColor: color }} className="w-1.5 h-1.5 rounded-full"/>
-                                    <span className="text-xs text-gray-600 uppercase tracking-widest">Local</span>
+                                    <span className={`neon-dot ${glow}`} style={{ backgroundColor: color }}/>
+                                    <span className="cf-label text-xs uppercase tracking-widest" style={{ color: '#6a6453' }}>LOCAL</span>
                                 </div>
                             </div>
                         );
@@ -133,9 +137,9 @@ export default function DemoPage () {
             {/* Modal */}
             {modalIsVisible && (
                 <Modal>
-                    <div className="bg-gray-900 border border-gray-700 p-6 rounded-2xl w-[90%] max-w-lg">
-                        <p className="text-xs uppercase tracking-widest text-gray-500 mb-4">
-                            {boardSelected ? 'Edit Board' : 'New Board'}
+                    <div className="aero-menu p-6 w-[90%] max-w-lg">
+                        <p className="cf-label text-xs uppercase tracking-widest mb-4" style={{ color: 'var(--cf-amber)' }}>
+                            {boardSelected ? 'Edit board' : 'New board'}
                         </p>
                         <ProjectEdit
                             cancel={() => { setModalIsVisible(false); setBoardSelected(null); }}
