@@ -79,6 +79,17 @@ export function Card({ id, name, description, assigned_user, created_by, tags, d
 
     const showBottom = assigned_user || created_by;
     const priorityColor = priority ? PRIORITY_COLORS[priority] : null;
+
+    // Subtle tag identity: wash the first tag's hue into the cream face — a touch
+    // stronger at the top, fading down — so the card quietly carries its tag color
+    // without fighting the cold palette. Border picks up a faint matching tint.
+    const tagColor = tags && tags.length > 0 ? tags[0].color : null;
+    const tagTint = tagColor
+        ? {
+              background: `linear-gradient(to bottom, color-mix(in srgb, ${tagColor} 34%, #e6e0cb), color-mix(in srgb, ${tagColor} 18%, #d4cdb6))`,
+              borderColor: `color-mix(in srgb, ${tagColor} 55%, #b9b39d)`,
+          }
+        : null;
     const doneItems = (checklist_items ?? []).filter(i => i.is_done).length;
     const totalItems = (checklist_items ?? []).length;
 
@@ -148,8 +159,9 @@ export function Card({ id, name, description, assigned_user, created_by, tags, d
                 style={{
                     minHeight: '120px',
                     position: 'relative',
-                    borderLeft: priorityColor ? `3px solid ${priorityColor}` : undefined,
                     willChange: 'transform',
+                    ...tagTint,
+                    borderLeft: priorityColor ? `3px solid ${priorityColor}` : undefined,
                 }}
                 className="glass-card cursor-pointer flex flex-col overflow-hidden"
             >
