@@ -16,6 +16,8 @@ import {
     demoGetSubtasks, demoCreateSubtask, demoToggleSubtask,
     loadDemoTemplates, saveDemoTemplate, deleteDemoTemplate,
 } from '@/lib/demoStorage'
+import Icon from '@/components/ui/Icon'
+import { faTrash } from '@fortawesome/free-solid-svg-icons'
 
 interface BoardUser { id: number; name: string }
 
@@ -338,7 +340,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                 <div className="flex items-center gap-3">
                     {!isNew && !isReadOnly && onDelete && (
                         <button onClick={onDelete} style={{ color: 'var(--cf-red)' }} className="text-xs hover:opacity-60 cursor-pointer transition-opacity" title="Archive card">
-                            🗑
+                            <Icon icon={faTrash} />
                         </button>
                     )}
                     <button onClick={goBack} className="text-sm cursor-pointer transition-colors leading-none" style={{ color: 'var(--cf-text-muted)' }}>

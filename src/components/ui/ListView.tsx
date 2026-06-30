@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import Icon from '@/components/ui/Icon'
+import { faSortUp, faSortDown, faSort } from '@fortawesome/free-solid-svg-icons'
 
 const SECTION_COLORS = ['#9aa67e', '#ffb000', '#6fe0ff', '#ff5a4d', '#c08bff', '#ffd24a']
 const AVATAR_COLORS  = ['#9aa67e', '#ffb000', '#6fe0ff', '#ff5a4d', '#c08bff', '#ffd24a', '#6fe0ff', '#ff8fa3']
@@ -55,7 +57,7 @@ export function ListView({ cards, sections, users, onCardClick }: ListViewProps)
 
     const SortIcon = ({ k }: { k: SortKey }) => (
         <span className="ml-1 text-[8px] opacity-60">
-            {sortKey === k ? (sortDir === 'asc' ? '▲' : '▼') : '⬍'}
+            {sortKey === k ? <Icon icon={sortDir === 'asc' ? faSortUp : faSortDown} /> : <Icon icon={faSort} />}
         </span>
     )
 

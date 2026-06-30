@@ -37,28 +37,46 @@ import { initGyroscope, requestGyroscopePermission } from "@/lib/lightSource";
 import { initGravityField } from "@/lib/gravityField";
 import { triggerInkSplash } from "@/components/ui/SpringTrail";
 import { BoardConfig } from "@/components/ui/BoardConfig";
+import Icon from "@/components/ui/Icon";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
+import {
+    faTag, faClipboardList, faCommentDots, faBoxArchive, faPalette, faGear,
+    faTableCells, faBars, faCalendarDays, faChartColumn,
+    faMagnifyingGlass, faTriangleExclamation, faPlus,
+} from "@fortawesome/free-solid-svg-icons";
 
 const SECTION_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107'];
 
-function ToolBtn({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
+// Per-tool colors chosen to echo each original emoji's dominant hue.
+const TOOL_COLORS = {
+    tags:       '#f97316', // 🏷 orange label
+    activity:   '#c2a878', // 📋 tan clipboard
+    chat:       '#d4d4d4', // 💬 light speech bubble
+    archived:   '#d9a441', // 🗂 manila folder
+    background: '#c08bff', // 🎨 artist palette
+    config:     '#9ca3af', // ⚙ steel gear
+} as const;
+
+function ToolBtn({ icon, label, color, onClick }: { icon: IconDefinition; label: string; color: string; onClick: () => void }) {
     return (
         <div className="flex items-center gap-2">
             <span className="cf-mono text-[9px] uppercase tracking-widest whitespace-nowrap" style={{ color: 'var(--cf-text-muted)' }}>
                 {label}
             </span>
             <button onClick={onClick}
-                className="aero-btn aero-btn--ghost w-10 h-10 flex items-center justify-center cursor-pointer text-lg">
-                {icon}
+                className="aero-btn aero-btn--ghost w-10 h-10 flex items-center justify-center cursor-pointer text-lg"
+                style={{ color }}>
+                <Icon icon={icon} />
             </button>
         </div>
     );
 }
 
-function MobileToolBtn({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
+function MobileToolBtn({ icon, label, color, onClick }: { icon: IconDefinition; label: string; color: string; onClick: () => void }) {
     return (
         <button onClick={onClick}
             className="aero-btn aero-btn--ghost flex flex-col items-center gap-1.5 py-3 px-4 rounded-xl cursor-pointer">
-            <span className="text-2xl">{icon}</span>
+            <span className="text-2xl" style={{ color }}><Icon icon={icon} /></span>
             <span className="cf-mono text-[9px] uppercase tracking-widest" style={{ color: 'var(--cf-text-muted)' }}>{label}</span>
         </button>
     );
@@ -460,7 +478,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                         placeholder="Search cards..."
                         className="glass-input w-full text-xs px-3 py-2 pl-8"
                     />
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: 'var(--cf-phosphor)' }}>🔍</span>
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: 'var(--cf-phosphor)' }}><Icon icon={faMagnifyingGlass} /></span>
                 </div>
 
                 {/* Progress counter — LCD strip */}
@@ -473,17 +491,18 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                 {/* View toggle — hardware toggle keys with status LEDs */}
                 <div className="flex items-center gap-1 flex-shrink-0">
                     {([
-                        { key: 'kanban',    label: '▦ Board' },
-                        { key: 'list',      label: '☰ List' },
-                        { key: 'calendar',  label: '📅 Cal' },
-                        { key: 'analytics', label: '📊 Stats' },
-                    ] as const).map(({ key, label }) => (
+                        { key: 'kanban',    icon: faTableCells,   label: 'Board' },
+                        { key: 'list',      icon: faBars,         label: 'List' },
+                        { key: 'calendar',  icon: faCalendarDays, label: 'Cal' },
+                        { key: 'analytics', icon: faChartColumn,  label: 'Stats' },
+                    ] as const).map(({ key, icon, label }) => (
                         <button key={key} onClick={() => setViewMode(key)}
                             style={viewMode === key
                                 ? { background: 'var(--cf-edge)', borderColor: 'var(--cf-phosphor)', color: 'var(--cf-text)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 0 8px rgba(154,166,126,0.35)' }
                                 : { color: 'var(--cf-text-muted)' }}
                             className="aero-pill cf-mono text-[10px] uppercase tracking-widest px-2.5 py-1 font-bold cursor-pointer transition-colors inline-flex items-center gap-1.5">
                             <span className="cf-led" style={{ background: viewMode === key ? 'var(--cf-phosphor)' : 'var(--cf-edge)', boxShadow: viewMode === key ? '0 0 6px var(--cf-phosphor)' : 'none' }} />
+                            <Icon icon={icon} />
                             {label}
                         </button>
                     ))}
@@ -671,34 +690,35 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                     title="Add ticket"
                 >
                     <span className="cf-led absolute top-2 right-2" style={{ background: 'var(--cf-phosphor)', boxShadow: '0 0 6px var(--cf-phosphor)' }} />
-                    +
+                    <Icon icon={faPlus} />
                 </button>
             )}
 
             {/* Desktop toolbar — vertical on kanban/list, horizontal bottom bar on calendar/analytics */}
             {viewMode === 'kanban' ? (
                 <div className="hidden lg:flex flex-col items-end gap-2 fixed z-40" style={{ right: '24px', bottom: '96px' }}>
-                    <ToolBtn icon="🏷" label="Tags" onClick={() => setIsTagsOpen(true)} />
-                    {!isDemo && <ToolBtn icon="📋" label="Activity" onClick={handleOpenActivity} />}
-                    {!isDemo && <ToolBtn icon="💬" label="Chat" onClick={handleOpenChat} />}
-                    <ToolBtn icon="🗂" label="Archived" onClick={handleOpenArchived} />
-                    <ToolBtn icon="🎨" label="Background" onClick={() => setIsBgOpen(true)} />
-                    {!isDemo && <ToolBtn icon="⚙" label="Config" onClick={() => setIsBoardConfigOpen(true)} />}
+                    <ToolBtn icon={faTag} color={TOOL_COLORS.tags} label="Tags" onClick={() => setIsTagsOpen(true)} />
+                    {!isDemo && <ToolBtn icon={faClipboardList} color={TOOL_COLORS.activity} label="Activity" onClick={handleOpenActivity} />}
+                    {!isDemo && <ToolBtn icon={faCommentDots} color={TOOL_COLORS.chat} label="Chat" onClick={handleOpenChat} />}
+                    <ToolBtn icon={faBoxArchive} color={TOOL_COLORS.archived} label="Archived" onClick={handleOpenArchived} />
+                    <ToolBtn icon={faPalette} color={TOOL_COLORS.background} label="Background" onClick={() => setIsBgOpen(true)} />
+                    {!isDemo && <ToolBtn icon={faGear} color={TOOL_COLORS.config} label="Config" onClick={() => setIsBoardConfigOpen(true)} />}
                 </div>
             ) : (
                 <div className="hidden lg:flex flex-row items-center gap-2 fixed z-40" style={{ bottom: '28px', left: '50%', transform: 'translateX(-50%)' }}>
                     {[
-                        { icon: '🏷', label: 'Tags',       onClick: () => setIsTagsOpen(true) },
-                        ...(!isDemo ? [{ icon: '📋', label: 'Activity',   onClick: handleOpenActivity }] : []),
-                        ...(!isDemo ? [{ icon: '💬', label: 'Chat',       onClick: handleOpenChat }] : []),
-                        { icon: '🗂', label: 'Archived',   onClick: handleOpenArchived },
-                        { icon: '🎨', label: 'Background', onClick: () => setIsBgOpen(true) },
-                        ...(!isDemo ? [{ icon: '⚙', label: 'Config', onClick: () => setIsBoardConfigOpen(true) }] : []),
-                    ].map(({ icon, label, onClick }) => (
+                        { icon: faTag, color: TOOL_COLORS.tags, label: 'Tags',       onClick: () => setIsTagsOpen(true) },
+                        ...(!isDemo ? [{ icon: faClipboardList, color: TOOL_COLORS.activity, label: 'Activity',   onClick: handleOpenActivity }] : []),
+                        ...(!isDemo ? [{ icon: faCommentDots, color: TOOL_COLORS.chat, label: 'Chat',       onClick: handleOpenChat }] : []),
+                        { icon: faBoxArchive, color: TOOL_COLORS.archived, label: 'Archived',   onClick: handleOpenArchived },
+                        { icon: faPalette, color: TOOL_COLORS.background, label: 'Background', onClick: () => setIsBgOpen(true) },
+                        ...(!isDemo ? [{ icon: faGear, color: TOOL_COLORS.config, label: 'Config', onClick: () => setIsBoardConfigOpen(true) }] : []),
+                    ].map(({ icon, color, label, onClick }) => (
                         <button key={label} onClick={onClick} title={label}
                             className="aero-btn aero-btn--ghost w-10 h-10 flex items-center justify-center cursor-pointer text-lg"
+                            style={{ color }}
                         >
-                            {icon}
+                            <Icon icon={icon} />
                         </button>
                     ))}
                 </div>
@@ -727,12 +747,12 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                             )}
                         </div>
                         <div className="flex flex-wrap justify-evenly px-2 pb-8 pt-1 gap-y-1">
-                            <MobileToolBtn icon="🏷" label="Tags" onClick={() => { setIsTagsOpen(true); setIsToolbarOpen(false); }} />
-                            {!isDemo && <MobileToolBtn icon="📋" label="Activity" onClick={() => { handleOpenActivity(); setIsToolbarOpen(false); }} />}
-                            {!isDemo && <MobileToolBtn icon="💬" label="Chat" onClick={() => { handleOpenChat(); setIsToolbarOpen(false); }} />}
-                            <MobileToolBtn icon="🗂" label="Archived" onClick={() => { handleOpenArchived(); setIsToolbarOpen(false); }} />
-                            <MobileToolBtn icon="🎨" label="Background" onClick={() => { setIsBgOpen(true); setIsToolbarOpen(false); }} />
-                            {!isDemo && <MobileToolBtn icon="⚙" label="Config" onClick={() => { setIsBoardConfigOpen(true); setIsToolbarOpen(false); }} />}
+                            <MobileToolBtn icon={faTag} color={TOOL_COLORS.tags} label="Tags" onClick={() => { setIsTagsOpen(true); setIsToolbarOpen(false); }} />
+                            {!isDemo && <MobileToolBtn icon={faClipboardList} color={TOOL_COLORS.activity} label="Activity" onClick={() => { handleOpenActivity(); setIsToolbarOpen(false); }} />}
+                            {!isDemo && <MobileToolBtn icon={faCommentDots} color={TOOL_COLORS.chat} label="Chat" onClick={() => { handleOpenChat(); setIsToolbarOpen(false); }} />}
+                            <MobileToolBtn icon={faBoxArchive} color={TOOL_COLORS.archived} label="Archived" onClick={() => { handleOpenArchived(); setIsToolbarOpen(false); }} />
+                            <MobileToolBtn icon={faPalette} color={TOOL_COLORS.background} label="Background" onClick={() => { setIsBgOpen(true); setIsToolbarOpen(false); }} />
+                            {!isDemo && <MobileToolBtn icon={faGear} color={TOOL_COLORS.config} label="Config" onClick={() => { setIsBoardConfigOpen(true); setIsToolbarOpen(false); }} />}
                         </div>
                     </div>
                 </div>
@@ -925,7 +945,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                 <Modal>
                     <div className="aero-menu p-6 w-[90%] max-w-sm flex flex-col gap-6">
                         <div className="flex flex-col items-center text-center gap-3">
-                            <p className="text-3xl" style={{ color: 'var(--cf-amber)' }}>⚠</p>
+                            <p className="text-3xl" style={{ color: 'var(--cf-amber)' }}><Icon icon={faTriangleExclamation} /></p>
                             <p className="cf-mono font-bold text-lg" style={{ color: 'var(--cf-text)' }}>Delete "{sectionToDelete.name}"?</p>
                             <p className="cf-mono text-sm" style={{ color: 'var(--cf-text-muted)' }}>All cards in this section will be permanently deleted.</p>
                         </div>
@@ -942,7 +962,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                 <Modal>
                     <div className="aero-menu p-6 w-[90%] max-w-sm flex flex-col gap-6">
                         <div className="flex flex-col items-center text-center gap-3">
-                            <p className="text-3xl">🗂</p>
+                            <p className="text-3xl" style={{ color: TOOL_COLORS.archived }}><Icon icon={faBoxArchive} /></p>
                             <p className="cf-mono font-bold text-lg" style={{ color: 'var(--cf-text)' }}>Archive this card?</p>
                             <p className="cf-mono text-sm" style={{ color: 'var(--cf-text-muted)' }}>"{cardToDelete.name}" will be moved to the archive. You can restore it later.</p>
                         </div>

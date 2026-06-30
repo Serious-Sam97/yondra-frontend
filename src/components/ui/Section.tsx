@@ -5,6 +5,8 @@ import { Card } from "./Card"
 import { SectionInterface } from "@/interfaces/SectionInterface"
 import { playWipReject } from "@/lib/sound"
 import { hapticReject } from "@/lib/haptics"
+import Icon from "@/components/ui/Icon"
+import { faGear, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons"
 
 export function Section({id, name, color, cards, handleClick, onDelete, onRename, wipLimit, onSetWipLimit}: SectionInterface) {
     const [editing, setEditing] = useState(false)
@@ -134,7 +136,7 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
                         style={{ color: 'var(--cf-text-muted)' }}
                         title="Set WIP limit"
                     >
-                        ⚙
+                        <Icon icon={faGear} />
                     </button>
                 )}
 
@@ -177,7 +179,7 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
                     className="cf-mono mx-3 mb-2 px-2 py-1 rounded-sm text-xs font-bold uppercase tracking-widest"
                     style={{ color: 'var(--cf-red)', background: '#0d1410', border: '1px solid var(--cf-red)' }}
                 >
-                    ⚠ WIP limit exceeded
+                    <Icon icon={faTriangleExclamation} /> WIP limit exceeded
                 </div>
             )}
             {atLimit && (

@@ -1,0 +1,12 @@
+FROM node:22-alpine
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+# Only deps are baked into the image. The source code is bind-mounted at runtime
+# (see docker-compose.dev.yml), so changing a component does NOT require a rebuild —
+# next dev / Turbopack hot-reloads it live.
+COPY package.json package-lock.json ./
+RUN npm ci
+
+EXPOSE 3000
+CMD ["npm", "run", "dev"]

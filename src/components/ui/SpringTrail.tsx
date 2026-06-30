@@ -2,11 +2,6 @@
 
 import { useEffect, useRef } from 'react';
 
-const N    = 8;
-const K    = 0.28;
-const DAMP = 0.58;
-const COLOR = 'rgba(200,176,96,';
-
 // Splash particles — module-level so Board.tsx can trigger them via triggerInkSplash()
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; r: number }
 const _particles: Particle[] = [];
@@ -35,49 +30,13 @@ export function SpringTrail() {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        const isCoarse = window.matchMedia('(pointer: coarse)').matches;
-
         const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
         resize();
         window.addEventListener('resize', resize, { passive: true });
 
-        const pts = Array.from({ length: N }, () => ({ x: -999, y: -999, vx: 0, vy: 0 }));
-        let mx = -999, my = -999, hasMoved = false;
-
-        let onMove: ((e: MouseEvent) => void) | undefined;
-        if (!isCoarse) {
-            onMove = (e: MouseEvent) => {
-                mx = e.clientX; my = e.clientY;
-                if (!hasMoved) {
-                    pts.forEach(p => { p.x = mx; p.y = my; p.vx = 0; p.vy = 0; });
-                    hasMoved = true;
-                }
-            };
-            window.addEventListener('mousemove', onMove, { passive: true });
-        }
-
         let raf: number;
         const tick = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Spring chain — desktop only
-            if (!isCoarse && hasMoved) {
-                pts[0].vx += (mx - pts[0].x) * K;
-                pts[0].vy += (my - pts[0].y) * K;
-                for (let i = 1; i < N; i++) {
-                    pts[i].vx += (pts[i - 1].x - pts[i].x) * K;
-                    pts[i].vy += (pts[i - 1].y - pts[i].y) * K;
-                }
-                pts.forEach(p => { p.vx *= DAMP; p.vy *= DAMP; p.x += p.vx; p.y += p.vy; });
-
-                pts.forEach((p, i) => {
-                    const t = 1 - i / N;
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, t * 4.5, 0, Math.PI * 2);
-                    ctx.fillStyle = `${COLOR}${(t * 0.42).toFixed(2)})`;
-                    ctx.fill();
-                });
-            }
 
             // Ink splash particles — desktop + mobile
             for (let i = _particles.length - 1; i >= 0; i--) {
@@ -101,7 +60,6 @@ export function SpringTrail() {
 
         return () => {
             cancelAnimationFrame(raf);
-            if (onMove) window.removeEventListener('mousemove', onMove);
             window.removeEventListener('resize', resize);
         };
     }, []);

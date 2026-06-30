@@ -3,6 +3,8 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Modal from '@/components/shared/Modal';
+import Icon from '@/components/ui/Icon';
+import { faBars, faGear } from '@fortawesome/free-solid-svg-icons';
 import { fetchUser } from '@/lib/auth';
 import {
     fetchProjects, fetchProject,
@@ -589,7 +591,7 @@ export default function ProjectPage() {
                     style={{ borderColor: 'var(--cf-edge, #4a463f)' }}>
                     {/* mobile menu */}
                     <button className="lg:hidden p-1 cursor-pointer" style={{ color: 'var(--cf-text, #e8e4d6)' }}
-                        onClick={() => setSidebarOpen(s => !s)}>☰</button>
+                        onClick={() => setSidebarOpen(s => !s)}><Icon icon={faBars} /></button>
 
                     {/* color dot + project name */}
                     <span className="cf-led flex-shrink-0" style={{ backgroundColor: project?.color ?? 'transparent', boxShadow: project?.color ? `0 0 8px ${project.color}` : undefined }} />
@@ -607,13 +609,13 @@ export default function ProjectPage() {
                                 </button>
                                 <button onClick={() => setModal({ type: 'project-edit' })}
                                     className="aero-btn aero-btn--ghost uppercase tracking-widest font-bold px-3 py-1.5 text-[9px]">
-                                    ⚙ Edit
+                                    <Icon icon={faGear} /> Edit
                                 </button>
                             </>
                         )}
                         <button onClick={() => setEditMode(e => !e)}
                             className={`aero-btn ${editMode ? 'aero-btn--magenta' : 'aero-btn--ghost'} uppercase tracking-widest font-bold px-3 py-1.5 text-[9px]`}>
-                            ⚙ {editMode ? 'Exit Edit' : 'Edit Mode'}
+                            <Icon icon={faGear} /> {editMode ? 'Exit Edit' : 'Edit Mode'}
                         </button>
                         {isOwner && (
                             <button onClick={() => setModal({ type: 'board-new' })}

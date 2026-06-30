@@ -8,6 +8,8 @@ import { logout, fetchUser } from '@/lib/auth';
 import { useSystem } from '@/contexts/SystemContext';
 import { useConsole } from '@/contexts/ConsoleContext';
 import { getNotifications, markAllNotificationsRead } from '@/lib/api';
+import Icon from '@/components/ui/Icon';
+import { faBell } from '@fortawesome/free-solid-svg-icons';
 
 const AVATAR_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107', '#00BCD4', '#E91E63'];
 
@@ -157,7 +159,7 @@ export default function MenuAppBar() {
                         style={{ background: 'linear-gradient(#3a3832,#2a2823)', border: '1.5px solid var(--cf-edge)', boxShadow: '0 2px 0 #14130f' }}
                         title="Alerts"
                     >
-                        <span key={unreadCount} className={`text-base ${unreadCount > 0 ? 'bell-ring' : ''}`}>🔔</span>
+                        <span key={unreadCount} className={`text-base ${unreadCount > 0 ? 'bell-ring' : ''}`} style={{ color: 'var(--cf-amber)' }}><Icon icon={faBell} /></span>
                         {unreadCount > 0 && (
                             <span className="cf-mono absolute -top-1 -right-1 min-w-4 h-4 px-0.5 rounded-full flex items-center justify-center font-bold text-white"
                                 style={{ fontSize: '9px', background: 'var(--cf-red)', boxShadow: '0 0 8px var(--cf-red)' }}>

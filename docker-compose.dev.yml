@@ -1,0 +1,25 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    env_file:
+      # Optional: NEXT_PUBLIC_* vars for talking to the backend. The dev server
+      # boots fine without it; only live API calls need these.
+      - path: .env.local
+        required: false
+    environment:
+      # Force polling so file changes on a macOS/Windows bind mount are detected
+      # inside the Linux container (native FS events don't always cross the mount).
+      WATCHPACK_POLLING: "true"
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      # Mount your source into the container so edits are seen immediately.
+      - .:/app
+      # Keep the container's own (Linux-built) node_modules and .next cache —
+      # these anonymous volumes shadow the bind mount above so the host's
+      # macOS node_modules don't leak in.
+      - /app/node_modules
+      - /app/.next
+    restart: unless-stopped

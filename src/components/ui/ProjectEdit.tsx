@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react"
+import Icon from "@/components/ui/Icon"
+import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons"
 
 interface ProjectEditProps {
     cancel: () => void
@@ -37,7 +39,7 @@ const ProjectEdit: React.FC<ProjectEditProps> = ({cancel, submit, onDelete, proj
                 <span className="cf-screw" style={{ position: 'absolute', bottom: 8, left: 8 }} />
                 <span className="cf-screw" style={{ position: 'absolute', bottom: 8, right: 8 }} />
                 <div className="flex flex-col items-center text-center gap-3 py-4">
-                    <p className="text-3xl" style={{ color: 'var(--cf-amber, #ffb000)' }}>⚠</p>
+                    <p className="text-3xl" style={{ color: 'var(--cf-amber, #ffb000)' }}><Icon icon={faTriangleExclamation} /></p>
                     <p className="cf-mono text-lg font-bold" style={{ color: 'var(--cf-text, #e8e4d6)' }}>Delete "{name}"?</p>
                     <p className="text-sm" style={{ color: 'var(--cf-text-muted, #a39d8c)' }}>This action cannot be undone. All sections and cards will be permanently deleted.</p>
                 </div>
