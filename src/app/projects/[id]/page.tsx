@@ -323,7 +323,7 @@ function MembersModal({ project, currentUserId, onUpdate, onClose }: { project: 
                     {error && <p style={{ fontSize: '10px', color: 'var(--cf-red, #ff5a4d)' }} className="cf-mono">{error}</p>}
                     <div className="flex gap-2">
                         <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="user@example.com"
-                            style={{ fontSize: '12px' }}
+                            style={{ fontSize: '12px', minWidth: '65%' }}
                             className="glass-input cf-lcd flex-1" />
                         <select value={role} onChange={e => setRole(e.target.value as any)}
                             style={{ fontSize: '10px' }}
@@ -472,7 +472,7 @@ export default function ProjectPage() {
     // Full-page spinner only on the very first visit (no sidebar cache yet)
     if (!hasSidebar && contentLoading) {
         return (
-            <div className="min-h-[calc(100vh-56px)] flex items-center justify-center">
+            <div className="flex items-center justify-center" style={{ minHeight: 'calc(100vh - var(--app-header-h, 56px))' }}>
                 <p style={{ fontSize: '12px', color: 'var(--cf-phosphor, #9aa67e)' }} className="cf-mono uppercase tracking-widest chrome-text">Loading…</p>
             </div>
         );
@@ -541,7 +541,7 @@ export default function ProjectPage() {
     // ── render ────────────────────────────────────────────────────────────────
 
     return (
-        <div className="flex h-[calc(100vh-56px)] overflow-hidden">
+        <div className="flex overflow-hidden" style={{ height: 'calc(100vh - var(--app-header-h, 56px))' }}>
 
             {/* mobile overlay */}
             {sidebarOpen && (
@@ -609,13 +609,21 @@ export default function ProjectPage() {
                                 </button>
                                 <button onClick={() => setModal({ type: 'project-edit' })}
                                     className="aero-btn aero-btn--ghost uppercase tracking-widest font-bold px-3 py-1.5 text-[9px]">
-                                    <Icon icon={faGear} /> Edit
+                                    <Icon icon={faGear} /> {(
+                                        (
+                                            <p className='mt-1 ml-1'>Edit</p>
+                                        )
+                                    )}
                                 </button>
                             </>
                         )}
                         <button onClick={() => setEditMode(e => !e)}
                             className={`aero-btn ${editMode ? 'aero-btn--magenta' : 'aero-btn--ghost'} uppercase tracking-widest font-bold px-3 py-1.5 text-[9px]`}>
-                            <Icon icon={faGear} /> {editMode ? 'Exit Edit' : 'Edit Mode'}
+                            <Icon icon={faGear} /> {editMode ? (
+                                <p className='mt-1 ml-1'>Exit Edit Mode</p>
+                            ) : (
+                                <p className='mt-1 ml-1'>Edit Mode</p>
+                            )}
                         </button>
                         {isOwner && (
                             <button onClick={() => setModal({ type: 'board-new' })}

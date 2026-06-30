@@ -275,7 +275,7 @@ export default function DashboardPage() {
     const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
     return (
-        <div className="min-h-[calc(100vh-56px)] flex flex-col">
+        <div className="flex flex-col" style={{ minHeight: 'calc(100vh - var(--app-header-h, 56px))' }}>
 
             {/* ── page header ── */}
             <div className="px-6 md:px-10 pt-8 pb-6 flex-shrink-0">

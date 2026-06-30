@@ -65,6 +65,20 @@ export default function MenuAppBar() {
         return () => window.removeEventListener('scroll', onScroll, true);
     }, []);
 
+    // Publish the header's real (and dynamic, since it collapses on scroll) height
+    // as a CSS var so page layouts can size themselves with calc(100vh - var(...))
+    // instead of a hardcoded number that breaks when the header is taller.
+    const headerRef = React.useRef<HTMLElement>(null);
+    React.useEffect(() => {
+        const el = headerRef.current;
+        if (!el) return;
+        const publish = () => document.documentElement.style.setProperty('--app-header-h', `${el.offsetHeight}px`);
+        publish();
+        const ro = new ResizeObserver(publish);
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
+
     React.useEffect(() => {
         if (!isLogged) return;
         fetchUser().then(u => setUser(u)).catch(() => {});
@@ -123,8 +137,13 @@ export default function MenuAppBar() {
     const litRegs = Math.min(unreadCount, 4);
 
     const facePlate: React.CSSProperties = {
-        background: 'linear-gradient(180deg, #46443d, #2a2823)',
-        backgroundImage: 'repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 3px)',
+        // Solid base color guarantees the header is opaque so scrolled content can't
+        // show through it. The two gradients are layered (thin sheen lines on top of
+        // the vertical face gradient) — they must live in one backgroundImage, since a
+        // separate `background` shorthand would reset this and re-transparent the header.
+        backgroundColor: '#2a2823',
+        backgroundImage:
+            'repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 3px), linear-gradient(180deg, #46443d, #2a2823)',
         borderBottom: '2px solid #0e0d0a',
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 4px 14px rgba(0,0,0,0.5)',
     };
@@ -186,7 +205,7 @@ export default function MenuAppBar() {
     );
 
     return (
-        <header className="sticky top-0 z-50" style={facePlate}>
+        <header ref={headerRef} className="sticky top-0 z-50" style={facePlate}>
             <Screw style={{ top: 6, left: 6 }} />
             <Screw style={{ bottom: 6, left: 6 }} />
             <Screw style={{ top: 6, right: 6 }} />

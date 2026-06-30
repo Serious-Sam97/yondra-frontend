@@ -476,7 +476,8 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                         placeholder="Search cards..."
-                        className="glass-input w-full text-xs px-3 py-2 pl-8"
+                        className="glass-input w-full text-xs"
+                        style={{ paddingLeft: '2rem' }}
                     />
                     <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: 'var(--cf-phosphor)' }}><Icon icon={faMagnifyingGlass} /></span>
                 </div>
@@ -514,12 +515,12 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                         className="flex items-center gap-1.5 cursor-pointer transition-colors"
                         style={{ color: 'var(--cf-text-muted)' }}
                     >
-                        <kbd className="cf-mono text-xs glass-input px-2 py-1" style={{ color: 'var(--cf-phosphor)' }}>⌘K</kbd>
+                        <kbd className="cf-mono text-xs glass-input px-2 py-1" style={{ color: '#1c2016' }}>⌘K</kbd>
                         <span className="cf-mono text-xs uppercase tracking-widest">Search</span>
                     </button>
                     <span style={{ color: 'var(--cf-edge)' }}>·</span>
                     <p className="cf-mono text-xs uppercase tracking-widest">Press</p>
-                    <kbd className="cf-mono text-xs glass-input px-2 py-1" style={{ color: 'var(--cf-phosphor)' }}>C</kbd>
+                    <kbd className="cf-mono text-xs glass-input px-2 py-1" style={{ color: '#1c2016' }}>C</kbd>
                     <p className="cf-mono text-xs uppercase tracking-widest">to add</p>
                 </div>
             </div>

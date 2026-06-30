@@ -74,7 +74,7 @@ export function ListView({ cards, sections, users, onCardClick }: ListViewProps)
     return (
         <div className="flex flex-col pb-8">
             {/* Header */}
-            <div className="grid grid-cols-[28px_1fr_auto_auto] md:grid-cols-[28px_1fr_140px_auto_110px_36px] aero-column rounded-b-none overflow-hidden" style={{ borderBottom: '1px solid var(--cf-edge)' }}>
+            <div className="grid grid-cols-[28px_1fr_auto_auto] md:grid-cols-[28px_1fr_140px_130px_110px_36px] aero-column rounded-b-none overflow-hidden" style={{ borderBottom: '1px solid var(--cf-edge)' }}>
                 <div className="cf-label px-2 py-2.5 text-[10px] uppercase tracking-widest font-bold flex items-center justify-center" style={{ color: 'var(--cf-text-muted)' }} title="Priority">
                     P
                 </div>
@@ -105,7 +105,7 @@ export function ListView({ cards, sections, users, onCardClick }: ListViewProps)
                         <button
                             key={card.id}
                             onClick={() => onCardClick(card)}
-                            className="grid grid-cols-[28px_1fr_auto_auto] md:grid-cols-[28px_1fr_140px_auto_110px_36px] w-full text-left hover:bg-white/10 transition-colors cursor-pointer group last:border-0"
+                            className="grid grid-cols-[28px_1fr_auto_auto] md:grid-cols-[28px_1fr_140px_130px_110px_36px] w-full text-left hover:bg-white/10 transition-colors cursor-pointer group last:border-0"
                             style={{ borderBottom: '1px solid var(--cf-edge)' }}
                         >
                             {/* Priority */}

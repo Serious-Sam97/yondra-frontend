@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import Icon from '@/components/ui/Icon'
+import { faCheck } from '@fortawesome/free-solid-svg-icons'
 
 const SECTION_COLORS = ['#9aa67e', '#ffb000', '#6fe0ff', '#ff5a4d', '#c08bff', '#ffd24a']
 const DAYS_SHORT     = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -46,19 +48,24 @@ export function CalendarView({ cards, sections, onCardClick }: CalendarViewProps
     const days      = calendarDays(year, month)
     const todayKey  = dateKey(today)
 
-    const byDate: Record<string, any[]> = {}
+    // A card can appear twice: on its due date and on the day it was completed.
+    const byDate: Record<string, { card: any; kind: 'due' | 'done' }[]> = {}
     for (const card of cards) {
-        if (!card.due_date) continue
-        const k = card.due_date.slice(0, 10)
-        if (!byDate[k]) byDate[k] = []
-        byDate[k].push(card)
+        if (card.due_date) {
+            const k = card.due_date.slice(0, 10)
+            ;(byDate[k] ??= []).push({ card, kind: 'due' })
+        }
+        if (card.done_at) {
+            const k = dateKey(new Date(card.done_at)) // timestamp → local completion day
+            ;(byDate[k] ??= []).push({ card, kind: 'done' })
+        }
     }
 
     const prevMonth = () => { if (month === 0) { setYear(y => y - 1); setMonth(11) } else setMonth(m => m - 1) }
     const nextMonth = () => { if (month === 11) { setYear(y => y + 1); setMonth(0) }  else setMonth(m => m + 1) }
     const goToday   = () => { setYear(today.getFullYear()); setMonth(today.getMonth()) }
 
-    const totalWithDue = cards.filter(c => c.due_date).length
+    const totalWithDates = cards.filter(c => c.due_date || c.done_at).length
 
     return (
         <div className="flex flex-col gap-4 pb-8">
@@ -84,10 +91,19 @@ export function CalendarView({ cards, sections, onCardClick }: CalendarViewProps
                 </button>
             </div>
 
-            {totalWithDue === 0 && (
+            {totalWithDates === 0 ? (
                 <p className="cf-label text-center text-xs uppercase tracking-widest py-4" style={{ color: 'var(--cf-text-muted)' }}>
-                    No cards have due dates — edit a card to set one
+                    No cards have due or completion dates yet
                 </p>
+            ) : (
+                <div className="flex items-center justify-center gap-4 cf-label text-[10px] uppercase tracking-widest" style={{ color: 'var(--cf-text-muted)' }}>
+                    <span className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-sm" style={{ border: '1px solid var(--cf-text-muted)' }} /> Due
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                        <span style={{ color: 'var(--cf-phosphor)' }}><Icon icon={faCheck} /></span> Done
+                    </span>
+                </div>
             )}
 
             {/* Day headers */}
@@ -127,18 +143,23 @@ export function CalendarView({ cards, sections, onCardClick }: CalendarViewProps
                             </span>
 
                             {/* Card chips */}
-                            {dayCards.slice(0, 3).map(card => {
-                                const color = sectionColor(card.section_id, sections)
+                            {dayCards.slice(0, 3).map(({ card, kind }) => {
+                                const isDone = kind === 'done'
+                                const color  = sectionColor(card.section_id, sections)
                                 return (
-                                    <button key={card.id} onClick={() => onCardClick(card)}
-                                        title={card.name}
+                                    <button key={`${card.id}-${kind}`} onClick={() => onCardClick(card)}
+                                        title={isDone ? `Completed: ${card.name}` : card.name}
                                         className="aero-pill cf-mono text-left px-1 py-0.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all truncate w-full"
-                                        style={{ borderColor: color + '99', boxShadow: `0 0 8px ${color}55` }}
+                                        style={isDone
+                                            ? { borderColor: 'rgba(154,166,126,0.6)', boxShadow: '0 0 8px rgba(154,166,126,0.45)', opacity: 0.9 }
+                                            : { borderColor: color + '99', boxShadow: `0 0 8px ${color}55` }}
                                     >
-                                        {card.priority === 'high' && (
+                                        {isDone ? (
+                                            <span className="mr-0.5" style={{ fontSize: '8px', color: 'var(--cf-phosphor)' }}><Icon icon={faCheck} /></span>
+                                        ) : card.priority === 'high' ? (
                                             <span className="cf-led mr-0.5" style={{ fontSize: '8px', color: 'var(--cf-red)' }}>●</span>
-                                        )}
-                                        <span className="text-[10px] truncate" style={{ color: 'var(--cf-text)' }}>{card.name}</span>
+                                        ) : null}
+                                        <span className="text-[10px] truncate" style={{ color: 'var(--cf-text)', textDecoration: isDone ? 'line-through' : 'none' }}>{card.name}</span>
                                     </button>
                                 )
                             })}
