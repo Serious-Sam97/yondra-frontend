@@ -5,7 +5,7 @@ import ShareModal from "@/components/ui/ShareModal";
 import Icon from "@/components/ui/Icon";
 import { faGear } from "@fortawesome/free-solid-svg-icons";
 import { BoardInterface, SharedUser } from "@/interfaces/BoardInterface"
-import { fetchBoard, deleteBoard } from "@/lib/api";
+import { fetchBoard, deleteBoard, ApiError } from "@/lib/api";
 import { loadDemoBoardData, loadDemoBoards, deleteDemoBoard } from "@/lib/demoStorage";
 import { fetchUser } from "@/lib/auth";
 import { use, useEffect, useState } from "react";
@@ -33,6 +33,8 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
     const [currentUserId, setCurrentUserId] = useState<number | null>(null);
     const [shareOpen, setShareOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     const isDemo = id === 'demo' || id.startsWith('demo-');
     const isOwner = board.user_id === currentUserId;
@@ -66,25 +68,68 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                 tags: demo.tags,
                 shared_with: [],
             });
+            setLoading(false);
             return;
         }
 
-        Promise.all([fetchBoard(Number(id)), fetchUser()]).then(([data, user]) => {
-            setBoard({
-                id: data.id,
-                name: data.name,
-                description: data.description ?? '',
-                sections: data.sections ?? [],
-                cards: data.cards ?? [],
-                tags: data.tags ?? [],
-                user_id: data.user_id,
-                project_id: data.project_id ?? null,
-                owner: data.owner,
-                shared_with: data.shared_with ?? [],
+        const controller = new AbortController();
+        setLoading(true);
+        setLoadError(null);
+
+        Promise.all([fetchBoard(Number(id), controller.signal), fetchUser(controller.signal)])
+            .then(([data, user]) => {
+                setBoard({
+                    id: data.id,
+                    name: data.name,
+                    description: data.description ?? '',
+                    sections: data.sections ?? [],
+                    cards: data.cards ?? [],
+                    tags: data.tags ?? [],
+                    user_id: data.user_id,
+                    project_id: data.project_id ?? null,
+                    owner: data.owner,
+                    shared_with: data.shared_with ?? [],
+                });
+                setCurrentUserId(user?.id ?? null);
+                setLoading(false);
+            })
+            .catch((e) => {
+                if (controller.signal.aborted) return;
+                setLoading(false);
+                if (e instanceof ApiError && (e.status === 404 || e.status === 403)) {
+                    setLoadError("This board doesn't exist or you no longer have access to it.");
+                } else {
+                    setLoadError('Could not load the board. Check your connection and try again.');
+                }
             });
-            setCurrentUserId(user?.id ?? null);
-        });
+
+        return () => controller.abort();
     }, [id])
+
+    if (loadError) {
+        return (
+            <div className="min-h-screen flex items-center justify-center px-4">
+                <div className="glass-panel flex flex-col items-center gap-4 px-8 py-10 text-center max-w-sm">
+                    <p className="cf-mono text-sm font-bold uppercase tracking-widest" style={{ color: 'var(--cf-red)' }}>Board unavailable</p>
+                    <p className="cf-mono text-xs" style={{ color: 'var(--cf-text-muted)' }}>{loadError}</p>
+                    <button
+                        onClick={() => router.push('/dashboard')}
+                        className="aero-btn aero-btn--cyan text-xs uppercase tracking-widest font-bold px-4 py-2 cursor-pointer"
+                    >
+                        Back to dashboard
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--cf-phosphor)', borderTopColor: 'transparent' }}/>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen px-4 py-6 md:px-8 md:py-8">

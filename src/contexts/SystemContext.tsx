@@ -1,10 +1,10 @@
 'use client'
 
-import { createContext, ReactNode, useContext, useEffect, useState } from "react";
+import { createContext, Dispatch, ReactNode, SetStateAction, useContext, useEffect, useState } from "react";
 
 type SystemContextType = {
     isLogged: boolean;
-    setIsLogged: any;
+    setIsLogged: Dispatch<SetStateAction<boolean>>;
 }
 
 const SystemContext = createContext<SystemContextType | undefined>(undefined);

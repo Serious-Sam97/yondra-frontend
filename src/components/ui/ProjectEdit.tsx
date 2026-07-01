@@ -2,15 +2,22 @@ import { useEffect, useState } from "react"
 import Icon from "@/components/ui/Icon"
 import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons"
 
+// Payload handed to `submit` — a demo board id (string) or null when creating.
+export interface ProjectEditData {
+    id: string | null
+    name: string
+    description: string
+}
+
 interface ProjectEditProps {
     cancel: () => void
-    submit: (project: any) => void
+    submit: (project: ProjectEditData) => void
     onDelete?: () => void
-    project?: any
+    project: { id: string; name: string; description: string } | null
 }
 
 const ProjectEdit: React.FC<ProjectEditProps> = ({cancel, submit, onDelete, project}) => {
-    const [id, setId] = useState<number | string | null>(null)
+    const [id, setId] = useState<string | null>(null)
     const [name, setName] = useState<string>('')
     const [description, setDescription] = useState<string>('')
     const [confirmDelete, setConfirmDelete] = useState(false)

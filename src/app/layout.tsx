@@ -7,7 +7,6 @@ import './globals.css';
 // Tell Font Awesome to skip injecting its CSS at runtime; we import it above
 // so the icons don't flash at full size during SSR.
 config.autoAddCss = false;
-import ClientThemeProvider from './ClientThemeProvider';
 import MenuAppBar from '@/components/layout/MenuAppBar'; // make sure this is a client component
 import { SystemProvider } from '@/contexts/SystemContext';
 import { ConsoleProvider } from '@/contexts/ConsoleContext';
@@ -25,20 +24,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <ClientThemeProvider>
-          <SystemProvider>
-            <ConsoleProvider>
-              <div className="aero-fixed-bg" aria-hidden>
-                <div className="aero-bg__sun" />
-                <div className="aero-bg__grid" />
-                <div className="aero-bg__scan" />
-              </div>
-              <MenuAppBar />
-              {children}
-              <SpringTrail />
-            </ConsoleProvider>
-          </SystemProvider>
-        </ClientThemeProvider>
+        <SystemProvider>
+          <ConsoleProvider>
+            <div className="aero-fixed-bg" aria-hidden>
+              <div className="aero-bg__sun" />
+              <div className="aero-bg__grid" />
+              <div className="aero-bg__scan" />
+            </div>
+            <MenuAppBar />
+            {children}
+            <SpringTrail />
+          </ConsoleProvider>
+        </SystemProvider>
       </body>
     </html>
   );

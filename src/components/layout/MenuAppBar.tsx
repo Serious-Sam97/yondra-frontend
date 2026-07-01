@@ -37,6 +37,32 @@ const Screw = ({ style }: { style: React.CSSProperties }) => (
     <span className="cf-screw" style={{ position: 'absolute', ...style }} aria-hidden />
 );
 
+// Ticking values live in their own components so the per-second interval
+// re-renders only these leaf nodes, not the whole header.
+function useNow(): number {
+    const [now, setNow] = React.useState(() => Date.now());
+    React.useEffect(() => {
+        const t = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(t);
+    }, []);
+    return now;
+}
+
+function HeaderClock() {
+    const d = new Date(useNow());
+    return <>{`${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`}</>;
+}
+
+function SessionTimer() {
+    const startRef = React.useRef(Date.now());
+    const now = useNow();
+    const elapsed = Math.max(0, Math.floor((now - startRef.current) / 1000));
+    const session = elapsed >= 3600
+        ? `${Math.floor(elapsed / 3600)}:${pad2(Math.floor((elapsed % 3600) / 60))}:${pad2(elapsed % 60)}`
+        : `${pad2(Math.floor(elapsed / 60))}:${pad2(elapsed % 60)}`;
+    return <>ON {session}</>;
+}
+
 export default function MenuAppBar() {
     const { isLogged, setIsLogged } = useSystem();
     const { location, activity, pushActivity } = useConsole();
@@ -46,14 +72,6 @@ export default function MenuAppBar() {
     const [menuOpen, setMenuOpen] = React.useState(false);
     const [notifOpen, setNotifOpen] = React.useState(false);
     const [notifications, setNotifications] = React.useState<any[]>([]);
-
-    // live clock + session timer
-    const [now, setNow] = React.useState(() => Date.now());
-    const startRef = React.useRef(Date.now());
-    React.useEffect(() => {
-        const t = setInterval(() => setNow(Date.now()), 1000);
-        return () => clearInterval(t);
-    }, []);
 
     // collapse the activity terminal once the user starts scrolling (any scroller)
     const [scrolled, setScrolled] = React.useState(false);
@@ -129,12 +147,6 @@ export default function MenuAppBar() {
 
     // ── derived readout values ───────────────────────────────────────────────
     const displayLocation = location ?? routeLabel(pathname);
-    const d = new Date(now);
-    const clock = `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
-    const elapsed = Math.max(0, Math.floor((now - startRef.current) / 1000));
-    const session = elapsed >= 3600
-        ? `${Math.floor(elapsed / 3600)}:${pad2(Math.floor((elapsed % 3600) / 60))}:${pad2(elapsed % 60)}`
-        : `${pad2(Math.floor(elapsed / 60))}:${pad2(elapsed % 60)}`;
     const feed = activity.slice(-2);
     const litRegs = Math.min(unreadCount, 4);
 
@@ -168,7 +180,7 @@ export default function MenuAppBar() {
             {showClock && isLogged && (
                 <div className="hidden md:flex items-center gap-2 mr-1">
                     <span className="cf-led" style={{ width: 8, height: 8, background: 'var(--cf-phosphor)', boxShadow: '0 0 6px var(--cf-phosphor)' }} />
-                    <span className="cf-mono text-xs" style={{ color: 'var(--cf-phosphor)' }}>{clock}</span>
+                    <span className="cf-mono text-xs" style={{ color: 'var(--cf-phosphor)' }}><HeaderClock /></span>
                 </div>
             )}
 
@@ -223,7 +235,7 @@ export default function MenuAppBar() {
                         <span className="cf-lcd truncate" style={{ color: '#ffb000', textShadow: '0 0 6px rgba(255,176,0,0.5)', fontSize: 16, letterSpacing: '0.04em' }}>
                             ▸ {displayLocation}
                         </span>
-                        <span className="cf-lcd flex-shrink-0 ml-3" style={{ color: '#c98a12', fontSize: 13 }}>ON {session}</span>
+                        <span className="cf-lcd flex-shrink-0 ml-3" style={{ color: '#c98a12', fontSize: 13 }}><SessionTimer /></span>
                     </div>
                     <Cluster />
                 </div>
@@ -276,11 +288,10 @@ export default function MenuAppBar() {
                 <Cluster showClock={false} />
             </div>
 
-            {/* ── dropdowns (rendered once at header level so they don't remount /
-                blink with the per-second clock re-render). Anchored just below the
-                button row via a fixed top, not the full header height, so they open
-                right under the bell/avatar in both the tall desktop deck and the
-                slim mobile bar. ──────────────────────────────────────────────── */}
+            {/* ── dropdowns, anchored just below the button row via a fixed top,
+                not the full header height, so they open right under the
+                bell/avatar in both the tall desktop deck and the slim
+                mobile bar. ──────────────────────────────────────────────────── */}
             {notifOpen && (
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />

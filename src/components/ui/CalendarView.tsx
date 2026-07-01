@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Icon from '@/components/ui/Icon'
+import { CardInterface } from '@/interfaces/CardInterface'
 import { faCheck } from '@fortawesome/free-solid-svg-icons'
 
 const SECTION_COLORS = ['#9aa67e', '#ffb000', '#6fe0ff', '#ff5a4d', '#c08bff', '#ffd24a']
@@ -9,9 +10,9 @@ const DAYS_SHORT     = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTHS         = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
 interface CalendarViewProps {
-    cards: any[]
+    cards: CardInterface[]
     sections: { id: number; name: string }[]
-    onCardClick: (card: any) => void
+    onCardClick: (card: CardInterface) => void
 }
 
 function sectionColor(sectionId: number, sections: { id: number; name: string }[]) {
@@ -49,7 +50,7 @@ export function CalendarView({ cards, sections, onCardClick }: CalendarViewProps
     const todayKey  = dateKey(today)
 
     // A card can appear twice: on its due date and on the day it was completed.
-    const byDate: Record<string, { card: any; kind: 'due' | 'done' }[]> = {}
+    const byDate: Record<string, { card: CardInterface; kind: 'due' | 'done' }[]> = {}
     for (const card of cards) {
         if (card.due_date) {
             const k = card.due_date.slice(0, 10)

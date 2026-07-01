@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { DndContext, DragEndEvent, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { reorderSections, updateBoard } from '@/lib/api'
@@ -69,7 +69,7 @@ export function BoardSettings({ boardId, isDemo, demoId, name: initialName, desc
         useSensor(TouchSensor,   { activationConstraint: { delay: 250, tolerance: 5 } }),
     )
 
-    const handleDragEnd = (event: any) => {
+    const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event
         if (!over || active.id === over.id) return
         const oldIndex = sections.findIndex(s => s.id === active.id)

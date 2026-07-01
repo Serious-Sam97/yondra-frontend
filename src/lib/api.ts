@@ -1,3 +1,24 @@
+export class ApiError extends Error {
+  status: number;
+  body: string;
+
+  constructor(status: number, body: string) {
+    super(`API ERROR: ${status} ${body}`);
+    this.name = 'ApiError';
+    this.status = status;
+    this.body = body;
+  }
+}
+
+export function clearAuth() {
+  localStorage.removeItem('token');
+  localStorage.setItem('isLogged', 'false');
+}
+
+// Endpoints where a 401 means "bad credentials", not "session expired" —
+// they must not trigger the global logout redirect.
+const PUBLIC_AUTH_PATHS = ['/api/login', '/api/register', '/api/forgot-password', '/api/reset-password'];
+
 export async function apiFetch(path: string, options: RequestInit = {}) {
   const url = `${process.env.NEXT_PUBLIC_API}${path}`;
 
@@ -10,10 +31,20 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
   const token = localStorage.getItem('token');
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(url, { ...options, headers });
+  const res = await fetch(url, { ...options, headers, signal: options.signal });
 
   if (res.status === 204) return null;
-  if (!res.ok) throw new Error(`API ERROR: ${res.status} ${await res.text()}`);
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    if (res.status === 401 && !PUBLIC_AUTH_PATHS.includes(path)) {
+      // Session expired or token revoked — clear auth state and send the user to login.
+      clearAuth();
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login';
+      }
+    }
+    throw new ApiError(res.status, body);
+  }
   return res.json().catch(() => ({}));
 }
 
@@ -27,11 +58,11 @@ export async function fetchProject(id: number) {
   return apiFetch(`/api/projects/${id}`);
 }
 
-export async function createProject(data: { name: string; description?: string; color?: string }) {
+export async function createProject(data: { name: string; description?: string | null; color?: string }) {
   return apiFetch('/api/projects', { method: 'POST', body: JSON.stringify(data) });
 }
 
-export async function updateProject(id: number, data: { name?: string; description?: string; color?: string }) {
+export async function updateProject(id: number, data: { name?: string; description?: string | null; color?: string }) {
   return apiFetch(`/api/projects/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 }
 
@@ -65,8 +96,8 @@ export async function createBoard(data: { name: string; description: string; pro
   return apiFetch('/api/boards', { method: 'POST', body: JSON.stringify(data) });
 }
 
-export async function fetchBoard(id: number) {
-  return apiFetch(`/api/boards/${id}`, { method: 'GET' });
+export async function fetchBoard(id: number, signal?: AbortSignal) {
+  return apiFetch(`/api/boards/${id}`, { method: 'GET', signal });
 }
 
 // --- Sections ---

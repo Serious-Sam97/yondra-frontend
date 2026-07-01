@@ -26,8 +26,8 @@ export default function ShareModal({ boardId, sharedWith, onClose, onUpdate }: S
             const res = await shareBoard(boardId, email, invitePermission);
             onUpdate([...sharedWith, res.user]);
             setEmail('');
-        } catch (err: any) {
-            setError(err.message ?? 'Failed to share board.');
+        } catch (err) {
+            setError((err as Error).message ?? 'Failed to share board.');
         } finally {
             setLoading(false);
         }

@@ -1,14 +1,16 @@
 'use client'
 
-import { DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
+import type Echo from "laravel-echo";
 import { Card } from "../ui/Card";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Section } from "../ui/Section";
-import { BoardInterface, SharedUser } from "@/interfaces/BoardInterface";
+import { BoardInterface, SectionData, SharedUser } from "@/interfaces/BoardInterface";
+import { CardInterface } from "@/interfaces/CardInterface";
 import { TagInterface } from "@/interfaces/TagInterface";
 import { useConsole } from "@/contexts/ConsoleContext";
-import CardEdit from "../ui/CardEdit";
+import CardEdit, { CardFormData, Template } from "../ui/CardEdit";
 import Modal from "../shared/Modal";
 import {
     createCard, updateCard, deleteCard,
@@ -33,8 +35,6 @@ import {
 } from "@/lib/demoStorage";
 import { playPickup, playDrop } from "@/lib/sound";
 import { hapticPick, hapticDrop } from "@/lib/haptics";
-import { initGyroscope, requestGyroscopePermission } from "@/lib/lightSource";
-import { initGravityField } from "@/lib/gravityField";
 import { triggerInkSplash } from "@/components/ui/SpringTrail";
 import { BoardSettings } from "@/components/ui/BoardSettings";
 import Icon from "@/components/ui/Icon";
@@ -102,6 +102,29 @@ function initials(name: string): string {
 }
 
 
+interface ActivityEntry {
+    id: number;
+    description: string;
+    created_at: string;
+}
+
+interface ChatMessage {
+    id: number;
+    body: string;
+    created_at: string;
+    user: { id: number; name: string };
+}
+
+// Payloads broadcast on the private board channel as `.board.event`.
+type BoardEventPayload =
+    | { type: 'card.created' | 'card.updated' | 'card.restored'; payload: CardInterface }
+    | { type: 'card.deleted'; payload: { id: number | string } }
+    | { type: 'section.created' | 'section.updated'; payload: SectionData }
+    | { type: 'section.deleted'; payload: { id: number } }
+    | { type: 'sections.reordered'; payload: { section_ids: number[] } }
+    | { type: 'message.created'; payload: ChatMessage }
+    | { type: 'message.deleted'; payload: { id: number } };
+
 interface BoardProps extends BoardInterface {
     size: string;
     isDemo?: boolean;
@@ -120,21 +143,21 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const [sections, setSections] = useState(initialSections);
     const [tags, setTags] = useState<TagInterface[]>(initialTags);
     const [isCardVisible, setIsCardVisible] = useState(false);
-    const [selectedCard, setSelectedCard] = useState<any>(null);
+    const [selectedCard, setSelectedCard] = useState<CardInterface | null>(null);
     const [isAddingSection, setIsAddingSection] = useState(false);
     const [newSectionName, setNewSectionName] = useState('');
     const [sectionError, setSectionError] = useState('');
     const [sectionToDelete, setSectionToDelete] = useState<{id: number, name: string} | null>(null);
-    const [cardToDelete, setCardToDelete] = useState<any>(null);
+    const [cardToDelete, setCardToDelete] = useState<CardInterface | null>(null);
     const [filterUserId, setFilterUserId] = useState<number | null>(null);
     const [filterTagId, setFilterTagId] = useState<number | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeCard, setActiveCard] = useState<any>(null);
+    const [activeCard, setActiveCard] = useState<CardInterface | null>(null);
     const [isTagsOpen, setIsTagsOpen] = useState(false);
     const [isActivityOpen, setIsActivityOpen] = useState(false);
-    const [activityLog, setActivityLog] = useState<any[]>([]);
+    const [activityLog, setActivityLog] = useState<ActivityEntry[]>([]);
     const [isArchivedOpen, setIsArchivedOpen] = useState(false);
-    const [archivedCards, setArchivedCards] = useState<any[]>([]);
+    const [archivedCards, setArchivedCards] = useState<CardInterface[]>([]);
     const [newTagName, setNewTagName] = useState('');
     const [newTagColor, setNewTagColor] = useState(TAG_PALETTE[0]);
 
@@ -142,10 +165,10 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const [wipLimits, setWipLimits] = useState<Record<number, number | null>>({});
     const [boardBg, setBoardBg] = useState<string>('');
     const [isBgOpen, setIsBgOpen] = useState(false);
-    const [boardTemplates, setBoardTemplates] = useState<any[]>([]);
+    const [boardTemplates, setBoardTemplates] = useState<Template[]>([]);
     const [isChatOpen, setIsChatOpen] = useState(false);
-    const [chatMessages, setChatMessages] = useState<any[]>([]);
-    const chatChannelRef = useRef<any>(null);
+    const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+    const chatChannelRef = useRef<ReturnType<Echo<'reverb'>['private']> | null>(null);
     const chatLoadedRef = useRef(false);
     const [isToolbarOpen, setIsToolbarOpen] = useState(false);
     const touchStartY = useRef<number>(0);
@@ -153,6 +176,16 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const [isCommandOpen, setIsCommandOpen] = useState(false);
     // Section a newly-created card should default into (used by backlog "+ New" → full editor)
     const [newCardSectionId, setNewCardSectionId] = useState<number | null>(null);
+
+    // Sync failure feedback — shown when a server mutation fails and local state was reverted.
+    const [syncError, setSyncError] = useState<string | null>(null);
+    const syncErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const reportSyncError = useCallback((message: string) => {
+        setSyncError(message);
+        if (syncErrorTimer.current) clearTimeout(syncErrorTimer.current);
+        syncErrorTimer.current = setTimeout(() => setSyncError(null), 4000);
+    }, []);
+    useEffect(() => () => { if (syncErrorTimer.current) clearTimeout(syncErrorTimer.current); }, []);
 
     // ── feed the header console: track where the user is + what they're doing ──
     const { setLocation, pushActivity } = useConsole();
@@ -170,10 +203,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
     // Board gravity tilt — the board tilts toward wherever the card is being dragged
     const kanbanRef      = useRef<HTMLDivElement>(null);
-    const gyroRequested  = useRef(false);
     const lastPointerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-
-    useEffect(() => { initGyroscope(); initGravityField(); }, []);
 
     const applyTilt = useCallback((clientX: number, clientY: number) => {
         const el = kanbanRef.current;
@@ -200,12 +230,6 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         window.addEventListener('pointermove', onMove, { passive: true });
         return () => window.removeEventListener('pointermove', onMove);
     }, [activeCard, applyTilt]);
-
-    const handleGyroPermission = useCallback(() => {
-        if (gyroRequested.current) return;
-        gyroRequested.current = true;
-        requestGyroscopePermission();
-    }, []);
 
     useEffect(() => {
         if (typeof window === 'undefined' || (!isDemo && id === 0)) return;
@@ -244,7 +268,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         const channel = echo.private(`board.${id}`);
         chatChannelRef.current = channel;
 
-        channel.listen('.board.event', (e: any) => {
+        channel.listen('.board.event', (e: BoardEventPayload) => {
             switch (e.type) {
                 case 'card.created':
                     setCards(prev => prev.some(c => c.id === e.payload.id) ? prev : [...prev, e.payload]);
@@ -298,19 +322,28 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const handleCreateTag = async () => {
         const trimmed = newTagName.trim();
         if (!trimmed) return;
-        const saved = isDemo
-            ? demoCreateTag(demoId, trimmed, newTagColor)
-            : await createTag(id, { name: trimmed, color: newTagColor });
-        setTags(prev => [...prev, saved]);
-        setNewTagName('');
-        setNewTagColor(TAG_PALETTE[0]);
+        try {
+            const saved = isDemo
+                ? demoCreateTag(demoId, trimmed, newTagColor)
+                : await createTag(id, { name: trimmed, color: newTagColor });
+            setTags(prev => [...prev, saved]);
+            setNewTagName('');
+            setNewTagColor(TAG_PALETTE[0]);
+        } catch {
+            reportSyncError('Could not create tag — try again');
+        }
     };
 
     const handleDeleteTag = async (tagId: number) => {
-        if (isDemo) demoDeleteTag(demoId, tagId);
-        else await deleteTag(id, tagId);
+        try {
+            if (isDemo) demoDeleteTag(demoId, tagId);
+            else await deleteTag(id, tagId);
+        } catch {
+            reportSyncError('Could not delete tag — try again');
+            return;
+        }
         setTags(prev => prev.filter(t => t.id !== tagId));
-        setCards(prev => prev.map(c => ({ ...c, tags: (c.tags ?? []).filter((t: any) => t.id !== tagId) })));
+        setCards(prev => prev.map(c => ({ ...c, tags: (c.tags ?? []).filter((t) => t.id !== tagId) })));
         if (filterTagId === tagId) setFilterTagId(null);
     };
 
@@ -321,15 +354,27 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
     const handleRenameSection = async (sectionId: number, newName: string) => {
         if (isReservedName(newName)) return; // ignore — keep the old name
+        const previousName = sections.find(s => s.id === sectionId)?.name;
         setSections(prev => prev.map(s => s.id === sectionId ? { ...s, name: newName } : s));
-        if (isDemo) demoUpdateSection(demoId, sectionId, newName);
-        else await updateSection(id, sectionId, newName);
+        try {
+            if (isDemo) demoUpdateSection(demoId, sectionId, newName);
+            else await updateSection(id, sectionId, newName);
+        } catch {
+            setSections(prev => prev.map(s => s.id === sectionId ? { ...s, name: previousName ?? s.name } : s));
+            reportSyncError('Rename failed — change reverted');
+        }
     };
 
     const handleDeleteSection = async () => {
         if (!sectionToDelete) return;
-        if (isDemo) demoDeleteSection(demoId, sectionToDelete.id);
-        else await deleteSection(id, sectionToDelete.id);
+        try {
+            if (isDemo) demoDeleteSection(demoId, sectionToDelete.id);
+            else await deleteSection(id, sectionToDelete.id);
+        } catch {
+            reportSyncError('Could not delete section — try again');
+            setSectionToDelete(null);
+            return;
+        }
         setSections(prev => prev.filter(s => s.id !== sectionToDelete.id));
         setCards(prev => prev.filter(c => c.section_id !== sectionToDelete.id));
         setSectionToDelete(null);
@@ -339,7 +384,13 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         const trimmed = newSectionName.trim();
         if (!trimmed) return;
         if (isReservedName(trimmed)) { setSectionError('“Backlog” is reserved'); return; }
-        const saved = isDemo ? demoCreateSection(demoId, trimmed) : await createSection(id, trimmed);
+        let saved;
+        try {
+            saved = isDemo ? demoCreateSection(demoId, trimmed) : await createSection(id, trimmed);
+        } catch {
+            setSectionError('Could not create section — try again');
+            return;
+        }
         // Keep the reserved Backlog section pinned to the end — new columns go before it.
         const bl = backlogSection;
         setSections(prev => {
@@ -364,9 +415,9 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
     // --- Card filtering ---
 
-    const matchesFilters = (card: any) => {
+    const matchesFilters = (card: CardInterface) => {
         if (filterUserId !== null && card.assigned_user_id !== filterUserId) return false;
-        if (filterTagId !== null && !(card.tags ?? []).some((t: any) => t.id === filterTagId)) return false;
+        if (filterTagId !== null && !(card.tags ?? []).some((t) => t.id === filterTagId)) return false;
         if (searchQuery.trim()) {
             const q = searchQuery.trim().toLowerCase();
             if (!(card.name?.toLowerCase().includes(q) || (card.description ?? '').toLowerCase().includes(q))) return false;
@@ -374,7 +425,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         return true;
     };
 
-    const sectionCards = (sectionId: any) => boardCards.filter(card => card.section_id === sectionId && matchesFilters(card));
+    const sectionCards = (sectionId: number) => boardCards.filter(card => card.section_id === sectionId && matchesFilters(card));
 
     const totalCards = boardCards.length;
     const doneSection = boardSections.find(s => s.name?.toLowerCase() === 'done');
@@ -389,63 +440,93 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         return saved;
     };
 
+    // Optimistically move a card to another section; roll back and report if the server rejects it.
+    const moveCard = (cardId: number | string, sectionId: number) => {
+        const previousSectionId = cardsProp.find(c => c.id === cardId)?.section_id;
+        setCards(prev => prev.map(c => c.id === cardId ? { ...c, section_id: sectionId } : c));
+        if (isDemo) { demoUpdateCard(demoId, cardId as number, { section_id: sectionId }); return; }
+        updateCard(id, cardId, { section_id: sectionId }).catch(() => {
+            if (previousSectionId !== undefined) {
+                setCards(prev => prev.map(c => c.id === cardId ? { ...c, section_id: previousSectionId } : c));
+            }
+            reportSyncError('Move failed — change reverted');
+        });
+    };
+
     // Promote a backlog ticket onto the board: move it into the first/leftmost column (their "To Do").
-    const handleAddToBoard = (card: any) => {
+    const handleAddToBoard = (card: CardInterface) => {
         const target = boardSections[0];
         if (!card || !target) return;
-        setCards(prev => prev.map(c => c.id === card.id ? { ...c, section_id: target.id } : c));
-        if (isDemo) demoUpdateCard(demoId, card.id, { section_id: target.id });
-        else updateCard(id, card.id, { section_id: target.id });
+        moveCard(card.id, target.id);
         setIsCardVisible(false);
         setSelectedCard(null);
     };
 
     // Send a board card back to the backlog.
-    const handleSendToBacklog = async (card: any) => {
+    const handleSendToBacklog = async (card: CardInterface) => {
         if (!card) return;
-        const bl = await ensureBacklogSection();
-        setCards(prev => prev.map(c => c.id === card.id ? { ...c, section_id: bl.id } : c));
-        if (isDemo) demoUpdateCard(demoId, card.id, { section_id: bl.id });
-        else updateCard(id, card.id, { section_id: bl.id });
+        let bl;
+        try {
+            bl = await ensureBacklogSection();
+        } catch {
+            reportSyncError('Could not reach the backlog — try again');
+            return;
+        }
+        moveCard(card.id, bl.id);
         setIsCardVisible(false);
         setSelectedCard(null);
     };
 
     // Quick-add: create a backlog ticket instantly from just a name.
     const handleQuickCreateBacklog = async (cardName: string) => {
-        const bl = await ensureBacklogSection();
-        const saved = isDemo
-            ? demoCreateCard(demoId, { section_id: bl.id, name: cardName, description: '' })
-            : await createCard(id, { section_id: bl.id, name: cardName, description: '' });
-        setCards(prev => prev.some(c => c.id === saved.id) ? prev : [...prev, saved]);
+        try {
+            const bl = await ensureBacklogSection();
+            const saved = isDemo
+                ? demoCreateCard(demoId, { section_id: bl.id, name: cardName, description: '' })
+                : await createCard(id, { section_id: bl.id, name: cardName, description: '' });
+            setCards(prev => prev.some(c => c.id === saved.id) ? prev : [...prev, saved]);
+        } catch {
+            reportSyncError('Could not create ticket — try again');
+        }
     };
 
     // Full editor: open CardEdit for a new card pre-seeded to the backlog section.
     const handleOpenBacklogEditor = async () => {
-        const bl = await ensureBacklogSection();
-        setNewCardSectionId(bl.id);
+        try {
+            const bl = await ensureBacklogSection();
+            setNewCardSectionId(bl.id);
+        } catch {
+            reportSyncError('Could not reach the backlog — try again');
+            return;
+        }
         setSelectedCard(null);
         setIsCardVisible(true);
     };
 
     // --- Card management ---
 
-    const handleClick = (card: any) => {
+    const handleClick = (card: CardInterface) => {
         setSelectedCard(card);
         setIsCardVisible(true);
     };
 
-    const handleSubmit = async (card: any, isNew: boolean) => {
-        if (isNew) {
-            const saved = isDemo
-                ? demoCreateCard(demoId, { section_id: card.section_id, name: card.name, description: card.description, tag_ids: card.tag_ids, due_date: card.due_date, priority: card.priority })
-                : await createCard(id, { section_id: card.section_id, assigned_user_id: card.assigned_user_id, tag_ids: card.tag_ids, name: card.name, description: card.description, due_date: card.due_date, priority: card.priority });
-            setCards(prev => prev.some(c => c.id === saved.id) ? prev.map(c => c.id === saved.id ? { ...c, ...saved } : c) : [...prev, saved]);
-        } else {
-            const saved = isDemo
-                ? demoUpdateCard(demoId, card.id, { section_id: card.section_id, name: card.name, description: card.description, tag_ids: card.tag_ids, due_date: card.due_date, priority: card.priority })
-                : await updateCard(id, card.id, { section_id: card.section_id, assigned_user_id: card.assigned_user_id, tag_ids: card.tag_ids, name: card.name, description: card.description, due_date: card.due_date, priority: card.priority });
-            setCards(prev => prev.map(c => c.id === card.id ? { ...saved, checklist_items: card.checklist_items } : c));
+    const handleSubmit = async (card: CardFormData, isNew: boolean) => {
+        try {
+            if (isNew) {
+                const saved = isDemo
+                    ? demoCreateCard(demoId, { section_id: card.section_id, name: card.name, description: card.description, tag_ids: card.tag_ids, due_date: card.due_date, priority: card.priority })
+                    : await createCard(id, { section_id: card.section_id, assigned_user_id: card.assigned_user_id, tag_ids: card.tag_ids, name: card.name, description: card.description, due_date: card.due_date, priority: card.priority });
+                setCards(prev => prev.some(c => c.id === saved.id) ? prev.map(c => c.id === saved.id ? { ...c, ...saved } : c) : [...prev, saved]);
+            } else {
+                const saved = isDemo
+                    ? demoUpdateCard(demoId, card.id as number, { section_id: card.section_id, name: card.name, description: card.description, tag_ids: card.tag_ids, due_date: card.due_date, priority: card.priority })
+                    : await updateCard(id, card.id, { section_id: card.section_id, assigned_user_id: card.assigned_user_id, tag_ids: card.tag_ids, name: card.name, description: card.description, due_date: card.due_date, priority: card.priority });
+                setCards(prev => prev.map(c => c.id === card.id ? { ...saved, checklist_items: card.checklist_items } : c));
+            }
+        } catch {
+            // Keep the editor open so nothing the user typed is lost.
+            reportSyncError('Could not save card — try again');
+            return;
         }
         setIsCardVisible(false);
         setSelectedCard(null);
@@ -454,8 +535,14 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
     const handleArchiveCard = async () => {
         if (!cardToDelete) return;
-        if (isDemo) demoArchiveCard(demoId, cardToDelete.id);
-        else await deleteCard(id, cardToDelete.id);
+        try {
+            if (isDemo) demoArchiveCard(demoId, cardToDelete.id as number);
+            else await deleteCard(id, cardToDelete.id);
+        } catch {
+            reportSyncError('Could not archive card — try again');
+            setCardToDelete(null);
+            return;
+        }
         setCards(prev => prev.filter(c => c.id !== cardToDelete.id));
         setCardToDelete(null);
         setIsCardVisible(false);
@@ -472,9 +559,14 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         }
     };
 
-    const handleRestoreCard = async (card: any) => {
-        if (isDemo) demoRestoreCard(demoId, card.id);
-        else await restoreCard(id, card.id);
+    const handleRestoreCard = async (card: CardInterface) => {
+        try {
+            if (isDemo) demoRestoreCard(demoId, card.id as number);
+            else await restoreCard(id, card.id);
+        } catch {
+            reportSyncError('Could not restore card — try again');
+            return;
+        }
         setArchivedCards(prev => prev.filter(c => c.id !== card.id));
         setCards(prev => [...prev, { ...card, archived_at: null }]);
     };
@@ -494,17 +586,21 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             const { getBoardMessages } = await import('@/lib/api');
             const data = await getBoardMessages(id).catch(() => []);
             setChatMessages(prev => {
-                const fetched = Array.isArray(data) ? data : [];
-                const merged = [...fetched, ...prev.filter((m: any) => !fetched.some((f: any) => f.id === m.id))];
-                return merged.sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                const fetched: ChatMessage[] = Array.isArray(data) ? data : [];
+                const merged = [...fetched, ...prev.filter((m) => !fetched.some((f) => f.id === m.id))];
+                return merged.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
             });
         }
     };
 
     const handleChatSend = async (body: string) => {
-        const { createBoardMessage } = await import('@/lib/api');
-        const msg = await createBoardMessage(id, body);
-        setChatMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
+        try {
+            const { createBoardMessage } = await import('@/lib/api');
+            const msg = await createBoardMessage(id, body);
+            setChatMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
+        } catch {
+            reportSyncError('Message not sent — try again');
+        }
     };
 
     const handleChatDelete = async (messageId: number) => {
@@ -514,10 +610,10 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     };
 
     useEffect(() => {
-        const isTyping = (el: any) =>
+        const isTyping = (el: HTMLElement | null) =>
             !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
 
-        const handleGlobalEvent = (event: any) => {
+        const handleGlobalEvent = (event: KeyboardEvent) => {
             // Any modal, panel, drawer, or inline editor that's open → the board is "busy".
             const anyOpen =
                 isCardVisible || isTagsOpen || isActivityOpen || isArchivedOpen || isBgOpen ||
@@ -538,7 +634,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                 !isReadOnly &&
                 !anyOpen &&
                 (viewMode === 'kanban' || viewMode === 'list') &&
-                !isTyping(event.target) && !isTyping(document.activeElement)
+                !isTyping(event.target as HTMLElement | null) && !isTyping(document.activeElement as HTMLElement | null)
             ) {
                 // Stop the browser from typing the "c" into the (about-to-autofocus) name field.
                 event.preventDefault();
@@ -555,8 +651,8 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         useSensor(TouchSensor,  { activationConstraint: { delay: 350, tolerance: 5 } })
     );
 
-    function handleDragStart(event: any) {
-        const cardId = Number(event.active.id.split('-')[1]);
+    function handleDragStart(event: DragStartEvent) {
+        const cardId = Number(String(event.active.id).split('-')[1]);
         setActiveCard(cardsProp.find(c => c.id === cardId) ?? null);
         playPickup();
         hapticPick();
@@ -567,6 +663,17 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             {/* Board background overlay */}
             {boardBg && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: -1, background: boardBg }} />
+            )}
+
+            {/* Sync failure toast */}
+            {syncError && (
+                <div
+                    role="alert"
+                    className="glass-panel cf-mono fixed top-4 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 text-xs uppercase tracking-widest font-bold flex items-center gap-2"
+                    style={{ color: 'var(--cf-red)', borderColor: 'var(--cf-red)' }}
+                >
+                    <Icon icon={faTriangleExclamation} /> {syncError}
+                </div>
             )}
 
             {/* Top bar: search + shortcuts */}
@@ -598,7 +705,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                         { key: 'calendar',  icon: faCalendarDays, label: 'Cal' },
                         { key: 'analytics', icon: faChartColumn,  label: 'Stats' },
                     ] as const).map(({ key, icon, label }) => (
-                        <button key={key} onClick={() => { if (key === 'backlog') ensureBacklogSection(); setViewMode(key); }}
+                        <button key={key} onClick={() => { if (key === 'backlog') ensureBacklogSection().catch(() => {}); setViewMode(key); }}
                             style={viewMode === key
                                 ? { background: 'var(--cf-edge)', borderColor: 'var(--cf-phosphor)', color: 'var(--cf-text)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 0 8px rgba(154,166,126,0.35)' }
                                 : { color: 'var(--cf-text-muted)' }}
@@ -718,7 +825,6 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                     ref={kanbanRef}
                     className="flex gap-5 items-start overflow-x-auto pb-4"
                     style={{ transformOrigin: 'center center', willChange: 'transform' }}
-                    onTouchStart={handleGyroPermission}
                 >
                     {boardSections.map((section, i) => (
                         <Section
@@ -943,7 +1049,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                             {activityLog.length === 0 && (
                                 <p className="cf-mono text-xs text-center py-6" style={{ color: 'var(--cf-text-muted)' }}>No activity yet.</p>
                             )}
-                            {activityLog.map((entry: any) => (
+                            {activityLog.map((entry) => (
                                 <div key={entry.id} className="flex items-start gap-3">
                                     <div className="cf-led flex-shrink-0 mt-1.5" style={{ background: 'var(--cf-phosphor)', boxShadow: '0 0 6px var(--cf-phosphor)' }}/>
                                     <div className="flex flex-col gap-0.5">
@@ -971,7 +1077,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                             {archivedCards.length === 0 && (
                                 <p className="cf-mono text-xs text-center py-6" style={{ color: 'var(--cf-text-muted)' }}>No archived cards.</p>
                             )}
-                            {archivedCards.map((card: any) => (
+                            {archivedCards.map((card) => (
                                 <div key={card.id} className="flex items-center justify-between rounded-lg px-4 py-3 gap-3" style={{ background: 'var(--cf-graphite)' }}>
                                     <div className="flex flex-col gap-0.5 flex-1 min-w-0">
                                         <p className="cf-mono text-sm font-semibold truncate" style={{ color: 'var(--cf-text)' }}>{card.name}</p>
@@ -1035,7 +1141,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                         description={description ?? ''}
                         sections={boardSections}
                         onMetaSaved={(n, d) => onBoardMetaSaved?.(n, d)}
-                        onSectionsReordered={(reordered: any[]) => setSections(backlogSection ? [...reordered, backlogSection] : reordered)}
+                        onSectionsReordered={(reordered: SectionData[]) => setSections(backlogSection ? [...reordered, backlogSection] : reordered)}
                         onDelete={() => { onSettingsClose?.(); onDeleteBoard?.(); }}
                         onClose={() => onSettingsClose?.()}
                     />
@@ -1128,7 +1234,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         </>
     );
 
-    function handleDragEnd(event: any) {
+    function handleDragEnd(event: DragEndEvent) {
         setActiveCard(null);
         resetTilt();
         if (event.over) {
@@ -1137,12 +1243,8 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         }
         const sectionSelected = boardSections.find(section => section.name === event.over?.id);
         if (!sectionSelected) return;
-        const selectedCardId = Number(event.active.id.split('-')[1]);
+        const selectedCardId = Number(String(event.active.id).split('-')[1]);
         if (!selectedCardId) return;
-        setCards(cardsProp.map(card =>
-            card.id === selectedCardId ? { ...card, section_id: sectionSelected.id } : card
-        ));
-        if (isDemo) demoUpdateCard(demoId, selectedCardId, { section_id: sectionSelected.id });
-        else updateCard(id, selectedCardId, { section_id: sectionSelected.id });
+        moveCard(selectedCardId, sectionSelected.id);
     }
 }

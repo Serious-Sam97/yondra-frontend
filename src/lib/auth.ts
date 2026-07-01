@@ -1,6 +1,6 @@
 'use client'
 
-import { apiFetch } from "./api";
+import { apiFetch, clearAuth } from "./api";
 
 export async function register(name: string, email: string, password: string, passwordConfirmation: string) {
     const data = await apiFetch(`/api/register`, {
@@ -20,8 +20,8 @@ export async function login(email: string, password: string) {
     localStorage.setItem('isLogged', 'true');
 }
 
-export async function fetchUser() {
-    return await apiFetch(`/api/user`, { method: 'GET' });
+export async function fetchUser(signal?: AbortSignal) {
+    return await apiFetch(`/api/user`, { method: 'GET', signal });
 }
 
 export async function fetchBoards() {
@@ -37,9 +37,13 @@ export async function updatePassword(data: { current_password: string; password:
 }
 
 export async function logout() {
-    await apiFetch('/api/logout', { method: 'POST' });
-    localStorage.removeItem('token');
-    localStorage.setItem('isLogged', 'false');
+    try {
+        await apiFetch('/api/logout', { method: 'POST' });
+    } catch {
+        // The token may already be expired or revoked — clearing local state is what matters.
+    } finally {
+        clearAuth();
+    }
 }
 
 export async function forgotPassword(email: string) {

@@ -4,9 +4,9 @@ export interface SectionInterface {
     id: number,
     name: string,
     color: string,
-    parent?: any | null
+    parent?: unknown
     cards: CardInterface[]
-    handleClick: (card: any) => void
+    handleClick: (card: CardInterface) => void
     onDelete?: () => void
     onRename?: (newName: string) => void
     wipLimit?: number | null

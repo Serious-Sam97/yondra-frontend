@@ -1,7 +1,7 @@
 'use client'
 
 import Modal from "@/components/shared/Modal";
-import ProjectEdit from "@/components/ui/ProjectEdit";
+import ProjectEdit, { ProjectEditData } from "@/components/ui/ProjectEdit";
 import { loadDemoBoards, createDemoBoard, deleteDemoBoard, updateDemoBoard, DemoBoard } from "@/lib/demoStorage";
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from "react";
@@ -29,7 +29,7 @@ export default function DemoPage () {
         router.push(`/boards/${board.id}`);
     };
 
-    const handleSubmit = (project: any) => {
+    const handleSubmit = (project: ProjectEditData) => {
         if (project.id !== null) {
             updateDemoBoard(project.id, project.name, project.description);
             setBoards(prev => prev.map(b => b.id === project.id ? { ...b, name: project.name, description: project.description } : b));

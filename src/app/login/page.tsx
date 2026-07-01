@@ -22,7 +22,7 @@ export default function LoginPage () {
             await login(email, password);
             setIsLogged(true);
             router.push('/dashboard');
-        } catch (e: any) {
+        } catch {
             setError('Invalid credentials. Please try again.');
         } finally {
             setLoading(false);

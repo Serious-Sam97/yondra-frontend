@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Icon from '@/components/ui/Icon'
+import { CardInterface } from '@/interfaces/CardInterface'
 import { faSortUp, faSortDown, faSort, faArrowRightToBracket, faPlus } from '@fortawesome/free-solid-svg-icons'
 
 const AVATAR_COLORS  = ['#9aa67e', '#ffb000', '#6fe0ff', '#ff5a4d', '#c08bff', '#ffd24a', '#6fe0ff', '#ff8fa3']
@@ -13,10 +14,10 @@ type SortDir = 'asc' | 'desc'
 interface User { id: number; name: string }
 
 interface BacklogViewProps {
-    cards: any[]
+    cards: CardInterface[]
     users: User[]
-    onCardClick: (card: any) => void
-    onAddToBoard: (card: any) => void
+    onCardClick: (card: CardInterface) => void
+    onAddToBoard: (card: CardInterface) => void
     onQuickCreate: (name: string) => void
     onOpenEditor: () => void
     canPromote: boolean
@@ -161,7 +162,7 @@ export function BacklogView({ cards, users, onCardClick, onAddToBoard, onQuickCr
 
                             {/* Tags */}
                             <div className="px-3 py-3 hidden md:flex items-center gap-1 md:border-l md:border-white/10">
-                                {(card.tags ?? []).slice(0, 2).map((tag: any) => (
+                                {(card.tags ?? []).slice(0, 2).map((tag) => (
                                     <span
                                         key={tag.id}
                                         className="aero-pill cf-mono text-[9px] uppercase tracking-wide px-1.5 py-0.5 font-bold whitespace-nowrap"

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { playComplete } from '@/lib/sound'
 import { hapticDone } from '@/lib/haptics'
 import { TagInterface } from '@/interfaces/TagInterface'
-import { ChecklistItem } from '@/interfaces/CardInterface'
+import { CardInterface, ChecklistItem } from '@/interfaces/CardInterface'
 import {
     createChecklistItem, updateChecklistItem, deleteChecklistItem,
     getComments, createComment, deleteComment,
@@ -25,13 +25,26 @@ interface Comment { id: number; body: string; user: { id: number; name: string }
 
 interface Subtask { id: number; name: string; is_done: boolean }
 
-interface Template { id: number; name: string; template_data: any }
+export interface Template { id: number; name: string; template_data: unknown }
+
+// Payload handed to `submit` when the editor is saved.
+export interface CardFormData {
+    id: number | string
+    name: string
+    description: string
+    section_id: number
+    assigned_user_id: number | null
+    tag_ids: number[]
+    due_date: string | null
+    priority: 'low' | 'medium' | 'high' | null
+    checklist_items: ChecklistItem[]
+}
 
 interface CardEditProps {
     goBack: () => void
-    submit: (card: any, isNew: boolean) => void
+    submit: (card: CardFormData, isNew: boolean) => void
     onDelete?: () => void
-    card: any | null
+    card: CardInterface | null
     sections: { id: number; name: string }[]
     users?: BoardUser[]
     tags?: TagInterface[]
@@ -74,7 +87,7 @@ const CardEdit: React.FC<CardEditProps> = ({
     defaultSectionId, isBacklogCard = false, onAddToBoard,
     backlogSectionId, onSendToBacklog,
 }) => {
-    const [id, setId] = useState(0)
+    const [id, setId] = useState<number | string>(0)
     const [name, setName] = useState('')
     const [description, setDescription] = useState('')
     const [sectionId, setSectionId] = useState<number>(defaultSectionId ?? sections[0]?.id ?? 1)
@@ -97,6 +110,16 @@ const CardEdit: React.FC<CardEditProps> = ({
     const [mentionUsers, setMentionUsers] = useState<BoardUser[]>([])
     const [mentionAnchor, setMentionAnchor] = useState<number>(-1)
     const [activeTab, setActiveTab] = useState<'details' | 'checklist' | 'comments' | 'subtasks'>('details')
+    // Action failure feedback — shown when a checklist/comment/subtask mutation fails.
+    const [actionError, setActionError] = useState<string | null>(null)
+    const actionErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const reportActionError = (message: string) => {
+        setActionError(message)
+        if (actionErrorTimer.current) clearTimeout(actionErrorTimer.current)
+        actionErrorTimer.current = setTimeout(() => setActionError(null), 4000)
+    }
+    useEffect(() => () => { if (actionErrorTimer.current) clearTimeout(actionErrorTimer.current) }, [])
+
     const commentInputRef = useRef<HTMLTextAreaElement>(null)
     const titleRef = useRef<HTMLTextAreaElement>(null)
     const descRef  = useRef<HTMLTextAreaElement>(null)
@@ -133,7 +156,7 @@ const CardEdit: React.FC<CardEditProps> = ({
         if (!isNew && card?.id) {
             setLoadingSubtasks(true)
             if (isDemo) {
-                setSubtasks(demoGetSubtasks(demoId, card.id).map(s => ({ id: s.id, name: s.name, is_done: s.is_done ?? false })))
+                setSubtasks(demoGetSubtasks(demoId, card.id as number).map(s => ({ id: s.id, name: s.name, is_done: s.is_done ?? false })))
                 setLoadingSubtasks(false)
             } else if (boardId) {
                 getSubtasks(boardId, card.id)
@@ -190,7 +213,7 @@ const CardEdit: React.FC<CardEditProps> = ({
     }
 
     const handleApplyTemplate = (t: Template) => {
-        const d = t.template_data as any
+        const d = t.template_data as { description?: string; tag_ids?: number[]; priority?: 'low' | 'medium' | 'high' | null; due_date?: string | null }
         if (d.description !== undefined) setDescription(d.description)
         if (d.tag_ids !== undefined) setSelectedTagIds(d.tag_ids)
         if (d.priority !== undefined) setPriority(d.priority)
@@ -212,16 +235,23 @@ const CardEdit: React.FC<CardEditProps> = ({
     const handleAddChecklistItem = async () => {
         const text = newChecklistText.trim()
         if (!text) return
-        setNewChecklistText('')
         if (isDemo) {
-            const item = demoCreateChecklistItem(demoId, id, text)
+            const item = demoCreateChecklistItem(demoId, id as number, text)
             setChecklistItems(prev => [...prev, item])
         } else if (boardId && id) {
-            const item = await createChecklistItem(boardId, id, text)
+            let item
+            try {
+                item = await createChecklistItem(boardId, id, text)
+            } catch {
+                // Keep what the user typed so they can retry.
+                reportActionError('Could not add item — try again')
+                return
+            }
             setChecklistItems(prev => [...prev, item])
         } else {
             setChecklistItems(prev => [...prev, { id: Date.now(), text, is_done: false, position: prev.length }])
         }
+        setNewChecklistText('')
     }
 
     const handleToggleItem = async (item: ChecklistItem) => {
@@ -229,20 +259,30 @@ const CardEdit: React.FC<CardEditProps> = ({
         if (updated.is_done) { playComplete(); hapticDone(); }
         setChecklistItems(prev => prev.map(i => i.id === item.id ? updated : i))
         if (!isNew) {
-            if (isDemo) demoUpdateChecklistItem(demoId, id, item.id, { is_done: updated.is_done })
-            else if (boardId) updateChecklistItem(boardId, id, item.id, { is_done: updated.is_done })
+            if (isDemo) demoUpdateChecklistItem(demoId, id as number, item.id, { is_done: updated.is_done })
+            else if (boardId) updateChecklistItem(boardId, id, item.id, { is_done: updated.is_done }).catch(() => {
+                setChecklistItems(prev => prev.map(i => i.id === item.id ? { ...i, is_done: item.is_done } : i))
+                reportActionError('Change not saved — reverted')
+            })
         }
     }
 
     const handleDeleteItem = async (item: ChecklistItem) => {
         setChecklistItems(prev => prev.filter(i => i.id !== item.id))
         if (!isNew) {
-            if (isDemo) demoDeleteChecklistItem(demoId, id, item.id)
-            else if (boardId) deleteChecklistItem(boardId, id, item.id)
+            if (isDemo) demoDeleteChecklistItem(demoId, id as number, item.id)
+            else if (boardId) deleteChecklistItem(boardId, id, item.id).catch(() => {
+                setChecklistItems(prev => [...prev, item])
+                reportActionError('Could not delete item — restored')
+            })
         }
     }
 
     // --- Comments with @mention ---
+
+    // Mention handles are the full name with spaces stripped (e.g. @JohnSmith) so the
+    // backend can resolve them unambiguously even when members share a first name.
+    const mentionHandle = (u: BoardUser) => u.name.replace(/\s+/g, '')
 
     const handleCommentChange = (val: string) => {
         setNewComment(val)
@@ -250,7 +290,7 @@ const CardEdit: React.FC<CardEditProps> = ({
         if (cursor !== -1 && /^@\w*$/.test(val.slice(cursor))) {
             const query = val.slice(cursor + 1).toLowerCase()
             setMentionAnchor(cursor)
-            setMentionUsers(users.filter(u => u.name.split(' ')[0].toLowerCase().startsWith(query)))
+            setMentionUsers(users.filter(u => mentionHandle(u).toLowerCase().startsWith(query)))
         } else {
             setMentionAnchor(-1)
             setMentionUsers([])
@@ -258,9 +298,8 @@ const CardEdit: React.FC<CardEditProps> = ({
     }
 
     const handlePickMention = (user: BoardUser) => {
-        const firstName = user.name.split(' ')[0]
         const before = newComment.slice(0, mentionAnchor)
-        setNewComment(`${before}@${firstName} `)
+        setNewComment(`${before}@${mentionHandle(user)} `)
         setMentionAnchor(-1)
         setMentionUsers([])
         commentInputRef.current?.focus()
@@ -269,14 +308,26 @@ const CardEdit: React.FC<CardEditProps> = ({
     const handleAddComment = async () => {
         const body = newComment.trim()
         if (!body || !boardId || !id) return
-        setNewComment('')
-        const comment = await createComment(boardId, id, body)
+        let comment
+        try {
+            comment = await createComment(boardId, id, body)
+        } catch {
+            // Keep the draft so the user can retry.
+            reportActionError('Comment not posted — try again')
+            return
+        }
         setComments(prev => [comment, ...prev])
+        setNewComment('')
     }
 
     const handleDeleteComment = async (commentId: number) => {
         if (!boardId || !id) return
-        await deleteComment(boardId, id, commentId)
+        try {
+            await deleteComment(boardId, id, commentId)
+        } catch {
+            reportActionError('Could not delete comment — try again')
+            return
+        }
         setComments(prev => prev.filter(c => c.id !== commentId))
     }
 
@@ -285,14 +336,21 @@ const CardEdit: React.FC<CardEditProps> = ({
     const handleAddSubtask = async () => {
         const n = newSubtaskName.trim()
         if (!n) return
-        setNewSubtaskName('')
         if (isDemo) {
-            const s = demoCreateSubtask(demoId, id, { name: n })
+            const s = demoCreateSubtask(demoId, id as number, { name: n })
             setSubtasks(prev => [...prev, { id: s.id, name: s.name, is_done: false }])
         } else if (boardId && id) {
-            const s = await createSubtask(boardId, id, { name: n })
+            let s
+            try {
+                s = await createSubtask(boardId, id, { name: n })
+            } catch {
+                // Keep what the user typed so they can retry.
+                reportActionError('Could not add subtask — try again')
+                return
+            }
             setSubtasks(prev => [...prev, { id: s.id, name: s.name, is_done: s.is_done ?? false }])
         }
+        setNewSubtaskName('')
     }
 
     const handleToggleSubtask = async (s: Subtask) => {
@@ -301,7 +359,10 @@ const CardEdit: React.FC<CardEditProps> = ({
         if (isDemo) {
             demoToggleSubtask(demoId, s.id)
         } else if (boardId && id) {
-            updateSubtask(boardId, id, s.id, { is_done: !s.is_done }).catch(() => {})
+            updateSubtask(boardId, id, s.id, { is_done: !s.is_done }).catch(() => {
+                setSubtasks(prev => prev.map(i => i.id === s.id ? { ...i, is_done: s.is_done } : i))
+                reportActionError('Change not saved — reverted')
+            })
         }
     }
 
@@ -878,6 +939,13 @@ const CardEdit: React.FC<CardEditProps> = ({
                         transition: 'left 240ms cubic-bezier(0.34,1.56,0.64,1), width 240ms cubic-bezier(0.34,1.56,0.64,1)',
                     }} />
                 </div>
+            )}
+
+            {/* Action failure notice */}
+            {actionError && (
+                <p role="alert" className="cf-mono text-xs font-bold uppercase tracking-widest px-6 pt-3" style={{ color: 'var(--cf-red)' }}>
+                    {actionError}
+                </p>
             )}
 
             {/* Body */}

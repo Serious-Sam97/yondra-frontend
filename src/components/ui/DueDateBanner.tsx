@@ -1,14 +1,14 @@
 'use client'
 
 import { useState } from 'react'
+import { CardInterface } from '@/interfaces/CardInterface'
 
-interface Card { id: string | number; name: string; due_date?: string | null; section_id: number }
 interface Section { id: number; name: string }
 
 interface DueDateBannerProps {
-    cards: Card[]
+    cards: CardInterface[]
     sections: Section[]
-    onCardClick: (card: Card) => void
+    onCardClick: (card: CardInterface) => void
 }
 
 export function DueDateBanner({ cards, sections, onCardClick }: DueDateBannerProps) {
@@ -19,8 +19,8 @@ export function DueDateBanner({ cards, sections, onCardClick }: DueDateBannerPro
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
     const doneIds = new Set(sections.filter(s => s.name?.toLowerCase() === 'done').map(s => s.id))
 
-    const overdue: Card[] = []
-    const dueToday: Card[] = []
+    const overdue: CardInterface[] = []
+    const dueToday: CardInterface[] = []
     for (const c of cards) {
         if (!c.due_date || dismissed.has(c.id) || doneIds.has(c.section_id)) continue
         const d = c.due_date.slice(0, 10)

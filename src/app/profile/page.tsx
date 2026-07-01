@@ -1,8 +1,24 @@
 'use client'
 
 import { fetchUser, updateProfile, updatePassword, logout } from '@/lib/auth'
+import { ApiError } from '@/lib/api'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+
+// Turn an ApiError into something a human can read: prefer Laravel's
+// validation messages, never show raw status codes or JSON.
+function friendlyMessage(e: unknown, fallback: string): string {
+    if (e instanceof ApiError) {
+        try {
+            const data = JSON.parse(e.body)
+            const firstError = data.errors ? (Object.values(data.errors).flat() as string[])[0] : null
+            return firstError ?? data.message ?? fallback
+        } catch {
+            return fallback
+        }
+    }
+    return fallback
+}
 
 const AVATAR_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107', '#00BCD4', '#E91E63']
 const STRIPE_COLORS = ['#9aa67e', '#ffb000', '#ff5a4d', '#6fe0ff', '#9aa67e', '#ffb000']
@@ -49,8 +65,8 @@ export default function ProfilePage() {
             const updated = await updateProfile({ name, email })
             setUser(updated)
             setProfileFeedback({ type: 'success', message: 'Profile updated successfully.' })
-        } catch (e: any) {
-            setProfileFeedback({ type: 'error', message: e.message ?? 'Failed to update profile.' })
+        } catch (e) {
+            setProfileFeedback({ type: 'error', message: friendlyMessage(e, 'Failed to update profile.') })
         } finally {
             setProfileLoading(false)
         }
@@ -69,8 +85,8 @@ export default function ProfilePage() {
             setNewPassword('')
             setConfirmPassword('')
             setPasswordFeedback({ type: 'success', message: 'Password updated successfully.' })
-        } catch (e: any) {
-            setPasswordFeedback({ type: 'error', message: e.message ?? 'Failed to update password.' })
+        } catch (e) {
+            setPasswordFeedback({ type: 'error', message: friendlyMessage(e, 'Failed to update password.') })
         } finally {
             setPasswordLoading(false)
         }

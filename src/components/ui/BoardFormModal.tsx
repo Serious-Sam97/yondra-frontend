@@ -1,13 +1,22 @@
 'use client'
 
 import { useState } from 'react'
+import { ProjectBoard, ProjectInterface } from '@/interfaces/ProjectInterface'
+
+// Payload produced by the board create/edit form. `id` is only set in edit mode.
+export interface BoardFormData {
+    id?: number;
+    name: string;
+    description: string;
+    project_id: number;
+}
 
 // Board create/edit form. Shared by the project page (new + edit, with project-move)
 // and the board page header (settings). The project-move <select> only appears when
 // more than one owned project is passed.
 export function BoardFormModal({ board, projectId, projectColor, ownedProjects, onSave, onDelete, onClose }: {
-    board: any | null; projectId: number; projectColor: string; ownedProjects: any[];
-    onSave: (d: any) => void; onDelete?: () => void; onClose: () => void;
+    board: ProjectBoard | null; projectId: number; projectColor: string; ownedProjects: ProjectInterface[];
+    onSave: (d: BoardFormData) => void; onDelete?: () => void; onClose: () => void;
 }) {
     const [name, setName]               = useState(board?.name ?? '');
     const [description, setDescription] = useState(board?.description ?? '');

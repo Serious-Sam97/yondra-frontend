@@ -1,11 +1,13 @@
 'use client'
 
+import { CardInterface } from '@/interfaces/CardInterface'
+
 const SECTION_COLORS = ['#9aa67e', '#ffb000', '#6fe0ff', '#ff5a4d', '#c08bff', '#ffd24a']
 
 interface Section { id: number; name: string }
 
 interface AnalyticsViewProps {
-    cards: any[]
+    cards: CardInterface[]
     sections: Section[]
 }
 

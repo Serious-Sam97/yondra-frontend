@@ -2,6 +2,7 @@
 
 import { fetchUser } from '@/lib/auth';
 import { fetchProjects, createProject } from '@/lib/api';
+import { ProjectBoard, ProjectFormData, ProjectInterface, ProjectMember, UserSummary } from '@/interfaces/ProjectInterface';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Modal from '@/components/shared/Modal';
@@ -39,10 +40,10 @@ function Avatar({ user, size = 22 }: { user: { id: number; name: string }; size?
 
 // ─── Project card ─────────────────────────────────────────────────────────────
 
-function ProjectCard({ project, isMember, onClick }: { project: any; isMember?: boolean; onClick: () => void }) {
-    const boards: any[] = project.boards ?? [];
-    const totalCards = boards.reduce((s: number, b: any) => s + (b.cards_count ?? 0), 0);
-    const members: any[] = project.members ?? [];
+function ProjectCard({ project, isMember, onClick }: { project: ProjectInterface; isMember?: boolean; onClick: () => void }) {
+    const boards: ProjectBoard[] = project.boards ?? [];
+    const totalCards = boards.reduce((s: number, b) => s + (b.cards_count ?? 0), 0);
+    const members: ProjectMember[] = project.members ?? [];
 
     return (
         <div
@@ -79,7 +80,7 @@ function ProjectCard({ project, isMember, onClick }: { project: any; isMember?: 
                     {/* status LED — project color */}
                     <span
                         className="cf-led flex-shrink-0"
-                        style={{ ['--led-color' as any]: project.color, backgroundColor: project.color, boxShadow: `0 0 8px ${project.color}, 0 0 2px ${project.color}` }}
+                        style={{ '--led-color': project.color, backgroundColor: project.color, boxShadow: `0 0 8px ${project.color}, 0 0 2px ${project.color}` } as React.CSSProperties}
                         title={project.name}
                     />
                 </div>
@@ -93,7 +94,7 @@ function ProjectCard({ project, isMember, onClick }: { project: any; isMember?: 
 
                 {/* mini board tabs — visual reference to the kanban */}
                 <div className="flex gap-1.5 mt-1 flex-wrap">
-                    {boards.slice(0, 4).map((b: any, i: number) => (
+                    {boards.slice(0, 4).map((b, i) => (
                         <div
                             key={b.id}
                             title={b.name}
@@ -138,7 +139,7 @@ function ProjectCard({ project, isMember, onClick }: { project: any; isMember?: 
 
                     {/* member avatars */}
                     <div className="flex items-center">
-                        {members.slice(0, 4).map((m: any, i: number) => (
+                        {members.slice(0, 4).map((m, i) => (
                             <div key={m.id} style={{ marginLeft: i === 0 ? 0 : -6, zIndex: members.length - i, position: 'relative' }}>
                                 <Avatar user={m} size={20} />
                             </div>
@@ -177,7 +178,7 @@ function WidgetRow({ label, value }: { label: string; value: string | number }) 
 
 // ─── New project modal ─────────────────────────────────────────────────────────
 
-function NewProjectModal({ onSave, onClose }: { onSave: (d: any) => void; onClose: () => void }) {
+function NewProjectModal({ onSave, onClose }: { onSave: (d: ProjectFormData) => void; onClose: () => void }) {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [color, setColor] = useState('#1976D2');
@@ -235,9 +236,9 @@ function NewProjectModal({ onSave, onClose }: { onSave: (d: any) => void; onClos
 
 export default function DashboardPage() {
     const router = useRouter();
-    const [user, setUser]                     = useState<any>(null);
-    const [ownedProjects, setOwnedProjects]   = useState<any[]>([]);
-    const [memberProjects, setMemberProjects] = useState<any[]>([]);
+    const [user, setUser]                     = useState<UserSummary | null>(null);
+    const [ownedProjects, setOwnedProjects]   = useState<ProjectInterface[]>([]);
+    const [memberProjects, setMemberProjects] = useState<ProjectInterface[]>([]);
     const [showNewProject, setShowNewProject] = useState(false);
 
     useEffect(() => {
@@ -249,11 +250,14 @@ export default function DashboardPage() {
                     setOwnedProjects(p.owned ?? []);
                     setMemberProjects(p.member ?? []);
                 }
-            } catch { router.push('/login'); }
+            } catch {
+                // 401s redirect centrally via apiFetch; anything else (network blip,
+                // server error) should not log the user out.
+            }
         })();
     }, []);
 
-    async function handleCreateProject(data: any) {
+    async function handleCreateProject(data: ProjectFormData) {
         const created = await createProject(data);
         setOwnedProjects(prev => [...prev, { ...created, boards: [], boards_count: 0 }]);
         setShowNewProject(false);
@@ -262,13 +266,13 @@ export default function DashboardPage() {
 
     const allProjects = [...ownedProjects, ...memberProjects];
     const totalBoards = allProjects.reduce((s, p) => s + (p.boards_count ?? 0), 0);
-    const totalCards  = allProjects.reduce((s, p) => s + (p.boards ?? []).reduce((b: number, board: any) => b + (board.cards_count ?? 0), 0), 0);
+    const totalCards  = allProjects.reduce((s, p) => s + (p.boards ?? []).reduce((b: number, board) => b + (board.cards_count ?? 0), 0), 0);
 
     // recent boards across all projects, sorted by updated_at
     const recentBoards = allProjects
-        .flatMap(p => (p.boards ?? []).map((b: any) => ({ ...b, projectColor: p.color, projectName: p.name })))
-        .filter((b: any) => b.updated_at)
-        .sort((a: any, b: any) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+        .flatMap(p => (p.boards ?? []).map((b) => ({ ...b, projectColor: p.color, projectName: p.name })))
+        .filter((b) => b.updated_at)
+        .sort((a, b) => new Date(b.updated_at!).getTime() - new Date(a.updated_at!).getTime())
         .slice(0, 5);
 
     const hour = new Date().getHours();
@@ -416,20 +420,20 @@ export default function DashboardPage() {
                         {recentBoards.length === 0 && (
                             <p className="px-4 py-4 italic text-white/50" style={{ fontSize: '10px' }}>No boards yet</p>
                         )}
-                        {recentBoards.map((b: any) => (
+                        {recentBoards.map((b) => (
                             <button
                                 key={b.id}
                                 onClick={() => router.push(`/boards/${b.id}`)}
                                 className="w-full text-left px-4 py-2.5 border-b border-white/5 hover:bg-white/10 transition-colors cursor-pointer group"
                             >
                                 <div className="flex items-center gap-2">
-                                    <span className="cf-led flex-shrink-0" style={{ ['--led-color' as any]: b.projectColor, backgroundColor: b.projectColor, boxShadow: `0 0 8px ${b.projectColor}` }} />
+                                    <span className="cf-led flex-shrink-0" style={{ '--led-color': b.projectColor, backgroundColor: b.projectColor, boxShadow: `0 0 8px ${b.projectColor}` } as React.CSSProperties} />
                                     <p className="cf-mono font-bold truncate text-white/85 group-hover:text-white" style={{ fontSize: '11px' }}>
                                         {b.name}
                                     </p>
                                 </div>
                                 <p className="mt-0.5 pl-4 truncate text-white/55" style={{ fontSize: '9px' }}>{b.projectName}</p>
-                                <p className="cf-mono mt-0.5 pl-4 text-white/40" style={{ fontSize: '8px' }}>{timeAgo(b.updated_at)}</p>
+                                <p className="cf-mono mt-0.5 pl-4 text-white/40" style={{ fontSize: '8px' }}>{timeAgo(b.updated_at!)}</p>
                             </button>
                         ))}
                     </GlassWidget>
@@ -446,7 +450,7 @@ export default function DashboardPage() {
                                     className="w-full text-left px-4 py-2.5 border-b border-white/5 hover:bg-white/10 transition-colors cursor-pointer group"
                                 >
                                     <div className="flex items-center gap-2">
-                                        <span className="cf-led flex-shrink-0" style={{ ['--led-color' as any]: p.color, backgroundColor: p.color, boxShadow: `0 0 8px ${p.color}` }} />
+                                        <span className="cf-led flex-shrink-0" style={{ '--led-color': p.color, backgroundColor: p.color, boxShadow: `0 0 8px ${p.color}` } as React.CSSProperties} />
                                         <p className="cf-mono font-bold truncate text-white/85 group-hover:text-white" style={{ fontSize: '11px' }}>{p.name}</p>
                                     </div>
                                     <p className="mt-0.5 pl-4 text-white/55" style={{ fontSize: '9px' }}>

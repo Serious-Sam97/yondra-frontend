@@ -6,6 +6,9 @@ import { useEffect, useRef } from 'react';
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; r: number }
 const _particles: Particle[] = [];
 
+// Set by the mounted SpringTrail instance; lets triggerInkSplash wake the loop on demand.
+let _wake: (() => void) | null = null;
+
 export function triggerInkSplash(cx: number, cy: number): void {
     const count = 18 + Math.floor(Math.random() * 10);
     for (let i = 0; i < count; i++) {
@@ -19,6 +22,7 @@ export function triggerInkSplash(cx: number, cy: number): void {
             r: 1.5 + Math.random() * 3.5,
         });
     }
+    _wake?.();
 }
 
 export function SpringTrail() {
@@ -34,7 +38,8 @@ export function SpringTrail() {
         resize();
         window.addEventListener('resize', resize, { passive: true });
 
-        let raf: number;
+        // The loop only runs while particles are alive — idle costs nothing.
+        let raf: number | null = null;
         const tick = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -54,12 +59,15 @@ export function SpringTrail() {
                 ctx.fill();
             }
 
-            raf = requestAnimationFrame(tick);
+            raf = _particles.length > 0 ? requestAnimationFrame(tick) : null;
         };
-        tick();
+
+        _wake = () => { if (raf === null) raf = requestAnimationFrame(tick); };
+        _wake();
 
         return () => {
-            cancelAnimationFrame(raf);
+            if (raf !== null) cancelAnimationFrame(raf);
+            _wake = null;
             window.removeEventListener('resize', resize);
         };
     }, []);

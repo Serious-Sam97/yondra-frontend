@@ -5,7 +5,8 @@ import { useEffect, useState } from 'react';
 import Modal from '@/components/shared/Modal';
 import Icon from '@/components/ui/Icon';
 import { faBars, faGear } from '@fortawesome/free-solid-svg-icons';
-import { BoardFormModal } from '@/components/ui/BoardFormModal';
+import { BoardFormModal, BoardFormData } from '@/components/ui/BoardFormModal';
+import { ProjectBoard, ProjectFormData, ProjectInterface, UserSummary } from '@/interfaces/ProjectInterface';
 import { fetchUser } from '@/lib/auth';
 import {
     fetchProjects, fetchProject,
@@ -43,7 +44,7 @@ function Avatar({ user, size = 22 }: { user: { id: number; name: string }; size?
 
 // ─── Left sidebar: project folder tabs ───────────────────────────────────────
 
-function FolderTab({ project, active, onClick, isMember }: { project: any; active: boolean; onClick: () => void; isMember?: boolean }) {
+function FolderTab({ project, active, onClick, isMember }: { project: ProjectInterface; active: boolean; onClick: () => void; isMember?: boolean }) {
     return (
         <button onClick={onClick} className="w-full text-left focus:outline-none">
             <div style={{
@@ -73,7 +74,7 @@ function FolderTab({ project, active, onClick, isMember }: { project: any; activ
 // ─── Board card ───────────────────────────────────────────────────────────────
 
 function BoardCard({ board, projectColor, editMode, isOwner, onClick }: {
-    board: any; projectColor: string; editMode: boolean; isOwner: boolean; onClick: () => void;
+    board: ProjectBoard; projectColor: string; editMode: boolean; isOwner: boolean; onClick: () => void;
 }) {
     const cardCount = board.cards_count ?? 0;
     return (
@@ -110,7 +111,7 @@ function BoardCard({ board, projectColor, editMode, isOwner, onClick }: {
                 {(board.owner || board.shared_with?.length > 0) && (
                     <div className="flex items-center gap-1 flex-wrap mt-0.5">
                         {board.owner && <Avatar user={board.owner} size={16} />}
-                        {board.shared_with?.slice(0, 3).map((u: any) => <Avatar key={u.id} user={u} size={16} />)}
+                        {board.shared_with?.slice(0, 3).map((u) => <Avatar key={u.id} user={u} size={16} />)}
                     </div>
                 )}
             </div>
@@ -120,7 +121,7 @@ function BoardCard({ board, projectColor, editMode, isOwner, onClick }: {
 
 // ─── Modals ────────────────────────────────────────────────────────────────────
 
-function ProjectEditModal({ project, onSave, onDelete, onClose }: { project: any; onSave: (d: any) => void; onDelete: () => void; onClose: () => void }) {
+function ProjectEditModal({ project, onSave, onDelete, onClose }: { project: ProjectInterface; onSave: (d: ProjectFormData) => void; onDelete: () => void; onClose: () => void }) {
     const [name, setName]               = useState(project.name);
     const [description, setDescription] = useState(project.description ?? '');
     const [color, setColor]             = useState(project.color);
@@ -182,7 +183,7 @@ function ProjectEditModal({ project, onSave, onDelete, onClose }: { project: any
     );
 }
 
-function MembersModal({ project, currentUserId, onUpdate, onClose }: { project: any; currentUserId: number; onUpdate: (p: any) => void; onClose: () => void }) {
+function MembersModal({ project, currentUserId, onUpdate, onClose }: { project: ProjectInterface; currentUserId?: number; onUpdate: (p: ProjectInterface) => void; onClose: () => void }) {
     const [email, setEmail]   = useState('');
     const [role, setRole]     = useState<'member' | 'viewer'>('member');
     const [error, setError]   = useState('');
@@ -215,7 +216,7 @@ function MembersModal({ project, currentUserId, onUpdate, onClose }: { project: 
                 <button onClick={onClose} style={{ fontSize: '10px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-mono uppercase tracking-widest font-bold cursor-pointer hover:underline flex-shrink-0">Close</button>
             </div>
             <div className="flex flex-col gap-2 max-h-52 overflow-y-auto">
-                {project.members?.map((m: any) => (
+                {project.members?.map((m) => (
                     <div key={m.id} className="flex items-center gap-3">
                         <Avatar user={m} size={22} />
                         <div className="flex-1 min-w-0">
@@ -227,13 +228,13 @@ function MembersModal({ project, currentUserId, onUpdate, onClose }: { project: 
                         ) : isOwner ? (
                             <div className="flex items-center gap-2">
                                 <select value={m.role ?? 'member'}
-                                    onChange={e => updateProjectMember(project.id, m.id, e.target.value as any).then(onUpdate)}
+                                    onChange={e => updateProjectMember(project.id, m.id, e.target.value as 'member' | 'viewer').then(onUpdate)}
                                     style={{ fontSize: '9px' }}
                                     className="glass-input cf-lcd px-1 py-0.5 cursor-pointer">
                                     <option value="member" className="text-black">member</option>
                                     <option value="viewer" className="text-black">viewer</option>
                                 </select>
-                                <button onClick={() => removeProjectMember(project.id, m.id).then(() => onUpdate({ ...project, members: project.members.filter((x: any) => x.id !== m.id) }))}
+                                <button onClick={() => removeProjectMember(project.id, m.id).then(() => onUpdate({ ...project, members: project.members.filter((x) => x.id !== m.id) }))}
                                     style={{ fontSize: '11px', color: 'var(--cf-red, #ff5a4d)' }} className="cf-mono font-bold cursor-pointer hover:opacity-70">✕</button>
                             </div>
                         ) : (
@@ -250,7 +251,7 @@ function MembersModal({ project, currentUserId, onUpdate, onClose }: { project: 
                         <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="user@example.com"
                             style={{ fontSize: '12px', minWidth: '65%' }}
                             className="glass-input cf-lcd flex-1" />
-                        <select value={role} onChange={e => setRole(e.target.value as any)}
+                        <select value={role} onChange={e => setRole(e.target.value as 'member' | 'viewer')}
                             style={{ fontSize: '10px' }}
                             className="glass-input cf-lcd px-2 py-1.5 cursor-pointer">
                             <option value="member" className="text-black">member</option>
@@ -269,10 +270,10 @@ function MembersModal({ project, currentUserId, onUpdate, onClose }: { project: 
 
 // ─── Right panel ──────────────────────────────────────────────────────────────
 
-function RightPanel({ project, currentUserId, onMembersClick }: { project: any; currentUserId: number; onMembersClick: () => void }) {
-    const boards: any[] = project.boards ?? [];
-    const totalCards = boards.reduce((s: number, b: any) => s + (b.cards_count ?? 0), 0);
-    const members: any[] = project.members ?? [];
+function RightPanel({ project, currentUserId, onMembersClick }: { project: ProjectInterface; currentUserId?: number; onMembersClick: () => void }) {
+    const boards: ProjectBoard[] = project.boards ?? [];
+    const totalCards = boards.reduce((s: number, b) => s + (b.cards_count ?? 0), 0);
+    const members = project.members ?? [];
     const isOwner = project.owner_id === currentUserId;
 
     return (
@@ -329,9 +330,9 @@ function RightPanel({ project, currentUserId, onMembersClick }: { project: any; 
 // Next.js App Router remounts the page on every router.push, so a ref won't work.
 // Storing user + project lists here means the sidebar is hydrated instantly on
 // every project switch instead of blinking empty during the fetch.
-let _cachedUser:   any    = null;
-let _cachedOwned:  any[]  = [];
-let _cachedMember: any[]  = [];
+let _cachedUser:   UserSummary | null   = null;
+let _cachedOwned:  ProjectInterface[]   = [];
+let _cachedMember: ProjectInterface[]   = [];
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
@@ -342,10 +343,10 @@ export default function ProjectPage() {
 
     const hasSidebar = _cachedOwned.length > 0 || _cachedMember.length > 0;
 
-    const [user, setUser]                     = useState<any>(_cachedUser);
-    const [project, setProject]               = useState<any>(null);
-    const [ownedProjects, setOwnedProjects]   = useState<any[]>(_cachedOwned);
-    const [memberProjects, setMemberProjects] = useState<any[]>(_cachedMember);
+    const [user, setUser]                     = useState<UserSummary | null>(_cachedUser);
+    const [project, setProject]               = useState<ProjectInterface | null>(null);
+    const [ownedProjects, setOwnedProjects]   = useState<ProjectInterface[]>(_cachedOwned);
+    const [memberProjects, setMemberProjects] = useState<ProjectInterface[]>(_cachedMember);
     const [editMode, setEditMode]             = useState(false);
     const [sidebarOpen, setSidebarOpen]       = useState(false);
     const [contentLoading, setContentLoading] = useState(true);
@@ -353,7 +354,7 @@ export default function ProjectPage() {
     type ModalState =
         | { type: 'project-edit' }
         | { type: 'board-new' }
-        | { type: 'board-edit'; board: any }
+        | { type: 'board-edit'; board: ProjectBoard }
         | { type: 'members' }
         | null;
 
@@ -403,63 +404,63 @@ export default function ProjectPage() {
         );
     }
 
-    const boards: any[]  = project?.boards ?? [];
+    const boards: ProjectBoard[]  = project?.boards ?? [];
     const isOwner        = project?.owner_id === user?.id;
     const allProjects    = [...ownedProjects, ...memberProjects];
 
     // ── handlers ─────────────────────────────────────────────────────────────
 
-    async function handleSaveProject(data: any) {
-        const updated = await updateProject(project.id, data);
-        setProject((p: any) => ({ ...p, ...updated }));
-        setOwnedProjects(prev => prev.map(p => p.id === project.id ? { ...p, ...updated } : p));
+    async function handleSaveProject(data: ProjectFormData) {
+        const updated = await updateProject(project!.id, data);
+        setProject((p) => ({ ...p!, ...updated }));
+        setOwnedProjects(prev => prev.map(p => p.id === project!.id ? { ...p, ...updated } : p));
         setModal(null);
     }
 
     async function handleDeleteProject() {
-        await deleteProject(project.id);
+        await deleteProject(project!.id);
         router.push('/dashboard');
     }
 
-    async function handleSaveBoard(data: any) {
+    async function handleSaveBoard(data: BoardFormData) {
         if (modal?.type === 'board-edit') {
-            const updated = await updateBoard(data.id, { name: data.name, description: data.description, project_id: data.project_id });
-            if (data.project_id !== project.id) {
+            const updated = await updateBoard(data.id!, { name: data.name, description: data.description, project_id: data.project_id });
+            if (data.project_id !== project!.id) {
                 // moved away — remove from this project and navigate to target
-                setProject((p: any) => ({ ...p, boards: (p.boards ?? []).filter((b: any) => b.id !== data.id), boards_count: Math.max(0, (p.boards_count ?? 1) - 1) }));
+                setProject((p) => ({ ...p!, boards: (p!.boards ?? []).filter((b) => b.id !== data.id), boards_count: Math.max(0, (p!.boards_count ?? 1) - 1) }));
                 router.push(`/projects/${data.project_id}`);
             } else {
-                setProject((p: any) => ({ ...p, boards: (p.boards ?? []).map((b: any) => b.id === data.id ? { ...b, ...updated } : b) }));
+                setProject((p) => ({ ...p!, boards: (p!.boards ?? []).map((b) => b.id === data.id ? { ...b, ...updated } : b) }));
             }
             setModal(null);
             return;
         }
         const saved = await createBoard(data);
-        setProject((p: any) => ({
-            ...p,
-            boards: [...(p.boards ?? []), { ...saved, cards_count: 0, owner: user, shared_with: [] }],
-            boards_count: (p.boards_count ?? 0) + 1,
+        setProject((p) => ({
+            ...p!,
+            boards: [...(p!.boards ?? []), { ...saved, cards_count: 0, owner: user, shared_with: [] }],
+            boards_count: (p!.boards_count ?? 0) + 1,
         }));
         setModal(null);
     }
 
     async function handleDeleteBoard(boardId: number) {
         await deleteBoard(boardId);
-        setProject((p: any) => ({
-            ...p,
-            boards: (p.boards ?? []).filter((b: any) => b.id !== boardId),
-            boards_count: Math.max(0, (p.boards_count ?? 1) - 1),
+        setProject((p) => ({
+            ...p!,
+            boards: (p!.boards ?? []).filter((b) => b.id !== boardId),
+            boards_count: Math.max(0, (p!.boards_count ?? 1) - 1),
         }));
         setModal(null);
     }
 
-    function handleBoardClick(board: any) {
+    function handleBoardClick(board: ProjectBoard) {
         if (editMode && isOwner) { setModal({ type: 'board-edit', board }); return; }
         router.push(`/boards/${board.id}`);
     }
 
-    function handleMembersUpdate(updated: any) {
-        setProject((p: any) => ({ ...p, ...updated }));
+    function handleMembersUpdate(updated: ProjectInterface) {
+        setProject((p) => ({ ...p!, ...updated }));
         if (modal?.type === 'members') setModal({ type: 'members' });
     }
 
@@ -574,7 +575,7 @@ export default function ProjectPage() {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                            {boards.map((b: any) => (
+                            {boards.map((b) => (
                                 <BoardCard key={b.id} board={b} projectColor={project?.color ?? '#888'}
                                     editMode={editMode} isOwner={isOwner}
                                     onClick={() => handleBoardClick(b)} />
@@ -594,19 +595,19 @@ export default function ProjectPage() {
             {modal && (
                 <Modal>
                     {modal.type === 'project-edit' && (
-                        <ProjectEditModal project={project} onSave={handleSaveProject} onDelete={handleDeleteProject} onClose={() => setModal(null)} />
+                        <ProjectEditModal project={project!} onSave={handleSaveProject} onDelete={handleDeleteProject} onClose={() => setModal(null)} />
                     )}
                     {modal.type === 'board-new' && (
-                        <BoardFormModal board={null} projectId={project.id} projectColor={project.color}
+                        <BoardFormModal board={null} projectId={project!.id} projectColor={project!.color}
                             ownedProjects={ownedProjects} onSave={handleSaveBoard} onClose={() => setModal(null)} />
                     )}
                     {modal.type === 'board-edit' && (
-                        <BoardFormModal board={modal.board} projectId={project.id} projectColor={project.color}
+                        <BoardFormModal board={modal.board} projectId={project!.id} projectColor={project!.color}
                             ownedProjects={ownedProjects} onSave={handleSaveBoard}
                             onDelete={() => handleDeleteBoard(modal.board.id)} onClose={() => setModal(null)} />
                     )}
                     {modal.type === 'members' && (
-                        <MembersModal project={project} currentUserId={user?.id}
+                        <MembersModal project={project!} currentUserId={user?.id}
                             onUpdate={handleMembersUpdate} onClose={() => setModal(null)} />
                     )}
                 </Modal>

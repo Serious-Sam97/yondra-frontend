@@ -1,23 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { CardInterface } from '@/interfaces/CardInterface'
 
 interface Section { id: number; name: string }
-interface Tag { id: number; name: string; color: string }
-interface Card {
-    id: string | number
-    name: string
-    description?: string
-    section_id: number
-    priority?: 'low' | 'medium' | 'high' | null
-    tags?: Tag[]
-    due_date?: string | null
-}
 
 interface CommandPaletteProps {
-    cards: Card[]
+    cards: CardInterface[]
     sections: Section[]
-    onSelect: (card: Card) => void
+    onSelect: (card: CardInterface) => void
     onClose: () => void
 }
 
@@ -46,7 +37,7 @@ export function CommandPalette({ cards, sections, onSelect, onClose }: CommandPa
         : cards.filter(c =>
             c.name?.toLowerCase().includes(q) ||
             (c.description ?? '').toLowerCase().includes(q) ||
-            (c.tags ?? []).some((t: any) => t.name?.toLowerCase().includes(q)) ||
+            (c.tags ?? []).some((t) => t.name?.toLowerCase().includes(q)) ||
             sections.find(s => s.id === c.section_id)?.name?.toLowerCase().includes(q)
         ).slice(0, 12)
 
