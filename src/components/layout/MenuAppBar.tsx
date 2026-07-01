@@ -274,11 +274,15 @@ export default function MenuAppBar() {
                 <Cluster showClock={false} />
             </div>
 
-            {/* ── dropdowns (rendered once, anchored to header) ────────────── */}
+            {/* ── dropdowns (rendered once at header level so they don't remount /
+                blink with the per-second clock re-render). Anchored just below the
+                button row via a fixed top, not the full header height, so they open
+                right under the bell/avatar in both the tall desktop deck and the
+                slim mobile bar. ──────────────────────────────────────────────── */}
             {notifOpen && (
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
-                    <div className="modal-content aero-menu absolute right-2 z-50 w-80 overflow-hidden" style={{ top: 'calc(100% + 6px)', maxHeight: '420px' }}>
+                    <div className="modal-content aero-menu absolute right-2 z-50 w-80 overflow-hidden" style={{ top: '52px', maxHeight: '420px' }}>
                         <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--cf-edge)' }}>
                             <p className="cf-label font-bold" style={{ color: 'var(--cf-phosphor)' }}>Notifications</p>
                             <button onClick={() => setNotifOpen(false)} className="btn-physical text-xs cursor-pointer" style={{ color: 'var(--cf-text-muted)' }}>✕</button>
@@ -303,7 +307,7 @@ export default function MenuAppBar() {
             {menuOpen && (
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                    <div className="modal-content aero-menu absolute right-2 z-50 overflow-hidden min-w-[180px]" style={{ top: 'calc(100% + 6px)' }}>
+                    <div className="modal-content aero-menu absolute right-2 z-50 overflow-hidden min-w-[180px]" style={{ top: '52px' }}>
                         {user && (
                             <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--cf-edge)' }}>
                                 <p className="cf-label mb-1" style={{ color: 'var(--cf-phosphor)' }}>User</p>
