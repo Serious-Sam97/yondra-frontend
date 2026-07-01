@@ -12,7 +12,7 @@ import CardEdit from "../ui/CardEdit";
 import Modal from "../shared/Modal";
 import {
     createCard, updateCard, deleteCard,
-    createSection, updateSection, deleteSection,
+    createSection, updateSection, deleteSection, reorderSections,
     createTag, deleteTag,
     getActivity, restoreCard, getArchivedCards,
     getTemplates,
@@ -119,6 +119,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const [selectedCard, setSelectedCard] = useState<any>(null);
     const [isAddingSection, setIsAddingSection] = useState(false);
     const [newSectionName, setNewSectionName] = useState('');
+    const [sectionError, setSectionError] = useState('');
     const [sectionToDelete, setSectionToDelete] = useState<{id: number, name: string} | null>(null);
     const [cardToDelete, setCardToDelete] = useState<any>(null);
     const [filterUserId, setFilterUserId] = useState<number | null>(null);
@@ -312,7 +313,11 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
     // --- Section management ---
 
+    // "Backlog" is reserved for the unique built-in backlog — users can't take that name.
+    const isReservedName = (n: string) => n.trim().toLowerCase() === 'backlog';
+
     const handleRenameSection = async (sectionId: number, newName: string) => {
+        if (isReservedName(newName)) return; // ignore — keep the old name
         setSections(prev => prev.map(s => s.id === sectionId ? { ...s, name: newName } : s));
         if (isDemo) demoUpdateSection(demoId, sectionId, newName);
         else await updateSection(id, sectionId, newName);
@@ -330,8 +335,16 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const handleAddSection = async () => {
         const trimmed = newSectionName.trim();
         if (!trimmed) return;
+        if (isReservedName(trimmed)) { setSectionError('“Backlog” is reserved'); return; }
         const saved = isDemo ? demoCreateSection(demoId, trimmed) : await createSection(id, trimmed);
-        setSections(prev => [...prev, saved]);
+        // Keep the reserved Backlog section pinned to the end — new columns go before it.
+        const bl = backlogSection;
+        setSections(prev => {
+            const withoutBl = bl ? prev.filter(s => s !== bl) : prev;
+            return bl ? [...withoutBl, saved, bl] : [...withoutBl, saved];
+        });
+        // Persist the order so Backlog stays last on the backend too (demo storage handles this itself).
+        if (bl && !isDemo) reorderSections(id, [...boardSections, saved, bl].map(s => s.id)).catch(() => {});
         setNewSectionName('');
         setIsAddingSection(false);
     };
@@ -380,6 +393,17 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         setCards(prev => prev.map(c => c.id === card.id ? { ...c, section_id: target.id } : c));
         if (isDemo) demoUpdateCard(demoId, card.id, { section_id: target.id });
         else updateCard(id, card.id, { section_id: target.id });
+        setIsCardVisible(false);
+        setSelectedCard(null);
+    };
+
+    // Send a board card back to the backlog.
+    const handleSendToBacklog = async (card: any) => {
+        if (!card) return;
+        const bl = await ensureBacklogSection();
+        setCards(prev => prev.map(c => c.id === card.id ? { ...c, section_id: bl.id } : c));
+        if (isDemo) demoUpdateCard(demoId, card.id, { section_id: bl.id });
+        else updateCard(id, card.id, { section_id: bl.id });
         setIsCardVisible(false);
         setSelectedCard(null);
     };
@@ -715,17 +739,20 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                                 <input
                                     autoFocus
                                     value={newSectionName}
-                                    onChange={e => setNewSectionName(e.target.value)}
+                                    onChange={e => { setNewSectionName(e.target.value); if (sectionError) setSectionError(''); }}
                                     onKeyDown={e => {
                                         if (e.key === 'Enter') handleAddSection();
-                                        if (e.key === 'Escape') { setIsAddingSection(false); setNewSectionName(''); }
+                                        if (e.key === 'Escape') { setIsAddingSection(false); setNewSectionName(''); setSectionError(''); }
                                     }}
                                     placeholder="Section name..."
                                     className="glass-input cf-mono text-xs uppercase tracking-widest px-3 py-2 w-full"
                                 />
+                                {sectionError && (
+                                    <p className="cf-mono text-[10px]" style={{ color: 'var(--cf-red)' }}>{sectionError}</p>
+                                )}
                                 <div className="flex gap-2">
                                     <button onClick={handleAddSection} className="aero-btn aero-btn--cyan flex-1 text-xs uppercase tracking-widest font-bold py-1.5 cursor-pointer">Add</button>
-                                    <button onClick={() => { setIsAddingSection(false); setNewSectionName(''); }} className="aero-btn aero-btn--ghost flex-1 text-xs uppercase tracking-widest py-1.5 cursor-pointer">Cancel</button>
+                                    <button onClick={() => { setIsAddingSection(false); setNewSectionName(''); setSectionError(''); }} className="aero-btn aero-btn--ghost flex-1 text-xs uppercase tracking-widest py-1.5 cursor-pointer">Cancel</button>
                                 </div>
                             </div>
                         ) : (
@@ -1083,6 +1110,8 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                             defaultSectionId={newCardSectionId ?? undefined}
                             isBacklogCard={!!backlogSection && selectedCard?.section_id === backlogSection.id}
                             onAddToBoard={selectedCard ? () => handleAddToBoard(selectedCard) : undefined}
+                            backlogSectionId={backlogSection?.id}
+                            onSendToBacklog={selectedCard ? () => handleSendToBacklog(selectedCard) : undefined}
                             goBack={() => { setIsCardVisible(false); setSelectedCard(null); setNewCardSectionId(null); }}
                             submit={handleSubmit}
                             onDelete={selectedCard && !isReadOnly ? () => { setCardToDelete(selectedCard); setIsCardVisible(false); } : undefined}

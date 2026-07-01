@@ -17,7 +17,7 @@ import {
     loadDemoTemplates, saveDemoTemplate, deleteDemoTemplate,
 } from '@/lib/demoStorage'
 import Icon from '@/components/ui/Icon'
-import { faTrash, faArrowRightToBracket } from '@fortawesome/free-solid-svg-icons'
+import { faTrash, faArrowRightToBracket, faLayerGroup } from '@fortawesome/free-solid-svg-icons'
 
 interface BoardUser { id: number; name: string }
 
@@ -43,6 +43,8 @@ interface CardEditProps {
     defaultSectionId?: number
     isBacklogCard?: boolean
     onAddToBoard?: () => void
+    backlogSectionId?: number
+    onSendToBacklog?: () => void
 }
 
 const SECTION_COLORS: Record<string, string> = {
@@ -70,6 +72,7 @@ const CardEdit: React.FC<CardEditProps> = ({
     goBack, submit, onDelete, card, sections, users = [], tags = [],
     boardId, isDemo = false, demoId = 'demo', isReadOnly = false, initialTemplates = [],
     defaultSectionId, isBacklogCard = false, onAddToBoard,
+    backlogSectionId, onSendToBacklog,
 }) => {
     const [id, setId] = useState(0)
     const [name, setName] = useState('')
@@ -351,6 +354,15 @@ const CardEdit: React.FC<CardEditProps> = ({
                             <Icon icon={faArrowRightToBracket} /> Add to Board
                         </button>
                     )}
+                    {!isNew && !isBacklogCard && !isReadOnly && onSendToBacklog && (
+                        <button
+                            onClick={onSendToBacklog}
+                            className="aero-btn aero-btn--ghost cf-mono text-[9px] uppercase tracking-widest font-bold px-2.5 py-1 cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap"
+                            title="Move this card back to the backlog"
+                        >
+                            <Icon icon={faLayerGroup} /> Send to Backlog
+                        </button>
+                    )}
                     {!isNew && !isReadOnly && onDelete && (
                         <button onClick={onDelete} style={{ color: 'var(--cf-red)' }} className="text-xs hover:opacity-60 cursor-pointer transition-opacity" title="Archive card">
                             <Icon icon={faTrash} />
@@ -549,7 +561,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                         <div className="flex flex-col gap-1.5">
                             <label style={{ fontSize: '9px', letterSpacing: '0.1em', color: 'var(--cf-text-muted)' }} className="cf-label uppercase font-bold">Section</label>
                             <div className="flex gap-2 flex-wrap">
-                                {sections.map((s, i) => {
+                                {sections.filter(s => s.id !== backlogSectionId).map((s, i) => {
                                     const color = getSectionColor(s.name, i)
                                     const isActive = s.id === sectionId
                                     return (

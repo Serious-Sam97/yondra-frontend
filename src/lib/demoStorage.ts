@@ -148,7 +148,10 @@ export function demoCreateSection(boardId: string, name: string): DemoSection {
     const data = loadBoardData(boardId);
     const newId = data.sections.length > 0 ? Math.max(...data.sections.map(s => s.id)) + 1 : 1;
     const section: DemoSection = { id: newId, name };
-    data.sections.push(section);
+    // The reserved "Backlog" section stays pinned to the end — new columns go before it.
+    const blIdx = data.sections.findIndex(s => s.name === 'Backlog');
+    if (blIdx === -1 || name === 'Backlog') data.sections.push(section);
+    else data.sections.splice(blIdx, 0, section);
     saveBoardData(boardId, data);
     return section;
 }
