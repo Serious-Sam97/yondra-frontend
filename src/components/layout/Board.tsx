@@ -42,8 +42,9 @@ import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
     faTag, faClipboardList, faCommentDots, faBoxArchive, faPalette, faGear,
     faTableCells, faBars, faCalendarDays, faChartColumn,
-    faMagnifyingGlass, faTriangleExclamation, faPlus,
+    faMagnifyingGlass, faTriangleExclamation, faPlus, faLayerGroup,
 } from "@fortawesome/free-solid-svg-icons";
+import { BacklogView } from "../ui/BacklogView";
 
 const SECTION_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107'];
 
@@ -144,8 +145,10 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const chatLoadedRef = useRef(false);
     const [isToolbarOpen, setIsToolbarOpen] = useState(false);
     const touchStartY = useRef<number>(0);
-    const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'calendar' | 'analytics'>('kanban');
+    const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'calendar' | 'analytics' | 'backlog'>('kanban');
     const [isCommandOpen, setIsCommandOpen] = useState(false);
+    // Section a newly-created card should default into (used by backlog "+ New" → full editor)
+    const [newCardSectionId, setNewCardSectionId] = useState<number | null>(null);
 
     // ── feed the header console: track where the user is + what they're doing ──
     const { setLocation, pushActivity } = useConsole();
@@ -333,22 +336,70 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         setIsAddingSection(false);
     };
 
+    // --- Backlog ---
+    // Backlog tickets are cards parked in a reserved per-board section named "Backlog".
+    // It is identified by name (centralized here) so a future is_backlog flag is a 1-line swap.
+    // The backlog section is filtered out of every board view via boardSections/boardCards below.
+    const BACKLOG_NAME = 'Backlog';
+    const backlogSection = sections.find(s => s.name === BACKLOG_NAME) ?? null;
+    const boardSections  = backlogSection ? sections.filter(s => s !== backlogSection) : sections;
+    const backlogCards   = backlogSection ? cardsProp.filter(c => c.section_id === backlogSection.id) : [];
+    const boardCards     = backlogSection ? cardsProp.filter(c => c.section_id !== backlogSection.id) : cardsProp;
+
     // --- Card filtering ---
 
-    const sectionCards = (sectionId: any) => {
-        let filtered = cardsProp.filter(card => card.section_id === sectionId);
-        if (filterUserId !== null) filtered = filtered.filter(card => card.assigned_user_id === filterUserId);
-        if (filterTagId !== null) filtered = filtered.filter(card => (card.tags ?? []).some((t: any) => t.id === filterTagId));
+    const matchesFilters = (card: any) => {
+        if (filterUserId !== null && card.assigned_user_id !== filterUserId) return false;
+        if (filterTagId !== null && !(card.tags ?? []).some((t: any) => t.id === filterTagId)) return false;
         if (searchQuery.trim()) {
             const q = searchQuery.trim().toLowerCase();
-            filtered = filtered.filter(card => card.name?.toLowerCase().includes(q) || (card.description ?? '').toLowerCase().includes(q));
+            if (!(card.name?.toLowerCase().includes(q) || (card.description ?? '').toLowerCase().includes(q))) return false;
         }
-        return filtered;
+        return true;
     };
 
-    const totalCards = cardsProp.length;
-    const doneSection = sections.find(s => s.name?.toLowerCase() === 'done');
-    const doneCards = doneSection ? cardsProp.filter(c => c.section_id === doneSection.id).length : 0;
+    const sectionCards = (sectionId: any) => boardCards.filter(card => card.section_id === sectionId && matchesFilters(card));
+
+    const totalCards = boardCards.length;
+    const doneSection = boardSections.find(s => s.name?.toLowerCase() === 'done');
+    const doneCards = doneSection ? boardCards.filter(c => c.section_id === doneSection.id).length : 0;
+
+    // --- Backlog handlers ---
+
+    const ensureBacklogSection = async () => {
+        if (backlogSection) return backlogSection;
+        const saved = isDemo ? demoCreateSection(demoId, BACKLOG_NAME) : await createSection(id, BACKLOG_NAME);
+        setSections(prev => [...prev, saved]);
+        return saved;
+    };
+
+    // Promote a backlog ticket onto the board: move it into the first/leftmost column (their "To Do").
+    const handleAddToBoard = (card: any) => {
+        const target = boardSections[0];
+        if (!card || !target) return;
+        setCards(prev => prev.map(c => c.id === card.id ? { ...c, section_id: target.id } : c));
+        if (isDemo) demoUpdateCard(demoId, card.id, { section_id: target.id });
+        else updateCard(id, card.id, { section_id: target.id });
+        setIsCardVisible(false);
+        setSelectedCard(null);
+    };
+
+    // Quick-add: create a backlog ticket instantly from just a name.
+    const handleQuickCreateBacklog = async (cardName: string) => {
+        const bl = await ensureBacklogSection();
+        const saved = isDemo
+            ? demoCreateCard(demoId, { section_id: bl.id, name: cardName, description: '' })
+            : await createCard(id, { section_id: bl.id, name: cardName, description: '' });
+        setCards(prev => prev.some(c => c.id === saved.id) ? prev : [...prev, saved]);
+    };
+
+    // Full editor: open CardEdit for a new card pre-seeded to the backlog section.
+    const handleOpenBacklogEditor = async () => {
+        const bl = await ensureBacklogSection();
+        setNewCardSectionId(bl.id);
+        setSelectedCard(null);
+        setIsCardVisible(true);
+    };
 
     // --- Card management ---
 
@@ -371,6 +422,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         }
         setIsCardVisible(false);
         setSelectedCard(null);
+        setNewCardSectionId(null);
     };
 
     const handleArchiveCard = async () => {
@@ -443,6 +495,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                 return;
             }
             if (event.key.toLowerCase() === 'c' && !isReadOnly && !anyOpen) {
+                setNewCardSectionId(null);
                 setIsCardVisible(true);
             }
         };
@@ -494,10 +547,11 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                     {([
                         { key: 'kanban',    icon: faTableCells,   label: 'Board' },
                         { key: 'list',      icon: faBars,         label: 'List' },
+                        { key: 'backlog',   icon: faLayerGroup,   label: 'Backlog' },
                         { key: 'calendar',  icon: faCalendarDays, label: 'Cal' },
                         { key: 'analytics', icon: faChartColumn,  label: 'Stats' },
                     ] as const).map(({ key, icon, label }) => (
-                        <button key={key} onClick={() => setViewMode(key)}
+                        <button key={key} onClick={() => { if (key === 'backlog') ensureBacklogSection(); setViewMode(key); }}
                             style={viewMode === key
                                 ? { background: 'var(--cf-edge)', borderColor: 'var(--cf-phosphor)', color: 'var(--cf-text)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 0 8px rgba(154,166,126,0.35)' }
                                 : { color: 'var(--cf-text-muted)' }}
@@ -526,10 +580,10 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             </div>
 
             {/* Due date banner — always visible when there are overdue/due-today cards */}
-            <DueDateBanner cards={cardsProp} sections={sections} onCardClick={handleClick} />
+            <DueDateBanner cards={boardCards} sections={boardSections} onCardClick={handleClick} />
 
-            {/* Filter strip — kanban + list */}
-            {(viewMode === 'kanban' || viewMode === 'list') && <div className="flex items-center gap-2 mb-5 flex-wrap">
+            {/* Filter strip — kanban + list + backlog */}
+            {(viewMode === 'kanban' || viewMode === 'list' || viewMode === 'backlog') && <div className="flex items-center gap-2 mb-5 flex-wrap">
                 {boardUsers.length > 0 && (
                     <>
                         <button
@@ -584,25 +638,32 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
             {/* Calendar view */}
             {viewMode === 'calendar' && (
-                <CalendarView cards={cardsProp} sections={sections} onCardClick={handleClick} />
+                <CalendarView cards={boardCards} sections={boardSections} onCardClick={handleClick} />
             )}
 
             {/* Analytics view */}
             {viewMode === 'analytics' && (
-                <AnalyticsView cards={cardsProp} sections={sections} />
+                <AnalyticsView cards={boardCards} sections={boardSections} />
             )}
 
             {/* List view */}
-            {viewMode === 'list' && (() => {
-                let filtered = cardsProp;
-                if (filterUserId !== null) filtered = filtered.filter((c: any) => c.assigned_user_id === filterUserId);
-                if (filterTagId !== null) filtered = filtered.filter((c: any) => (c.tags ?? []).some((t: any) => t.id === filterTagId));
-                if (searchQuery.trim()) {
-                    const q = searchQuery.trim().toLowerCase();
-                    filtered = filtered.filter((c: any) => c.name?.toLowerCase().includes(q) || (c.description ?? '').toLowerCase().includes(q));
-                }
-                return <ListView cards={filtered} sections={sections} users={boardUsers} onCardClick={handleClick} />;
-            })()}
+            {viewMode === 'list' && (
+                <ListView cards={boardCards.filter(matchesFilters)} sections={boardSections} users={boardUsers} onCardClick={handleClick} />
+            )}
+
+            {/* Backlog view — parked tickets not yet on the board */}
+            {viewMode === 'backlog' && (
+                <BacklogView
+                    cards={backlogCards.filter(matchesFilters)}
+                    users={boardUsers}
+                    onCardClick={handleClick}
+                    onAddToBoard={handleAddToBoard}
+                    onQuickCreate={handleQuickCreateBacklog}
+                    onOpenEditor={handleOpenBacklogEditor}
+                    canPromote={boardSections.length > 0}
+                    isReadOnly={isReadOnly}
+                />
+            )}
 
             {/* Board columns — kanban only */}
             {viewMode === 'kanban' && <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -612,7 +673,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                     style={{ transformOrigin: 'center center', willChange: 'transform' }}
                     onTouchStart={handleGyroPermission}
                 >
-                    {sections.map((section, i) => (
+                    {boardSections.map((section, i) => (
                         <Section
                             key={section.id}
                             handleClick={handleClick}
@@ -679,7 +740,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             {/* FAB */}
             {!isReadOnly && (
                 <button
-                    onClick={() => setIsCardVisible(true)}
+                    onClick={() => { setNewCardSectionId(null); setIsCardVisible(true); }}
                     style={{
                         background: 'linear-gradient(to bottom, #3a3730 0%, #2b2a26 50%, #1c1a16 100%)',
                         border: '1px solid var(--cf-edge)',
@@ -921,9 +982,9 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                 <Modal>
                     <BoardConfig
                         boardId={id}
-                        sections={sections}
+                        sections={boardSections}
                         onClose={() => setIsBoardConfigOpen(false)}
-                        onSectionsReordered={setSections}
+                        onSectionsReordered={(reordered: any[]) => setSections(backlogSection ? [...reordered, backlogSection] : reordered)}
                     />
                 </Modal>
             )}
@@ -978,8 +1039,8 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             {/* Command palette */}
             {isCommandOpen && (
                 <CommandPalette
-                    cards={cardsProp}
-                    sections={sections}
+                    cards={boardCards}
+                    sections={boardSections}
                     onSelect={(card) => { setIsCommandOpen(false); handleClick(card); }}
                     onClose={() => setIsCommandOpen(false)}
                 />
@@ -999,7 +1060,10 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                             demoId={demoId}
                             isReadOnly={isReadOnly}
                             initialTemplates={boardTemplates}
-                            goBack={() => { setIsCardVisible(false); setSelectedCard(null); }}
+                            defaultSectionId={newCardSectionId ?? undefined}
+                            isBacklogCard={!!backlogSection && selectedCard?.section_id === backlogSection.id}
+                            onAddToBoard={selectedCard ? () => handleAddToBoard(selectedCard) : undefined}
+                            goBack={() => { setIsCardVisible(false); setSelectedCard(null); setNewCardSectionId(null); }}
                             submit={handleSubmit}
                             onDelete={selectedCard && !isReadOnly ? () => { setCardToDelete(selectedCard); setIsCardVisible(false); } : undefined}
                         />
@@ -1016,7 +1080,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             playDrop(); hapticDrop();
             triggerInkSplash(lastPointerRef.current.x, lastPointerRef.current.y);
         }
-        const sectionSelected = sections.find(section => section.name === event.over?.id);
+        const sectionSelected = boardSections.find(section => section.name === event.over?.id);
         if (!sectionSelected) return;
         const selectedCardId = Number(event.active.id.split('-')[1]);
         if (!selectedCardId) return;

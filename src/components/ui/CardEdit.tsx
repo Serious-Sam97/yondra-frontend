@@ -17,7 +17,7 @@ import {
     loadDemoTemplates, saveDemoTemplate, deleteDemoTemplate,
 } from '@/lib/demoStorage'
 import Icon from '@/components/ui/Icon'
-import { faTrash } from '@fortawesome/free-solid-svg-icons'
+import { faTrash, faArrowRightToBracket } from '@fortawesome/free-solid-svg-icons'
 
 interface BoardUser { id: number; name: string }
 
@@ -40,6 +40,9 @@ interface CardEditProps {
     demoId?: string
     isReadOnly?: boolean
     initialTemplates?: Template[]
+    defaultSectionId?: number
+    isBacklogCard?: boolean
+    onAddToBoard?: () => void
 }
 
 const SECTION_COLORS: Record<string, string> = {
@@ -66,11 +69,12 @@ function initials(name: string): string {
 const CardEdit: React.FC<CardEditProps> = ({
     goBack, submit, onDelete, card, sections, users = [], tags = [],
     boardId, isDemo = false, demoId = 'demo', isReadOnly = false, initialTemplates = [],
+    defaultSectionId, isBacklogCard = false, onAddToBoard,
 }) => {
     const [id, setId] = useState(0)
     const [name, setName] = useState('')
     const [description, setDescription] = useState('')
-    const [sectionId, setSectionId] = useState<number>(sections[0]?.id ?? 1)
+    const [sectionId, setSectionId] = useState<number>(defaultSectionId ?? sections[0]?.id ?? 1)
     const [assignedUserId, setAssignedUserId] = useState<number | null>(null)
     const [selectedTagIds, setSelectedTagIds] = useState<number[]>([])
     const [dueDate, setDueDate] = useState('')
@@ -338,6 +342,15 @@ const CardEdit: React.FC<CardEditProps> = ({
                     )}
                 </div>
                 <div className="flex items-center gap-3">
+                    {!isNew && isBacklogCard && !isReadOnly && onAddToBoard && (
+                        <button
+                            onClick={onAddToBoard}
+                            className="aero-btn aero-btn--cyan cf-mono text-[9px] uppercase tracking-widest font-bold px-2.5 py-1 cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap"
+                            title="Move this ticket onto the board (To Do)"
+                        >
+                            <Icon icon={faArrowRightToBracket} /> Add to Board
+                        </button>
+                    )}
                     {!isNew && !isReadOnly && onDelete && (
                         <button onClick={onDelete} style={{ color: 'var(--cf-red)' }} className="text-xs hover:opacity-60 cursor-pointer transition-opacity" title="Archive card">
                             <Icon icon={faTrash} />
