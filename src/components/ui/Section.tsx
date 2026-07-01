@@ -73,9 +73,6 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
         prevOverLimit.current = overLimit
     }, [overLimit])
 
-    // Column sags under load — subtle translateY proportional to card count
-    const sag = Math.min(count * 0.45, 7)
-
     const style = {
         minHeight: '300px',
         display: 'flex',
@@ -86,7 +83,6 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
     return (
         <div
             className={`aero-column flex flex-col w-64 flex-shrink-0 group/section pb-2 ${shaking ? 'wip-shake' : ''}`}
-            style={{ transform: shaking ? undefined : `translateY(${sag}px)`, transition: shaking ? 'none' : 'transform 600ms cubic-bezier(0.16,1,0.3,1)' }}
         >
             {/* Column header — status LED + mono label + readout count */}
             <div className="flex items-center gap-2 mb-3 px-3 pt-2">

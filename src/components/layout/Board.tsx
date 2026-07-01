@@ -36,11 +36,11 @@ import { hapticPick, hapticDrop } from "@/lib/haptics";
 import { initGyroscope, requestGyroscopePermission } from "@/lib/lightSource";
 import { initGravityField } from "@/lib/gravityField";
 import { triggerInkSplash } from "@/components/ui/SpringTrail";
-import { BoardConfig } from "@/components/ui/BoardConfig";
+import { BoardSettings } from "@/components/ui/BoardSettings";
 import Icon from "@/components/ui/Icon";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
-    faTag, faClipboardList, faCommentDots, faBoxArchive, faPalette, faGear,
+    faTag, faClipboardList, faCommentDots, faBoxArchive, faPalette,
     faTableCells, faBars, faCalendarDays, faChartColumn,
     faMagnifyingGlass, faTriangleExclamation, faPlus, faLayerGroup,
 } from "@fortawesome/free-solid-svg-icons";
@@ -109,9 +109,13 @@ interface BoardProps extends BoardInterface {
     boardUsers?: SharedUser[];
     isReadOnly?: boolean;
     currentUserId?: number;
+    settingsOpen?: boolean;
+    onSettingsClose?: () => void;
+    onBoardMetaSaved?: (name: string, description: string) => void;
+    onDeleteBoard?: () => void;
 }
 
-export function Board({ id, name, description, size, cards, sections: initialSections, tags: initialTags = [], isDemo = false, demoId = 'demo', boardUsers = [], isReadOnly = false, currentUserId = 0 }: BoardProps) {
+export function Board({ id, name, description, size, cards, sections: initialSections, tags: initialTags = [], isDemo = false, demoId = 'demo', boardUsers = [], isReadOnly = false, currentUserId = 0, settingsOpen = false, onSettingsClose, onBoardMetaSaved, onDeleteBoard }: BoardProps) {
     const [cardsProp, setCards] = useState(cards);
     const [sections, setSections] = useState(initialSections);
     const [tags, setTags] = useState<TagInterface[]>(initialTags);
@@ -138,7 +142,6 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const [wipLimits, setWipLimits] = useState<Record<number, number | null>>({});
     const [boardBg, setBoardBg] = useState<string>('');
     const [isBgOpen, setIsBgOpen] = useState(false);
-    const [isBoardConfigOpen, setIsBoardConfigOpen] = useState(false);
     const [boardTemplates, setBoardTemplates] = useState<any[]>([]);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatMessages, setChatMessages] = useState<any[]>([]);
@@ -518,7 +521,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             // Any modal, panel, drawer, or inline editor that's open → the board is "busy".
             const anyOpen =
                 isCardVisible || isTagsOpen || isActivityOpen || isArchivedOpen || isBgOpen ||
-                isBoardConfigOpen || isChatOpen || isToolbarOpen || isCommandOpen || isAddingSection ||
+                settingsOpen || isChatOpen || isToolbarOpen || isCommandOpen || isAddingSection ||
                 sectionToDelete !== null || cardToDelete !== null;
 
             if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
@@ -545,7 +548,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         };
         window.addEventListener('keydown', handleGlobalEvent);
         return () => window.removeEventListener('keydown', handleGlobalEvent);
-    }, [isReadOnly, viewMode, isCardVisible, isTagsOpen, isActivityOpen, isArchivedOpen, isBgOpen, isBoardConfigOpen, isChatOpen, isToolbarOpen, isCommandOpen, isAddingSection, sectionToDelete, cardToDelete]);
+    }, [isReadOnly, viewMode, isCardVisible, isTagsOpen, isActivityOpen, isArchivedOpen, isBgOpen, settingsOpen, isChatOpen, isToolbarOpen, isCommandOpen, isAddingSection, sectionToDelete, cardToDelete]);
 
     const sensors = useSensors(
         useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
@@ -811,7 +814,6 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                     {!isDemo && <ToolBtn icon={faCommentDots} color={TOOL_COLORS.chat} label="Chat" onClick={handleOpenChat} />}
                     <ToolBtn icon={faBoxArchive} color={TOOL_COLORS.archived} label="Archived" onClick={handleOpenArchived} />
                     <ToolBtn icon={faPalette} color={TOOL_COLORS.background} label="Background" onClick={() => setIsBgOpen(true)} />
-                    {!isDemo && <ToolBtn icon={faGear} color={TOOL_COLORS.config} label="Config" onClick={() => setIsBoardConfigOpen(true)} />}
                 </div>
             ) : (
                 <div className="hidden lg:flex flex-row items-center gap-2 fixed z-40" style={{ bottom: '28px', left: '50%', transform: 'translateX(-50%)' }}>
@@ -821,7 +823,6 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                         ...(!isDemo ? [{ icon: faCommentDots, color: TOOL_COLORS.chat, label: 'Chat',       onClick: handleOpenChat }] : []),
                         { icon: faBoxArchive, color: TOOL_COLORS.archived, label: 'Archived',   onClick: handleOpenArchived },
                         { icon: faPalette, color: TOOL_COLORS.background, label: 'Background', onClick: () => setIsBgOpen(true) },
-                        ...(!isDemo ? [{ icon: faGear, color: TOOL_COLORS.config, label: 'Config', onClick: () => setIsBoardConfigOpen(true) }] : []),
                     ].map(({ icon, color, label, onClick }) => (
                         <button key={label} onClick={onClick} title={label}
                             className="aero-btn aero-btn--ghost w-10 h-10 flex items-center justify-center cursor-pointer text-lg"
@@ -861,7 +862,6 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                             {!isDemo && <MobileToolBtn icon={faCommentDots} color={TOOL_COLORS.chat} label="Chat" onClick={() => { handleOpenChat(); setIsToolbarOpen(false); }} />}
                             <MobileToolBtn icon={faBoxArchive} color={TOOL_COLORS.archived} label="Archived" onClick={() => { handleOpenArchived(); setIsToolbarOpen(false); }} />
                             <MobileToolBtn icon={faPalette} color={TOOL_COLORS.background} label="Background" onClick={() => { setIsBgOpen(true); setIsToolbarOpen(false); }} />
-                            {!isDemo && <MobileToolBtn icon={faGear} color={TOOL_COLORS.config} label="Config" onClick={() => { setIsBoardConfigOpen(true); setIsToolbarOpen(false); }} />}
                         </div>
                     </div>
                 </div>
@@ -1024,14 +1024,20 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                 </Modal>
             )}
 
-            {/* Board config modal */}
-            {isBoardConfigOpen && (
+            {/* Board settings modal (unified: board meta + section order + delete) */}
+            {settingsOpen && !isReadOnly && (
                 <Modal>
-                    <BoardConfig
+                    <BoardSettings
                         boardId={id}
+                        isDemo={isDemo}
+                        demoId={demoId}
+                        name={name}
+                        description={description ?? ''}
                         sections={boardSections}
-                        onClose={() => setIsBoardConfigOpen(false)}
+                        onMetaSaved={(n, d) => onBoardMetaSaved?.(n, d)}
                         onSectionsReordered={(reordered: any[]) => setSections(backlogSection ? [...reordered, backlogSection] : reordered)}
+                        onDelete={() => { onSettingsClose?.(); onDeleteBoard?.(); }}
+                        onClose={() => onSettingsClose?.()}
                     />
                 </Modal>
             )}

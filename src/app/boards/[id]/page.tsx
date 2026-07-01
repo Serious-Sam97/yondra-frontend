@@ -2,13 +2,11 @@
 
 import { Board } from "@/components/layout/Board"
 import ShareModal from "@/components/ui/ShareModal";
-import { BoardFormModal } from "@/components/ui/BoardFormModal";
-import Modal from "@/components/shared/Modal";
 import Icon from "@/components/ui/Icon";
 import { faGear } from "@fortawesome/free-solid-svg-icons";
 import { BoardInterface, SharedUser } from "@/interfaces/BoardInterface"
-import { fetchBoard, updateBoard, deleteBoard } from "@/lib/api";
-import { loadDemoBoardData, loadDemoBoards, updateDemoBoard, deleteDemoBoard } from "@/lib/demoStorage";
+import { fetchBoard, deleteBoard } from "@/lib/api";
+import { loadDemoBoardData, loadDemoBoards, deleteDemoBoard } from "@/lib/demoStorage";
 import { fetchUser } from "@/lib/auth";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -47,16 +45,6 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
     ].filter((u): u is NonNullable<typeof u> => !!u);
 
     const canManage = !isReadOnly && (isOwner || isDemo);
-
-    async function handleSaveSettings(data: { name: string; description: string }) {
-        if (isDemo) {
-            updateDemoBoard(id, data.name, data.description);
-        } else {
-            await updateBoard(board.id, { name: data.name, description: data.description });
-        }
-        setBoard(b => ({ ...b, name: data.name, description: data.description }));
-        setSettingsOpen(false);
-    }
 
     async function handleDeleteBoard() {
         if (isDemo) { deleteDemoBoard(id); router.push('/demo'); return; }
@@ -158,6 +146,10 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                 tags={board.tags ?? []}
                 isReadOnly={isReadOnly}
                 currentUserId={currentUserId ?? 0}
+                settingsOpen={settingsOpen}
+                onSettingsClose={() => setSettingsOpen(false)}
+                onBoardMetaSaved={(n, d) => setBoard(b => ({ ...b, name: n, description: d }))}
+                onDeleteBoard={handleDeleteBoard}
             />
 
             {shareOpen && (
@@ -167,20 +159,6 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                     onClose={() => setShareOpen(false)}
                     onUpdate={(users: SharedUser[]) => setBoard(b => ({ ...b, shared_with: users }))}
                 />
-            )}
-
-            {settingsOpen && (
-                <Modal>
-                    <BoardFormModal
-                        board={board}
-                        projectId={board.project_id ?? 0}
-                        projectColor="var(--cf-phosphor)"
-                        ownedProjects={[]}
-                        onSave={handleSaveSettings}
-                        onDelete={handleDeleteBoard}
-                        onClose={() => setSettingsOpen(false)}
-                    />
-                </Modal>
             )}
         </div>
     )

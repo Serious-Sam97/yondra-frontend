@@ -165,6 +165,16 @@ export function demoUpdateSection(boardId: string, sectionId: number, name: stri
     return data.sections[idx];
 }
 
+export function demoReorderSections(boardId: string, orderedIds: number[]): void {
+    const data = loadBoardData(boardId);
+    const byId = new Map(data.sections.map(s => [s.id, s]));
+    const reordered = orderedIds.map(id => byId.get(id)).filter(Boolean) as DemoSection[];
+    // keep any sections not in the ordered list (e.g. reserved Backlog) at the end
+    const rest = data.sections.filter(s => !orderedIds.includes(s.id));
+    data.sections = [...reordered, ...rest];
+    saveBoardData(boardId, data);
+}
+
 export function demoDeleteSection(boardId: string, sectionId: number): void {
     const data = loadBoardData(boardId);
     data.sections = data.sections.filter(s => s.id !== sectionId);
