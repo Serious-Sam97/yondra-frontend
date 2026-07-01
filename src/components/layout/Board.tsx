@@ -487,21 +487,41 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     };
 
     useEffect(() => {
+        const isTyping = (el: any) =>
+            !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
+
         const handleGlobalEvent = (event: any) => {
-            const anyOpen = isCardVisible || isTagsOpen || isActivityOpen || isArchivedOpen || isBgOpen || isChatOpen || isCommandOpen;
+            // Any modal, panel, drawer, or inline editor that's open → the board is "busy".
+            const anyOpen =
+                isCardVisible || isTagsOpen || isActivityOpen || isArchivedOpen || isBgOpen ||
+                isBoardConfigOpen || isChatOpen || isToolbarOpen || isCommandOpen || isAddingSection ||
+                sectionToDelete !== null || cardToDelete !== null;
+
             if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
                 event.preventDefault();
                 setIsCommandOpen(v => !v);
                 return;
             }
-            if (event.key.toLowerCase() === 'c' && !isReadOnly && !anyOpen) {
+
+            // "C" to create a card — only on the board / list views, when nothing else is
+            // open, never while typing in a field, and not as part of a Cmd/Ctrl+C (copy).
+            if (
+                event.key.toLowerCase() === 'c' &&
+                !event.metaKey && !event.ctrlKey && !event.altKey &&
+                !isReadOnly &&
+                !anyOpen &&
+                (viewMode === 'kanban' || viewMode === 'list') &&
+                !isTyping(event.target) && !isTyping(document.activeElement)
+            ) {
+                // Stop the browser from typing the "c" into the (about-to-autofocus) name field.
+                event.preventDefault();
                 setNewCardSectionId(null);
                 setIsCardVisible(true);
             }
         };
         window.addEventListener('keydown', handleGlobalEvent);
         return () => window.removeEventListener('keydown', handleGlobalEvent);
-    }, [isReadOnly, isCardVisible, isTagsOpen, isActivityOpen, isArchivedOpen, isBgOpen, isChatOpen, isCommandOpen]);
+    }, [isReadOnly, viewMode, isCardVisible, isTagsOpen, isActivityOpen, isArchivedOpen, isBgOpen, isBoardConfigOpen, isChatOpen, isToolbarOpen, isCommandOpen, isAddingSection, sectionToDelete, cardToDelete]);
 
     const sensors = useSensors(
         useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
