@@ -26,6 +26,8 @@ function routeLabel(p?: string | null): string {
     if (p.startsWith('/demo')) return 'DEMO MODE';
     if (p.startsWith('/login')) return 'AUTH / LOGIN';
     if (p.startsWith('/register')) return 'AUTH / REGISTER';
+    if (p.startsWith('/forgot-password')) return 'AUTH / FORGOT PASSWORD';
+    if (p.startsWith('/reset-password')) return 'AUTH / RESET PASSWORD';
     return 'YONDRA';
 }
 

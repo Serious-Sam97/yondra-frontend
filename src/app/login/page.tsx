@@ -74,7 +74,7 @@ export default function LoginPage () {
                         />
                     </div>
 
-                    <div className="mb-7">
+                    <div className="mb-2">
                         <label className="block text-xs uppercase tracking-wider text-white/70 mb-2">Password</label>
                         <input
                             className="glass-input"
@@ -84,6 +84,10 @@ export default function LoginPage () {
                             onChange={(e) => setPassword(e.target.value)}
                             onKeyDown={handleKeyDown}
                         />
+                    </div>
+
+                    <div className="text-right mb-6">
+                        <a href="/forgot-password" style={{ color: 'var(--cf-phosphor)' }} className="text-sm hover:underline">Forgot password?</a>
                     </div>
 
                     <button

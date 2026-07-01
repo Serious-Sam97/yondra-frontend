@@ -1,6 +1,7 @@
 'use client'
 
 import { register } from "@/lib/auth";
+import { useSystem } from "@/contexts/SystemContext";
 import { useRouter } from "next/navigation";
 import { useState } from "react"
 import Image from "next/image";
@@ -13,6 +14,7 @@ export default function RegisterPage () {
     const [passwordConfirmation, setPasswordConfirmation] = useState<string>('');
     const [error, setError] = useState<string>('');
     const [loading, setLoading] = useState(false);
+    const { setIsLogged } = useSystem();
     const router = useRouter();
 
     const registerAction = async () => {
@@ -24,6 +26,7 @@ export default function RegisterPage () {
         setLoading(true);
         try {
             await register(name, email, password, passwordConfirmation);
+            setIsLogged(true);
             router.push('/dashboard');
         } catch (e: any) {
             setError(e.message ?? 'Registration failed');

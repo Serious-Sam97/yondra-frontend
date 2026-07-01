@@ -41,3 +41,17 @@ export async function logout() {
     localStorage.removeItem('token');
     localStorage.setItem('isLogged', 'false');
 }
+
+export async function forgotPassword(email: string) {
+    await apiFetch('/api/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email })
+    });
+}
+
+export async function resetPassword(token: string, email: string, password: string, passwordConfirmation: string) {
+    await apiFetch('/api/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ token, email, password, password_confirmation: passwordConfirmation })
+    });
+}
