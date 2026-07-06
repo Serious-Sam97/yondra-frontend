@@ -363,7 +363,10 @@ function RightPanel({ project, currentUserId, onMembersClick }: { project: Proje
     const boards: ProjectBoard[] = project.boards ?? [];
     const totalCards = boards.reduce((s: number, b) => s + (b.cards_count ?? 0), 0);
     const members = project.members ?? [];
-    const isOwner = project.owner_id === currentUserId;
+    // Any owner (primary or co-owner) can manage members; the primary owner
+    // itself is protected from removal/demotion in the modal + backend.
+    const myRole = members.find(m => m.id === currentUserId)?.role;
+    const canManage = project.owner_id === currentUserId || myRole === 'owner';
 
     return (
         <div className="flex flex-col gap-4">
@@ -394,7 +397,7 @@ function RightPanel({ project, currentUserId, onMembersClick }: { project: Proje
             }}>
                 <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid var(--cf-edge, #4a463f)' }}>
                     <p style={{ fontSize: '9px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-label uppercase tracking-widest font-bold">Members</p>
-                    {isOwner && (
+                    {canManage && (
                         <button onClick={onMembersClick} style={{ fontSize: '8px', color: 'var(--cf-text-muted, #a39d8c)' }}
                             className="cf-mono uppercase tracking-widest cursor-pointer hover:underline">Manage</button>
                     )}
@@ -480,6 +483,18 @@ export default function ProjectPage() {
             fetchProject(projectId)
                 .then(data => { setProject(data); setContentLoading(false); })
                 .catch(() => router.push('/dashboard'));
+            // Revalidate the sidebar in the background so projects created
+            // elsewhere (e.g. the dashboard "New project" flow) appear here too.
+            fetchProjects()
+                .then(all => {
+                    const owned  = all?.owned  ?? [];
+                    const member = all?.member ?? [];
+                    _cachedOwned  = owned;
+                    _cachedMember = member;
+                    setOwnedProjects(owned);
+                    setMemberProjects(member);
+                })
+                .catch(() => { /* keep the cached sidebar on failure */ });
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [projectId]);
@@ -495,6 +510,9 @@ export default function ProjectPage() {
 
     const boards: ProjectBoard[]  = project?.boards ?? [];
     const isOwner        = project?.owner_id === user?.id;
+    // Co-owners (project_user role 'owner') can manage members too, not just the creator.
+    const myRole         = project?.members?.find(m => m.id === user?.id)?.role;
+    const canManage      = isOwner || myRole === 'owner';
     const allProjects    = [...ownedProjects, ...memberProjects];
 
     // ── handlers ─────────────────────────────────────────────────────────────
@@ -616,21 +634,17 @@ export default function ProjectPage() {
 
                     {/* actions */}
                     <div className="flex items-center gap-2 flex-wrap">
+                        {canManage && (
+                            <button onClick={() => setModal({ type: 'members' })}
+                                className="aero-btn aero-btn--ghost uppercase tracking-widest font-bold px-3 py-1.5 text-[9px]">
+                                Members
+                            </button>
+                        )}
                         {isOwner && (
-                            <>
-                                <button onClick={() => setModal({ type: 'members' })}
-                                    className="aero-btn aero-btn--ghost uppercase tracking-widest font-bold px-3 py-1.5 text-[9px]">
-                                    Members
-                                </button>
-                                <button onClick={() => setModal({ type: 'project-edit' })}
-                                    className="aero-btn aero-btn--ghost uppercase tracking-widest font-bold px-3 py-1.5 text-[9px]">
-                                    <Icon icon={faGear} /> {(
-                                        (
-                                            <p className='mt-1 ml-1'>Edit</p>
-                                        )
-                                    )}
-                                </button>
-                            </>
+                            <button onClick={() => setModal({ type: 'project-edit' })}
+                                className="aero-btn aero-btn--ghost uppercase tracking-widest font-bold px-3 py-1.5 text-[9px]">
+                                <Icon icon={faGear} /> <p className='mt-1 ml-1'>Edit</p>
+                            </button>
                         )}
                         <button onClick={() => setEditMode(e => !e)}
                             className={`aero-btn ${editMode ? 'aero-btn--magenta' : 'aero-btn--ghost'} uppercase tracking-widest font-bold px-3 py-1.5 text-[9px]`}>
@@ -704,3 +718,4 @@ export default function ProjectPage() {
         </div>
     );
 }
+
