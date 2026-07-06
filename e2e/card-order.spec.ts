@@ -1,5 +1,5 @@
 import { test, expect, Page, Locator } from '@playwright/test';
-import { mockBoard, dragCard } from './helpers';
+import { mockBoard, dragCard, legacyBoardFixture } from './helpers';
 
 // A card is the draggable <button class="w-full block"> wrapping the Card body.
 const card = (page: Page, text: string): Locator =>
@@ -41,9 +41,33 @@ test.describe('card ordering — demo board (no backend)', () => {
         await expect(titles(page, 'To Do')).toContainText(['Drag me to another column']);
     });
 
+    // The cross-column "live gap": while a card is dragged OVER another column, it should
+    // move into that column mid-drag so its siblings shift and open a gap. Regression for a
+    // report that "the other cards don't move" when moving to another column.
+    test('dragging over another column opens a gap mid-drag', async ({ page }) => {
+        await page.goto('/boards/demo');
+        await expect(page.getByText('Drag me to another column')).toBeVisible();
+
+        const src = card(page, 'Drag me to another column');
+        const target = card(page, 'Welcome to Yondra!'); // a To Do card
+        const s = await src.boundingBox();
+        const t = await target.boundingBox();
+        if (!s || !t) throw new Error('missing bounding boxes');
+
+        await page.mouse.move(s.x + s.width / 2, s.y + s.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(s.x + s.width / 2 + 8, s.y + s.height / 2 + 8, { steps: 4 });
+        await page.mouse.move(t.x + t.width / 2, t.y + t.height / 2, { steps: 10 });
+        // Still holding — the dragged card should already be in To Do (3 cards) and gone from In Progress.
+        await expect(titles(page, 'To Do')).toHaveCount(3);
+        await expect(titles(page, 'In Progress')).toHaveCount(0);
+
+        await page.mouse.up();
+        await expect(titles(page, 'To Do')).toContainText(['Drag me to another column']);
+    });
+
     // Regression for React error #185 ("maximum update depth exceeded"): a drag that
-    // repeatedly crosses the column boundary used to oscillate onDragOver → setState in a
-    // loop and crash the page. State now only changes on drop, so this must stay quiet.
+    // repeatedly crosses the column boundary used to loop and crash the page.
     test('dragging back and forth across columns does not crash', async ({ page }) => {
         const errors: string[] = [];
         page.on('pageerror', (e) => errors.push(e.message));
@@ -104,5 +128,51 @@ test.describe('card ordering — persistence contract', () => {
         // Order reverts to the original and the sync-error toast appears.
         await expect(page.getByText('Reorder failed', { exact: false })).toBeVisible();
         await expect(titles(page, 'To Do')).toHaveText(['Welcome to Yondra!', 'Try creating a card']);
+    });
+});
+
+// A legacy-shaped board (Backlog + duplicated, globally-assigned positions, like board 3)
+// is where the crash and the "cards don't move" report actually surfaced. This drives the
+// original trigger — boundary oscillation + rapid cross-column drags — and must stay quiet.
+test.describe('card ordering — legacy board (duplicate positions + Backlog)', () => {
+    test('boundary sweeps and rapid cross-column drags do not crash', async ({ page }) => {
+        const errors: string[] = [];
+        page.on('pageerror', (e) => errors.push(e.message));
+        await mockBoard(page, { board: legacyBoardFixture() });
+        await page.goto('/boards/1');
+        await expect(page.getByText('Done 00')).toBeVisible();
+
+        const boxes = await Promise.all((await page.locator('.aero-column').all()).map((c) => c.boundingBox()));
+
+        // 1) Sweep across every column boundary within a single drag (the #185 trigger).
+        const src0 = card(page, 'InProg A');
+        const s0 = await src0.boundingBox();
+        if (s0) {
+            await page.mouse.move(s0.x + s0.width / 2, s0.y + s0.height / 2);
+            await page.mouse.down();
+            await page.mouse.move(s0.x + s0.width / 2 + 8, s0.y + s0.height / 2 + 8, { steps: 4 });
+            for (let i = 0; i < 8; i++) {
+                for (const b of boxes) if (b) await page.mouse.move(b.x + b.width / 2, b.y + 140, { steps: 3 });
+            }
+            await page.mouse.up();
+        }
+
+        // 2) Many rapid cross-column drags.
+        const names = ['ToDo A', 'ToDo B', 'Done 01', 'InProg B'];
+        for (let i = 0; i < 16; i++) {
+            const src = card(page, names[i % names.length]);
+            const s = await src.boundingBox();
+            const b = boxes[i % boxes.length];
+            if (!s || !b) continue;
+            await page.mouse.move(s.x + s.width / 2, s.y + s.height / 2);
+            await page.mouse.down();
+            await page.mouse.move(s.x + s.width / 2 + 8, s.y + s.height / 2 + 8, { steps: 2 });
+            await page.mouse.move(b.x + b.width / 2, b.y + 120, { steps: 3 });
+            await page.mouse.up();
+        }
+        await page.waitForTimeout(300);
+
+        expect(errors.filter((e) => /185|Maximum update depth/.test(e))).toEqual([]);
+        await expect(page.locator('.aero-column').first()).toBeVisible();
     });
 });

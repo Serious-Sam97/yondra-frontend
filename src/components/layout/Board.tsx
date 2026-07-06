@@ -1,6 +1,6 @@
 'use client'
 
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, MouseSensor, TouchSensor, closestCorners, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverEvent, DragOverlay, DragStartEvent, MeasuringStrategy, MouseSensor, TouchSensor, closestCorners, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import type Echo from "laravel-echo";
 import { Card } from "../ui/Card";
@@ -47,6 +47,11 @@ import {
 import { BacklogView } from "../ui/BacklogView";
 
 const SECTION_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107'];
+
+// Re-measure droppables on every frame while dragging (not just at drag start). Without
+// this, moving a card into another column mid-drag leaves the target column's rects stale,
+// so its cards don't slide open to make room — the cross-column gap animation is missing.
+const KANBAN_MEASURING = { droppable: { strategy: MeasuringStrategy.Always } };
 
 // Per-tool colors chosen to echo each original emoji's dominant hue.
 const TOOL_COLORS = {
@@ -209,6 +214,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     // a drag are queued here and replayed once the drag settles.
     const isDraggingRef = useRef(false);
     const pendingBoardEventsRef = useRef<BoardEventPayload[]>([]);
+    const dragStartCardsRef = useRef<CardInterface[] | null>(null);
 
     const applyTilt = useCallback((clientX: number, clientY: number) => {
         const el = kanbanRef.current;
@@ -687,10 +693,41 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
     function handleDragStart(event: DragStartEvent) {
         const cardId = Number(String(event.active.id).split('-')[1]);
-        isDraggingRef.current = true;   // freeze realtime mutations for the duration of the drag
+        isDraggingRef.current = true;        // freeze realtime mutations for the duration of the drag
+        dragStartCardsRef.current = cardsProp; // pre-drag snapshot for rollback on a failed reorder
         setActiveCard(cardsProp.find(c => c.id === cardId) ?? null);
         playPickup();
         hapticPick();
+    }
+
+    // While dragging across columns, move the active card into the hovered column so its
+    // siblings shift and open a gap (the Trello-style preview). A fractional position drops
+    // it next to the hovered card; handleDragEnd renormalises to integers and persists.
+    // The `return prev` no-op guard is important: it stops redundant state updates (and any
+    // boundary oscillation) from churning re-renders. Safe because SortableContext items are
+    // memoized — see Section.tsx — so this no longer feeds the React #185 update loop.
+    function handleDragOver(event: DragOverEvent) {
+        const { active, over } = event;
+        if (!over) return;
+        const activeRawId = String(active.id);
+        const overRawId = String(over.id);
+        const activeCardId = Number(activeRawId.split('-')[1]);
+        const fromSection = findSectionIdOfItem(activeRawId);
+        const toSection = findSectionIdOfItem(overRawId);
+        if (fromSection == null || toSection == null || fromSection === toSection) return;
+
+        setCards(prev => {
+            const activeNow = prev.find(c => c.id === activeCardId);
+            if (!activeNow || activeNow.section_id === toSection) return prev; // already moved → no-op
+            let newPosition: number;
+            if (overRawId.startsWith('section-')) {
+                newPosition = Math.max(-1, ...prev.filter(c => c.section_id === toSection).map(c => c.position ?? 0)) + 1;
+            } else {
+                const overCard = prev.find(c => c.id === Number(overRawId.split('-')[1]));
+                newPosition = (overCard?.position ?? 0) - 0.5;
+            }
+            return prev.map(c => c.id === activeCardId ? { ...c, section_id: toSection, position: newPosition } : c);
+        });
     }
 
     // ESC / programmatic cancel: dnd-kit fires this instead of onDragEnd, so it must also
@@ -864,7 +901,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             )}
 
             {/* Board columns — kanban only */}
-            {viewMode === 'kanban' && <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
+            {viewMode === 'kanban' && <DndContext sensors={sensors} collisionDetection={closestCorners} measuring={KANBAN_MEASURING} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
                 <div
                     ref={kanbanRef}
                     className="flex gap-5 items-start overflow-x-auto pb-4"
@@ -1283,7 +1320,8 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         resetTilt();
         try {
             const { active, over } = event;
-            if (!over) return;
+            // Dropped outside any column → undo the cross-column preview from handleDragOver.
+            if (!over) { if (dragStartCardsRef.current) setCards(dragStartCardsRef.current); return; }
 
             playDrop(); hapticDrop();
             triggerInkSplash(lastPointerRef.current.x, lastPointerRef.current.y);
@@ -1320,7 +1358,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             }
 
             // Commit normalised integer positions (and the new section) locally.
-            const snapshot = cardsProp;
+            const snapshot = dragStartCardsRef.current ?? cardsProp;  // pre-drag state for rollback
             setCards(prev => prev.map(c => {
                 const idx = orderedIds.indexOf(c.id);
                 return idx === -1 ? c : { ...c, section_id: destSection, position: idx };

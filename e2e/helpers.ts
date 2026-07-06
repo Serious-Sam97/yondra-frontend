@@ -89,12 +89,41 @@ export function boardFixture() {
 }
 
 /**
+ * A board that mirrors an OLD real board (like board 3): a Backlog section plus a Done
+ * column carrying legacy, globally-assigned positions with DUPLICATES and cross-section
+ * overlap — the exact data shape that surfaced drag bugs the clean fixture never hit.
+ */
+export function legacyBoardFixture() {
+    const mk = (id: number, section_id: number, position: number, name: string) =>
+        ({ id, board_id: 1, section_id, name, description: '', position, tags: [], checklist_items: [] });
+    const cards = [
+        mk(71, 7, 18, 'ToDo A'), mk(168, 7, 41, 'ToDo B'), mk(170, 7, 42, 'ToDo C'),
+        mk(113, 8, 19, 'InProg A'), mk(292, 8, 43, 'InProg B'),
+    ];
+    // Done: 20 cards with duplicated legacy positions (…,1,1,2,3,3,…) forcing the scroll container.
+    for (let i = 0; i < 20; i++) cards.push(mk(200 + i, 9, Math.floor(i / 2) + 1, `Done ${String(i).padStart(2, '0')}`));
+    // Backlog with its own high position range.
+    for (let i = 0; i < 6; i++) cards.push(mk(300 + i, 45, 37 + i, `BL ${i}`));
+    return {
+        id: 1, user_id: 1, name: 'Legacy', description: '', project_id: null,
+        owner: { id: 1, name: 'Sam', email: 'sam@sam.com' }, shared_with: [], tags: [],
+        sections: [
+            { id: 7, board_id: 1, name: 'To Do', order: 0 },
+            { id: 8, board_id: 1, name: 'In Progress', order: 1 },
+            { id: 9, board_id: 1, name: 'Done', order: 2 },
+            { id: 45, board_id: 1, name: 'Backlog', order: 3 },
+        ],
+        cards,
+    };
+}
+
+/**
  * Log Sam in and stub the board page's /api/* calls so /boards/1 renders the fixture
  * with no backend. `reorderStatus` lets a test force the PUT .../cards/reorder call to
- * fail (to exercise the optimistic rollback).
+ * fail (to exercise the optimistic rollback). `board` overrides the default fixture.
  */
-export async function mockBoard(page: Page, opts: { reorderStatus?: number } = {}) {
-    const board = boardFixture();
+export async function mockBoard(page: Page, opts: { reorderStatus?: number; board?: ReturnType<typeof boardFixture> | ReturnType<typeof legacyBoardFixture> } = {}) {
+    const board = opts.board ?? boardFixture();
 
     await page.addInitScript(() => {
         localStorage.setItem('token', 'e2e-token');
