@@ -6,11 +6,13 @@ export interface SectionData {
     name: string,
 }
 
+export type BoardPermission = 'read' | 'write' | 'owner';
+
 export interface SharedUser {
     id: number,
     name: string,
     email: string,
-    permission?: 'read' | 'write',
+    permission?: BoardPermission,
 }
 
 export interface BoardInterface {

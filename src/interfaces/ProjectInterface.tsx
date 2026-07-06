@@ -21,7 +21,7 @@ export interface ProjectBoard {
   cards_count?: number;
   updated_at?: string | null;
   owner?: UserSummary | null;
-  shared_with: { id: number; name: string; permission?: "read" | "write" }[];
+  shared_with: { id: number; name: string; permission?: "read" | "write" | "owner" }[];
 }
 
 export interface ProjectInterface {

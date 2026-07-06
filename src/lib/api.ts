@@ -70,11 +70,11 @@ export async function deleteProject(id: number) {
   return apiFetch(`/api/projects/${id}`, { method: 'DELETE' });
 }
 
-export async function addProjectMember(projectId: number, email: string, role: 'member' | 'viewer' = 'member') {
+export async function addProjectMember(projectId: number, email: string, role: 'owner' | 'member' | 'viewer' = 'member') {
   return apiFetch(`/api/projects/${projectId}/members`, { method: 'POST', body: JSON.stringify({ email, role }) });
 }
 
-export async function updateProjectMember(projectId: number, userId: number, role: 'member' | 'viewer') {
+export async function updateProjectMember(projectId: number, userId: number, role: 'owner' | 'member' | 'viewer') {
   return apiFetch(`/api/projects/${projectId}/members/${userId}`, { method: 'PUT', body: JSON.stringify({ role }) });
 }
 
@@ -226,11 +226,19 @@ export async function markAllNotificationsRead() {
 
 // --- Sharing ---
 
-export async function shareBoard(boardId: number, email: string, permission: 'read' | 'write' = 'write') {
+export async function shareBoard(boardId: number, email: string, permission: 'read' | 'write' | 'owner' = 'write') {
   return apiFetch(`/api/boards/${boardId}/share`, { method: 'POST', body: JSON.stringify({ email, permission }) });
 }
 
-export async function updateSharePermission(boardId: number, userId: number, permission: 'read' | 'write') {
+export async function shareBoardWithUser(boardId: number, userId: number, permission: 'read' | 'write' | 'owner' = 'write') {
+  return apiFetch(`/api/boards/${boardId}/share`, { method: 'POST', body: JSON.stringify({ user_id: userId, permission }) });
+}
+
+export async function getShareCandidates(boardId: number) {
+  return apiFetch(`/api/boards/${boardId}/share/candidates`, { method: 'GET' });
+}
+
+export async function updateSharePermission(boardId: number, userId: number, permission: 'read' | 'write' | 'owner') {
   return apiFetch(`/api/boards/${boardId}/share/${userId}`, { method: 'PUT', body: JSON.stringify({ permission }) });
 }
 

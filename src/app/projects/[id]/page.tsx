@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Modal from '@/components/shared/Modal';
 import Icon from '@/components/ui/Icon';
-import { faBars, faGear } from '@fortawesome/free-solid-svg-icons';
+import { faBars, faGear, faLock, faTrash, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { BoardFormModal, BoardFormData } from '@/components/ui/BoardFormModal';
 import { ProjectBoard, ProjectFormData, ProjectInterface, UserSummary } from '@/interfaces/ProjectInterface';
 import { fetchUser } from '@/lib/auth';
@@ -183,11 +183,53 @@ function ProjectEditModal({ project, onSave, onDelete, onClose }: { project: Pro
     );
 }
 
+type ProjectRole = 'owner' | 'member' | 'viewer';
+
+// Each role gets a colour from the console palette so it reads at a glance.
+const ROLE_META: Record<ProjectRole, { color: string; bg: string; border: string; glow: string; rank: number }> = {
+    owner:  { color: 'var(--cf-amber, #ffb000)',    bg: 'rgba(255,176,0,0.15)',   border: 'rgba(255,176,0,0.5)',   glow: 'rgba(255,176,0,0.4)',   rank: 0 },
+    member: { color: 'var(--cf-phosphor, #9aa67e)', bg: 'rgba(154,166,126,0.16)', border: 'rgba(154,166,126,0.5)', glow: 'rgba(154,166,126,0.4)', rank: 1 },
+    viewer: { color: 'var(--cf-cyan, #6fe0ff)',     bg: 'rgba(111,224,255,0.14)', border: 'rgba(111,224,255,0.45)',glow: 'rgba(111,224,255,0.35)',rank: 2 },
+};
+
+// Segmented Viewer · Member · Owner control — same pill language as the board share dialog.
+function RoleSegments({ value, onChange, disabled }: { value: ProjectRole; onChange: (r: ProjectRole) => void; disabled?: boolean }) {
+    return (
+        <div role="group" aria-label="Access level"
+            className="inline-flex gap-0.5 p-0.5 rounded-lg flex-shrink-0"
+            style={{ background: 'var(--cf-screen, #0d1410)', border: '1px solid #14130f', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.6)' }}>
+            {(['viewer', 'member', 'owner'] as const).map(r => {
+                const active = value === r;
+                return (
+                    <button key={r} type="button" disabled={disabled} onClick={() => !active && onChange(r)}
+                        className="cf-mono uppercase font-bold rounded-md px-2 py-1 cursor-pointer transition-all duration-150 disabled:cursor-default"
+                        style={{ fontSize: '9px', letterSpacing: '0.1em',
+                            color: active ? ROLE_META[r].color : 'var(--cf-text-dim, #6f6a5c)',
+                            background: active ? ROLE_META[r].bg : 'transparent',
+                            boxShadow: active ? `0 0 8px ${ROLE_META[r].glow}` : undefined }}>
+                        {r}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
 function MembersModal({ project, currentUserId, onUpdate, onClose }: { project: ProjectInterface; currentUserId?: number; onUpdate: (p: ProjectInterface) => void; onClose: () => void }) {
-    const [email, setEmail]   = useState('');
-    const [role, setRole]     = useState<'member' | 'viewer'>('member');
-    const [error, setError]   = useState('');
+    const [email, setEmail]     = useState('');
+    const [role, setRole]       = useState<ProjectRole>('member');
+    const [error, setError]     = useState('');
     const [loading, setLoading] = useState(false);
+    const [confirmId, setConfirmId] = useState<number | null>(null);
+
+    const members = [...(project.members ?? [])].sort((a, b) => {
+        if (a.id === project.owner_id) return -1;
+        if (b.id === project.owner_id) return 1;
+        return ROLE_META[(a.role ?? 'member') as ProjectRole].rank - ROLE_META[(b.role ?? 'member') as ProjectRole].rank;
+    });
+
+    const myRole = members.find(m => m.id === currentUserId)?.role as ProjectRole | undefined;
+    const canManage = project.owner_id === currentUserId || myRole === 'owner';
 
     async function handleAdd(e: React.FormEvent) {
         e.preventDefault();
@@ -196,72 +238,119 @@ function MembersModal({ project, currentUserId, onUpdate, onClose }: { project: 
         try {
             const updated = await addProjectMember(project.id, email.trim(), role);
             onUpdate(updated); setEmail('');
-        } catch { setError('User not found or already a member.'); }
+        } catch { setError("That email isn't a Yondra user, or they're already on the project."); }
         finally { setLoading(false); }
     }
 
-    const isOwner = project.owner_id === currentUserId;
+    async function handleRole(memberId: number, next: ProjectRole) {
+        setError('');
+        try { onUpdate(await updateProjectMember(project.id, memberId, next)); }
+        catch { setError("Couldn't change that role. The primary owner can't be demoted."); }
+    }
+
+    async function handleRemove(memberId: number) {
+        setConfirmId(null);
+        await removeProjectMember(project.id, memberId);
+        onUpdate({ ...project, members: (project.members ?? []).filter(x => x.id !== memberId) });
+    }
 
     return (
-        <div className="aero-menu rounded-2xl p-6 w-[90vw] max-w-lg flex flex-col gap-5 relative">
+        <div className="aero-menu rounded-2xl p-6 w-[90vw] max-w-lg flex flex-col gap-4 relative">
             <span className="cf-screw" style={{ position: 'absolute', top: 8, left: 8 }} />
             <span className="cf-screw" style={{ position: 'absolute', top: 8, right: 8 }} />
             <span className="cf-screw" style={{ position: 'absolute', bottom: 8, left: 8 }} />
             <span className="cf-screw" style={{ position: 'absolute', bottom: 8, right: 8 }} />
+
             <div style={{ borderBottom: '1px solid var(--cf-edge, #4a463f)' }} className="pb-3 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                     <span className="cf-led flex-shrink-0" style={{ backgroundColor: project.color, boxShadow: `0 0 8px ${project.color}` }} />
                     <p style={{ fontSize: '10px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-label uppercase tracking-[0.25em] font-bold truncate">{project.name} · Members</p>
+                    <span className="cf-mono font-bold rounded-full flex-shrink-0" style={{ fontSize: '9px', color: 'var(--cf-ink, #2a2620)', background: 'var(--cf-phosphor, #9aa67e)', padding: '1px 7px' }}>{members.length}</span>
                 </div>
-                <button onClick={onClose} style={{ fontSize: '10px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-mono uppercase tracking-widest font-bold cursor-pointer hover:underline flex-shrink-0">Close</button>
+                <button onClick={onClose} aria-label="Close" className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer flex-shrink-0" style={{ border: '1px solid var(--cf-edge, #4a463f)', background: '#211f1b', color: 'var(--cf-text-muted, #a39d8c)' }}>
+                    <Icon icon={faXmark} style={{ fontSize: '11px' }} />
+                </button>
             </div>
-            <div className="flex flex-col gap-2 max-h-52 overflow-y-auto">
-                {project.members?.map((m) => (
-                    <div key={m.id} className="flex items-center gap-3">
-                        <Avatar user={m} size={22} />
-                        <div className="flex-1 min-w-0">
-                            <p style={{ fontSize: '12px', color: 'var(--cf-text, #e8e4d6)' }} className="font-bold truncate">{m.name}</p>
-                            <p style={{ fontSize: '9px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-mono truncate">{m.email}</p>
-                        </div>
-                        {m.id === project.owner_id ? (
-                            <span className="aero-pill" style={{ fontSize: '9px' }}>owner</span>
-                        ) : isOwner ? (
-                            <div className="flex items-center gap-2">
-                                <select value={m.role ?? 'member'}
-                                    onChange={e => updateProjectMember(project.id, m.id, e.target.value as 'member' | 'viewer').then(onUpdate)}
-                                    style={{ fontSize: '9px' }}
-                                    className="glass-input cf-lcd px-1 py-0.5 cursor-pointer">
-                                    <option value="member" className="text-black">member</option>
-                                    <option value="viewer" className="text-black">viewer</option>
-                                </select>
-                                <button onClick={() => removeProjectMember(project.id, m.id).then(() => onUpdate({ ...project, members: project.members.filter((x) => x.id !== m.id) }))}
-                                    style={{ fontSize: '11px', color: 'var(--cf-red, #ff5a4d)' }} className="cf-mono font-bold cursor-pointer hover:opacity-70">✕</button>
-                            </div>
-                        ) : (
-                            <span className="aero-pill" style={{ fontSize: '9px' }}>{m.role ?? 'member'}</span>
-                        )}
-                    </div>
+
+            {/* Role legend */}
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5 rounded-lg px-3 py-2" style={{ background: 'var(--cf-screen, #0d1410)', border: '1px solid #14130f', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.5)' }}>
+                {([['owner', 'manages people'], ['member', 'edits boards'], ['viewer', 'reads only']] as const).map(([r, desc]) => (
+                    <span key={r} className="flex items-center gap-1.5" style={{ fontSize: '9.5px', color: 'var(--cf-text-muted, #a39d8c)' }}>
+                        <span className="rounded-full" style={{ width: 7, height: 7, background: ROLE_META[r].color, boxShadow: `0 0 6px ${ROLE_META[r].color}` }} />
+                        <b className="cf-mono uppercase font-bold" style={{ color: 'var(--cf-text, #e8e4d6)', letterSpacing: '0.1em' }}>{r}</b> {desc}
+                    </span>
                 ))}
             </div>
-            {isOwner && (
-                <form onSubmit={handleAdd} className="flex flex-col gap-2 pt-4" style={{ borderTop: '1px solid var(--cf-edge, #4a463f)' }}>
-                    <label style={{ fontSize: '10px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-label uppercase tracking-widest font-bold">Invite by email</label>
+
+            <div className="flex flex-col gap-1.5 max-h-64 overflow-y-auto -mx-1 px-1">
+                {members.map((m) => {
+                    const mRole = (m.role ?? 'member') as ProjectRole;
+                    const meta = ROLE_META[mRole];
+                    const isPrimary = m.id === project.owner_id;
+                    const isMe = m.id === currentUserId;
+                    const editable = canManage && !isPrimary;
+                    return (
+                        <div key={m.id} className="flex items-center gap-3 rounded-xl px-2.5 py-2 relative"
+                            style={{ background: '#211f1b', border: `1px solid ${isMe ? '#514b3f' : '#38352e'}` }}>
+                            <span className="rounded-r-sm" style={{ position: 'absolute', left: 0, top: 9, bottom: 9, width: 3, background: meta.color, boxShadow: `0 0 8px ${meta.color}` }} />
+                            <span className="rounded-full flex-shrink-0" style={{ boxShadow: `0 0 0 1.5px var(--cf-panel, #26241f), 0 0 0 3px ${meta.color}` }}>
+                                <Avatar user={m} size={30} />
+                            </span>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <p style={{ fontSize: '12px', color: 'var(--cf-text, #e8e4d6)' }} className="font-bold truncate">{m.name}</p>
+                                    {isMe && <span className="flex-shrink-0" style={{ fontSize: '8px', letterSpacing: '0.14em', color: 'var(--cf-cyan, #6fe0ff)', border: '1px solid rgba(111,224,255,0.5)', borderRadius: 4, padding: '1px 5px' }}>YOU</span>}
+                                </div>
+                                <p style={{ fontSize: '9px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-mono truncate">{m.email}</p>
+                            </div>
+
+                            {isPrimary ? (
+                                <div className="flex flex-col items-end flex-shrink-0">
+                                    <span className="inline-flex items-center gap-1.5 rounded-md uppercase font-bold" style={{ fontSize: '9px', letterSpacing: '0.14em', color: meta.color, background: meta.bg, border: `1px solid ${meta.border}`, padding: '4px 9px' }}>
+                                        <Icon icon={faLock} style={{ fontSize: '9px', opacity: 0.85 }} /> owner
+                                    </span>
+                                    <span style={{ fontSize: '8px', letterSpacing: '0.1em', color: 'var(--cf-text-dim, #6f6a5c)', marginTop: 3 }}>Primary · locked</span>
+                                </div>
+                            ) : editable ? (
+                                confirmId === m.id ? (
+                                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                                        <span className="uppercase" style={{ fontSize: '9px', letterSpacing: '0.1em', color: 'var(--cf-red, #ff5a4d)' }}>Remove?</span>
+                                        <button onClick={() => handleRemove(m.id)} className="cf-mono uppercase rounded-md px-2 py-1 cursor-pointer" style={{ fontSize: '9px', letterSpacing: '0.1em', background: 'rgba(255,90,77,0.16)', border: '1px solid rgba(255,90,77,0.55)', color: 'var(--cf-red, #ff5a4d)' }}>Yes</button>
+                                        <button onClick={() => setConfirmId(null)} className="cf-mono uppercase rounded-md px-2 py-1 cursor-pointer" style={{ fontSize: '9px', letterSpacing: '0.1em', border: '1px solid var(--cf-edge, #4a463f)', color: 'var(--cf-text-muted, #a39d8c)' }}>No</button>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                        <RoleSegments value={mRole} onChange={next => handleRole(m.id, next)} />
+                                        <button onClick={() => setConfirmId(m.id)} aria-label={`Remove ${m.name}`} title="Remove"
+                                            className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer transition-colors" style={{ color: 'var(--cf-text-dim, #6f6a5c)' }}
+                                            onMouseEnter={e => (e.currentTarget.style.color = 'var(--cf-red, #ff5a4d)')}
+                                            onMouseLeave={e => (e.currentTarget.style.color = 'var(--cf-text-dim, #6f6a5c)')}>
+                                            <Icon icon={faTrash} style={{ fontSize: '11px' }} />
+                                        </button>
+                                    </div>
+                                )
+                            ) : (
+                                <span className="uppercase font-bold rounded-md flex-shrink-0" style={{ fontSize: '9px', letterSpacing: '0.14em', color: meta.color, background: meta.bg, border: `1px solid ${meta.border}`, padding: '4px 9px' }}>{mRole}</span>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+
+            {canManage && (
+                <form onSubmit={handleAdd} className="flex flex-col gap-2.5 pt-4" style={{ borderTop: '1px solid var(--cf-edge, #4a463f)' }}>
+                    <label style={{ fontSize: '10px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-label uppercase tracking-widest font-bold">Invite to project</label>
                     {error && <p style={{ fontSize: '10px', color: 'var(--cf-red, #ff5a4d)' }} className="cf-mono">{error}</p>}
-                    <div className="flex gap-2">
-                        <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="user@example.com"
-                            style={{ fontSize: '12px', minWidth: '65%' }}
-                            className="glass-input cf-lcd flex-1" />
-                        <select value={role} onChange={e => setRole(e.target.value as 'member' | 'viewer')}
-                            style={{ fontSize: '10px' }}
-                            className="glass-input cf-lcd px-2 py-1.5 cursor-pointer">
-                            <option value="member" className="text-black">member</option>
-                            <option value="viewer" className="text-black">viewer</option>
-                        </select>
+                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@company.com"
+                        style={{ fontSize: '12px' }} className="glass-input cf-lcd w-full" />
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <RoleSegments value={role} onChange={setRole} />
                         <button type="submit" disabled={loading || !email.trim()}
-                            className="aero-btn aero-btn--cyan uppercase tracking-widest font-bold px-4 py-1.5 text-[10px]">
-                            {loading ? '…' : 'Add'}
+                            className="aero-btn aero-btn--cyan uppercase tracking-widest font-bold px-4 py-1.5 text-[10px] disabled:opacity-50">
+                            {loading ? '…' : 'Send invite'}
                         </button>
                     </div>
+                    <span style={{ fontSize: '9.5px', color: 'var(--cf-text-dim, #6f6a5c)' }}>They'll need a Yondra account with this email.</span>
                 </form>
             )}
         </div>
@@ -287,7 +376,7 @@ function RightPanel({ project, currentUserId, onMembersClick }: { project: Proje
                     <p style={{ fontSize: '9px', color: 'var(--cf-text-muted, #a39d8c)' }} className="cf-label uppercase tracking-widest font-bold">Stats</p>
                 </div>
                 {[
-                    { label: 'Boards', value: project.boards_count ?? 0 },
+                    { label: 'Boards', value: boards.length },
                     { label: 'Cards', value: totalCards },
                     { label: 'Members', value: members.length },
                 ].map(r => (
