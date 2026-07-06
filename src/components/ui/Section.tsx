@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { CardInterface } from "@/interfaces/CardInterface"
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { Droppable } from "../shared/Droppable"
 import { Card } from "./Card"
 import { SectionInterface } from "@/interfaces/SectionInterface"
@@ -79,6 +80,16 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
         flexDirection: 'column' as const,
         gap: '8px',
     }
+
+    // dnd-kit requires a STABLE items array for SortableContext. `cards` is a fresh array
+    // on every Board render, so key the memo on the id sequence: the reference only changes
+    // when the actual order changes, which stops dnd-kit from re-registering/re-measuring
+    // the sortable set every render (a source of the "max update depth" loop, React #185).
+    const cardIdsKey = cards.map(c => c.id).join(',')
+    const sortableIds = useMemo(
+        () => (cardIdsKey ? cardIdsKey.split(',').map(cardId => `draggable-${cardId}`) : []),
+        [cardIdsKey],
+    )
 
     return (
         <div
@@ -189,12 +200,14 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
 
             {/* Card list */}
             <div ref={cardListRef} className="mx-2 rounded-xl p-2 flex-1 max-h-[50vh] md:max-h-[calc(100vh-320px)] overflow-y-auto">
-                <Droppable style={style} key={id} id={name}>
-                    {cards.map((card: CardInterface) => (
-                        <div key={card.id} onClick={() => handleClick(card)}>
-                            <Card {...card} color={color} />
-                        </div>
-                    ))}
+                <Droppable style={style} key={id} id={`section-${id}`}>
+                    <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+                        {cards.map((card: CardInterface) => (
+                            <div key={card.id} onClick={() => handleClick(card)}>
+                                <Card {...card} color={color} />
+                            </div>
+                        ))}
+                    </SortableContext>
                 </Droppable>
             </div>
         </div>

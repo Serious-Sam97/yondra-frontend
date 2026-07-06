@@ -155,6 +155,15 @@ export async function updateCard(boardId: number, cardId: number | string, data:
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}`, { method: 'PUT', body: JSON.stringify(data) });
 }
 
+// Persist a custom card order within a section. `orderedIds` is the full, final
+// list of card ids for that section; the backend writes position = array index.
+export async function reorderCards(boardId: number, sectionId: number, orderedIds: (number | string)[]) {
+  return apiFetch(`/api/boards/${boardId}/cards/reorder`, {
+    method: 'PUT',
+    body: JSON.stringify({ section_id: sectionId, ordered_ids: orderedIds }),
+  });
+}
+
 export async function deleteCard(boardId: number, cardId: number | string) {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}`, { method: 'DELETE' });
 }

@@ -1,8 +1,9 @@
 import React from 'react';
-import { useDraggable } from '@dnd-kit/core';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 export function Draggable({ id, children }: { id: string; children: React.ReactNode }) {
-    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id });
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
 
     return (
         <button
@@ -11,6 +12,8 @@ export function Draggable({ id, children }: { id: string; children: React.ReactN
             {...attributes}
             className="w-full block"
             style={{
+                transform: CSS.Transform.toString(transform),
+                transition,
                 opacity: isDragging ? 0 : 1,
                 cursor: isDragging ? 'grabbing' : 'grab',
                 background: 'none',

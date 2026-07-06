@@ -1,6 +1,6 @@
 'use client'
 
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, MouseSensor, TouchSensor, closestCorners, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import type Echo from "laravel-echo";
 import { Card } from "../ui/Card";
@@ -13,7 +13,7 @@ import { useConsole } from "@/contexts/ConsoleContext";
 import CardEdit, { CardFormData, Template } from "../ui/CardEdit";
 import Modal from "../shared/Modal";
 import {
-    createCard, updateCard, deleteCard,
+    createCard, updateCard, deleteCard, reorderCards,
     createSection, updateSection, deleteSection, reorderSections,
     createTag, deleteTag,
     getActivity, restoreCard, getArchivedCards,
@@ -204,6 +204,11 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     // Board gravity tilt — the board tilts toward wherever the card is being dragged
     const kanbanRef      = useRef<HTMLDivElement>(null);
     const lastPointerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+    // While a card is being dragged we must NOT mutate the sortable lists, or dnd-kit
+    // re-measures mid-drag and loops (React #185). Realtime board events that land during
+    // a drag are queued here and replayed once the drag settles.
+    const isDraggingRef = useRef(false);
+    const pendingBoardEventsRef = useRef<BoardEventPayload[]>([]);
 
     const applyTilt = useCallback((clientX: number, clientY: number) => {
         const el = kanbanRef.current;
@@ -261,6 +266,59 @@ export function Board({ id, name, description, size, cards, sections: initialSec
 
     // --- Real-time ---
 
+    // Apply one realtime board event to local state. Kept as a stable callback so the drag
+    // handlers can also replay queued events after a drag finishes.
+    const applyBoardEvent = useCallback((e: BoardEventPayload) => {
+        switch (e.type) {
+            case 'card.created':
+                setCards(prev => prev.some(c => c.id === e.payload.id) ? prev : [...prev, e.payload]);
+                break;
+            case 'card.updated':
+                setCards(prev => prev.map(c => c.id === e.payload.id ? { ...c, ...e.payload } : c));
+                break;
+            case 'card.deleted':
+                setCards(prev => prev.filter(c => c.id !== e.payload.id));
+                break;
+            case 'card.restored':
+                setCards(prev => prev.some(c => c.id === e.payload.id) ? prev : [...prev, e.payload]);
+                break;
+            case 'section.created':
+                setSections(prev => prev.some(s => s.id === e.payload.id) ? prev : [...prev, e.payload]);
+                break;
+            case 'section.updated':
+                setSections(prev => prev.map(s => s.id === e.payload.id ? { ...s, ...e.payload } : s));
+                break;
+            case 'section.deleted':
+                setSections(prev => prev.filter(s => s.id !== e.payload.id));
+                setCards(prev => prev.filter(c => c.section_id !== e.payload.id));
+                break;
+            case 'sections.reordered': {
+                const ids: number[] = e.payload.section_ids;
+                setSections(prev => {
+                    const map = new Map(prev.map(s => [s.id, s]));
+                    const sorted = ids.map(id => map.get(id)).filter(Boolean) as typeof prev;
+                    const rest   = prev.filter(s => !ids.includes(s.id));
+                    return [...sorted, ...rest];
+                });
+                break;
+            }
+            case 'message.created':
+                setChatMessages(prev => prev.some(m => m.id === e.payload.id) ? prev : [...prev, e.payload]);
+                break;
+            case 'message.deleted':
+                setChatMessages(prev => prev.filter(m => m.id !== e.payload.id));
+                break;
+        }
+    }, []);
+
+    // Replay any board events that were queued while a drag was in progress.
+    const flushPendingBoardEvents = useCallback(() => {
+        if (pendingBoardEventsRef.current.length === 0) return;
+        const queued = pendingBoardEventsRef.current;
+        pendingBoardEventsRef.current = [];
+        queued.forEach(applyBoardEvent);
+    }, [applyBoardEvent]);
+
     useEffect(() => {
         if (isDemo || id === 0 || currentUserId === 0) return;
 
@@ -269,53 +327,16 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         chatChannelRef.current = channel;
 
         channel.listen('.board.event', (e: BoardEventPayload) => {
-            switch (e.type) {
-                case 'card.created':
-                    setCards(prev => prev.some(c => c.id === e.payload.id) ? prev : [...prev, e.payload]);
-                    break;
-                case 'card.updated':
-                    setCards(prev => prev.map(c => c.id === e.payload.id ? { ...c, ...e.payload } : c));
-                    break;
-                case 'card.deleted':
-                    setCards(prev => prev.filter(c => c.id !== e.payload.id));
-                    break;
-                case 'card.restored':
-                    setCards(prev => prev.some(c => c.id === e.payload.id) ? prev : [...prev, e.payload]);
-                    break;
-                case 'section.created':
-                    setSections(prev => prev.some(s => s.id === e.payload.id) ? prev : [...prev, e.payload]);
-                    break;
-                case 'section.updated':
-                    setSections(prev => prev.map(s => s.id === e.payload.id ? { ...s, ...e.payload } : s));
-                    break;
-                case 'section.deleted':
-                    setSections(prev => prev.filter(s => s.id !== e.payload.id));
-                    setCards(prev => prev.filter(c => c.section_id !== e.payload.id));
-                    break;
-                case 'sections.reordered': {
-                    const ids: number[] = e.payload.section_ids;
-                    setSections(prev => {
-                        const map = new Map(prev.map(s => [s.id, s]));
-                        const sorted = ids.map(id => map.get(id)).filter(Boolean) as typeof prev;
-                        const rest   = prev.filter(s => !ids.includes(s.id));
-                        return [...sorted, ...rest];
-                    });
-                    break;
-                }
-                case 'message.created':
-                    setChatMessages(prev => prev.some(m => m.id === e.payload.id) ? prev : [...prev, e.payload]);
-                    break;
-                case 'message.deleted':
-                    setChatMessages(prev => prev.filter(m => m.id !== e.payload.id));
-                    break;
-            }
+            // Never mutate the board while dragging — queue and replay on drop/cancel.
+            if (isDraggingRef.current) { pendingBoardEventsRef.current.push(e); return; }
+            applyBoardEvent(e);
         });
 
         return () => {
             echo.leave(`board.${id}`);
             chatChannelRef.current = null;
         };
-    }, [id, isDemo, currentUserId]);
+    }, [id, isDemo, currentUserId, applyBoardEvent]);
 
     // --- Tag management ---
 
@@ -425,7 +446,9 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         return true;
     };
 
-    const sectionCards = (sectionId: number) => boardCards.filter(card => card.section_id === sectionId && matchesFilters(card));
+    const sectionCards = (sectionId: number) => boardCards
+        .filter(card => card.section_id === sectionId && matchesFilters(card))
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
     const totalCards = boardCards.length;
     const doneSection = boardSections.find(s => s.name?.toLowerCase() === 'done');
@@ -440,14 +463,17 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         return saved;
     };
 
-    // Optimistically move a card to another section; roll back and report if the server rejects it.
+    // Optimistically move a card to another section (appended to the end); roll back and report if the server rejects it.
     const moveCard = (cardId: number | string, sectionId: number) => {
-        const previousSectionId = cardsProp.find(c => c.id === cardId)?.section_id;
-        setCards(prev => prev.map(c => c.id === cardId ? { ...c, section_id: sectionId } : c));
+        const prevCard = cardsProp.find(c => c.id === cardId);
+        const previousSectionId = prevCard?.section_id;
+        const previousPosition = prevCard?.position;
+        const newPosition = Math.max(-1, ...cardsProp.filter(c => c.section_id === sectionId).map(c => c.position ?? 0)) + 1;
+        setCards(prev => prev.map(c => c.id === cardId ? { ...c, section_id: sectionId, position: newPosition } : c));
         if (isDemo) { demoUpdateCard(demoId, cardId as number, { section_id: sectionId }); return; }
-        updateCard(id, cardId, { section_id: sectionId }).catch(() => {
+        updateCard(id, cardId, { section_id: sectionId, position: newPosition }).catch(() => {
             if (previousSectionId !== undefined) {
-                setCards(prev => prev.map(c => c.id === cardId ? { ...c, section_id: previousSectionId } : c));
+                setCards(prev => prev.map(c => c.id === cardId ? { ...c, section_id: previousSectionId, position: previousPosition } : c));
             }
             reportSyncError('Move failed — change reverted');
         });
@@ -651,11 +677,29 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         useSensor(TouchSensor,  { activationConstraint: { delay: 350, tolerance: 5 } })
     );
 
+    // Which section a draggable id belongs to. Container ids look like `section-<id>`;
+    // card ids look like `draggable-<cardId>` and resolve to that card's current section.
+    const findSectionIdOfItem = (rawId: string): number | null => {
+        if (rawId.startsWith('section-')) return Number(rawId.slice('section-'.length));
+        const cardId = Number(rawId.split('-')[1]);
+        return cardsProp.find(c => c.id === cardId)?.section_id ?? null;
+    };
+
     function handleDragStart(event: DragStartEvent) {
         const cardId = Number(String(event.active.id).split('-')[1]);
+        isDraggingRef.current = true;   // freeze realtime mutations for the duration of the drag
         setActiveCard(cardsProp.find(c => c.id === cardId) ?? null);
         playPickup();
         hapticPick();
+    }
+
+    // ESC / programmatic cancel: dnd-kit fires this instead of onDragEnd, so it must also
+    // clear the drag flag and replay any queued realtime events.
+    function handleDragCancel() {
+        setActiveCard(null);
+        resetTilt();
+        isDraggingRef.current = false;
+        flushPendingBoardEvents();
     }
 
     return (
@@ -820,7 +864,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             )}
 
             {/* Board columns — kanban only */}
-            {viewMode === 'kanban' && <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            {viewMode === 'kanban' && <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
                 <div
                     ref={kanbanRef}
                     className="flex gap-5 items-start overflow-x-auto pb-4"
@@ -1237,14 +1281,60 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     function handleDragEnd(event: DragEndEvent) {
         setActiveCard(null);
         resetTilt();
-        if (event.over) {
+        try {
+            const { active, over } = event;
+            if (!over) return;
+
             playDrop(); hapticDrop();
             triggerInkSplash(lastPointerRef.current.x, lastPointerRef.current.y);
+
+            const activeCardId = Number(String(active.id).split('-')[1]);
+            const activeCard = cardsProp.find(c => c.id === activeCardId);
+            const overRawId = String(over.id);
+            const destSection = findSectionIdOfItem(overRawId);
+            if (!activeCard || destSection == null) return;
+
+            const overIsContainer = overRawId.startsWith('section-');
+            const overCardId = overIsContainer ? null : Number(overRawId.split('-')[1]);
+            const byPosition = (a: CardInterface, b: CardInterface) => (a.position ?? 0) - (b.position ?? 0);
+
+            // Build the destination section's final ordered card ids. All state changes happen
+            // here (never during drag) so there is no dragOver → setState → re-measure loop.
+            let orderedIds: (number | string)[];
+            if (activeCard.section_id === destSection) {
+                // Reorder within the same column: arrayMove keeps drag-direction semantics.
+                const ordered = cardsProp.filter(c => c.section_id === destSection).sort(byPosition);
+                const oldIndex = ordered.findIndex(c => c.id === activeCardId);
+                let newIndex = overIsContainer ? ordered.length - 1 : ordered.findIndex(c => c.id === overCardId);
+                if (oldIndex === -1) return;
+                if (newIndex === -1) newIndex = ordered.length - 1;
+                if (oldIndex === newIndex) return;   // dropped back in place → nothing to persist
+                orderedIds = arrayMove(ordered, oldIndex, newIndex).map(c => c.id);
+            } else {
+                // Move into another column: insert at the hovered card's slot (or the end).
+                const destCards = cardsProp.filter(c => c.section_id === destSection && c.id !== activeCardId).sort(byPosition);
+                let insertIndex = overIsContainer ? destCards.length : destCards.findIndex(c => c.id === overCardId);
+                if (insertIndex === -1) insertIndex = destCards.length;
+                orderedIds = destCards.map(c => c.id);
+                orderedIds.splice(insertIndex, 0, activeCardId);
+            }
+
+            // Commit normalised integer positions (and the new section) locally.
+            const snapshot = cardsProp;
+            setCards(prev => prev.map(c => {
+                const idx = orderedIds.indexOf(c.id);
+                return idx === -1 ? c : { ...c, section_id: destSection, position: idx };
+            }));
+
+            if (isDemo) { demoUpdateCard(demoId, activeCardId, { section_id: destSection }); return; }
+            reorderCards(id, destSection, orderedIds).catch(() => {
+                setCards(snapshot);
+                reportSyncError('Reorder failed — change reverted');
+            });
+        } finally {
+            // Drag is over: unfreeze and replay any realtime events that arrived meanwhile.
+            isDraggingRef.current = false;
+            flushPendingBoardEvents();
         }
-        const sectionSelected = boardSections.find(section => section.name === event.over?.id);
-        if (!sectionSelected) return;
-        const selectedCardId = Number(String(event.active.id).split('-')[1]);
-        if (!selectedCardId) return;
-        moveCard(selectedCardId, sectionSelected.id);
     }
 }
