@@ -117,6 +117,28 @@ test.describe('card ordering — persistence contract', () => {
         expect(body.ordered_ids).toEqual([2, 1]);
     });
 
+    // Regression: a CROSS-column drag used to send no request at all (handleDragOver had
+    // already moved the card, so handleDragEnd saw a same-section no-op and bailed), so the
+    // move never persisted and vanished on reload.
+    test('cross-column drag persists the move via cards/reorder', async ({ page }) => {
+        await mockBoard(page);
+
+        const reorder = page.waitForRequest(
+            (r) => r.url().includes('/api/boards/1/cards/reorder') && r.method() === 'PUT',
+            { timeout: 8000 },
+        );
+
+        await page.goto('/boards/1');
+        await expect(page.getByText('Drag me to another column')).toBeVisible();
+
+        // Drag the In Progress card (id 3) into To Do (section 1).
+        await dragCard(page, card(page, 'Drag me to another column'), card(page, 'Welcome to Yondra!'));
+
+        const body = (await reorder).postDataJSON();
+        expect(body.section_id).toBe(1);          // To Do
+        expect(body.ordered_ids).toContain(3);    // the moved card is written into To Do
+    });
+
     test('rolls back the order and warns when the server rejects the reorder', async ({ page }) => {
         await mockBoard(page, { reorderStatus: 500 });
 

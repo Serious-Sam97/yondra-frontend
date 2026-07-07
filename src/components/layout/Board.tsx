@@ -1336,11 +1336,17 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             const overCardId = overIsContainer ? null : Number(overRawId.split('-')[1]);
             const byPosition = (a: CardInterface, b: CardInterface) => (a.position ?? 0) - (b.position ?? 0);
 
-            // Build the destination section's final ordered card ids. All state changes happen
-            // here (never during drag) so there is no dragOver → setState → re-measure loop.
+            // Branch on the PRE-DRAG section, not the current one: handleDragOver may have
+            // already relocated the card into destSection during the drag, which would make a
+            // cross-column move look like a same-column no-op and skip persistence entirely.
+            const originalSection = (dragStartCardsRef.current ?? cardsProp)
+                .find(c => c.id === activeCardId)?.section_id ?? activeCard.section_id;
+
+            // Build the destination section's final ordered card ids.
             let orderedIds: (number | string)[];
-            if (activeCard.section_id === destSection) {
-                // Reorder within the same column: arrayMove keeps drag-direction semantics.
+            if (originalSection === destSection) {
+                // True same-column reorder: the card was never relocated, so arrayMove the
+                // current order from old→new slot. A genuine no-op (same slot) skips persistence.
                 const ordered = cardsProp.filter(c => c.section_id === destSection).sort(byPosition);
                 const oldIndex = ordered.findIndex(c => c.id === activeCardId);
                 let newIndex = overIsContainer ? ordered.length - 1 : ordered.findIndex(c => c.id === overCardId);
@@ -1348,8 +1354,13 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                 if (newIndex === -1) newIndex = ordered.length - 1;
                 if (oldIndex === newIndex) return;   // dropped back in place → nothing to persist
                 orderedIds = arrayMove(ordered, oldIndex, newIndex).map(c => c.id);
+            } else if (activeCard.section_id === destSection) {
+                // Cross-column, and handleDragOver already placed the card in destSection at the
+                // drop spot → the current sorted order IS the final order. Always persists.
+                orderedIds = cardsProp.filter(c => c.section_id === destSection).sort(byPosition).map(c => c.id);
             } else {
-                // Move into another column: insert at the hovered card's slot (or the end).
+                // Cross-column with no live preview (e.g. a quick flick): insert the card at the
+                // hovered card's slot (or the end).
                 const destCards = cardsProp.filter(c => c.section_id === destSection && c.id !== activeCardId).sort(byPosition);
                 let insertIndex = overIsContainer ? destCards.length : destCards.findIndex(c => c.id === overCardId);
                 if (insertIndex === -1) insertIndex = destCards.length;
