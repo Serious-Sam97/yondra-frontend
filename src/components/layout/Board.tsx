@@ -1,6 +1,6 @@
 'use client'
 
-import { DndContext, DragEndEvent, DragOverEvent, DragOverlay, DragStartEvent, MeasuringStrategy, MouseSensor, TouchSensor, closestCorners, useSensor, useSensors } from "@dnd-kit/core";
+import { CollisionDetection, DndContext, DragEndEvent, DragOverEvent, DragOverlay, DragStartEvent, MeasuringStrategy, MouseSensor, TouchSensor, UniqueIdentifier, closestCenter, getFirstCollision, pointerWithin, rectIntersection, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import type Echo from "laravel-echo";
 import { Card } from "../ui/Card";
@@ -215,6 +215,11 @@ export function Board({ id, name, description, size, cards, sections: initialSec
     const isDraggingRef = useRef(false);
     const pendingBoardEventsRef = useRef<BoardEventPayload[]>([]);
     const dragStartCardsRef = useRef<CardInterface[] | null>(null);
+    // Collision stabilisation (dnd-kit MultipleContainers pattern): remember the last hit and
+    // whether we just relocated the dragged card, so layout shifts can't flip the target.
+    const lastOverIdRef = useRef<UniqueIdentifier | null>(null);
+    const recentlyMovedToNewContainerRef = useRef(false);
+    const lastCrossMoveAtRef = useRef(0);
 
     const applyTilt = useCallback((clientX: number, clientY: number) => {
         const el = kanbanRef.current;
@@ -691,10 +696,62 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         return cardsProp.find(c => c.id === cardId)?.section_id ?? null;
     };
 
+    // Pointer-anchored collision detection (dnd-kit's official MultipleContainers strategy).
+    // closestCorners compares RECTS, and our onDragOver relocates the dragged card, shifting
+    // those rects — so the "closest" target could flip A↔B every frame and loop React past
+    // its nested-update limit (error #185, black screen). The pointer's position is immune
+    // to layout shifts, so anchoring on pointerWithin kills the oscillation at the source.
+    const collisionDetectionStrategy: CollisionDetection = useCallback((args) => {
+        // STRICTLY pointer-driven with a sticky fallback (dnd-kit #1678). Column x-positions
+        // never change during a drag, so a pointer-only `over` cannot flip between columns on
+        // its own. Falling back to rect intersection mid-drag would reintroduce the loop: our
+        // relocation shifts rects, the rect-winner flips A↔B, and onDragOver cascades setState
+        // past React's update limit. So rects may only decide when we have NO pointer hit yet.
+        const pointerIntersections = pointerWithin(args);
+        const intersections = pointerIntersections.length > 0
+            ? pointerIntersections
+            : (lastOverIdRef.current == null ? rectIntersection(args) : []);
+        let overId = getFirstCollision(intersections, 'id');
+
+        if (overId != null) {
+            if (String(overId).startsWith('section-')) {
+                // Hit a column body: snap to the closest card inside it (if it has any), so
+                // insertion lands next to a card instead of always at the column level.
+                const sectionId = Number(String(overId).slice('section-'.length));
+                const containerCardIds = new Set(
+                    cardsProp.filter(c => c.section_id === sectionId).map(c => `draggable-${c.id}`)
+                );
+                if (containerCardIds.size > 0) {
+                    const closest = closestCenter({
+                        ...args,
+                        droppableContainers: args.droppableContainers.filter(c => containerCardIds.has(String(c.id))),
+                    })[0]?.id;
+                    if (closest != null) overId = closest;
+                }
+            }
+            lastOverIdRef.current = overId;
+            return [{ id: overId }];
+        }
+
+        // Right after we relocate the dragged card the layout shifts and a frame can have no
+        // pointer hit; anchor on the active card so targets don't jump around.
+        if (recentlyMovedToNewContainerRef.current) {
+            lastOverIdRef.current = args.active.id;
+        }
+        return lastOverIdRef.current ? [{ id: lastOverIdRef.current }] : [];
+    }, [cardsProp]);
+
+    // Release the "just moved" latch one frame after the cards state settles.
+    useEffect(() => {
+        requestAnimationFrame(() => { recentlyMovedToNewContainerRef.current = false; });
+    }, [cardsProp]);
+
     function handleDragStart(event: DragStartEvent) {
         const cardId = Number(String(event.active.id).split('-')[1]);
         isDraggingRef.current = true;        // freeze realtime mutations for the duration of the drag
         dragStartCardsRef.current = cardsProp; // pre-drag snapshot for rollback on a failed reorder
+        lastOverIdRef.current = null;
+        lastCrossMoveAtRef.current = 0;
         setActiveCard(cardsProp.find(c => c.id === cardId) ?? null);
         playPickup();
         hapticPick();
@@ -716,6 +773,15 @@ export function Board({ id, name, description, size, cards, sections: initialSec
         const toSection = findSectionIdOfItem(overRawId);
         if (fromSection == null || toSection == null || fromSection === toSection) return;
 
+        // Hard damper (belt & suspenders for dnd-kit #1678): relocate the dragged card across
+        // containers at most once per 120ms. React #185 requires dozens of setStates cascading
+        // in ONE synchronous task — a time gate makes that physically impossible, no matter
+        // how the collision layer misbehaves. Worst case is a brief gap flicker, never a crash.
+        const now = Date.now();
+        if (now - lastCrossMoveAtRef.current < 120) return;
+        lastCrossMoveAtRef.current = now;
+
+        recentlyMovedToNewContainerRef.current = true;   // stabilise collisions while layout settles
         setCards(prev => {
             const activeNow = prev.find(c => c.id === activeCardId);
             if (!activeNow || activeNow.section_id === toSection) return prev; // already moved → no-op
@@ -901,7 +967,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
             )}
 
             {/* Board columns — kanban only */}
-            {viewMode === 'kanban' && <DndContext sensors={sensors} collisionDetection={closestCorners} measuring={KANBAN_MEASURING} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
+            {viewMode === 'kanban' && <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy} measuring={KANBAN_MEASURING} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
                 <div
                     ref={kanbanRef}
                     className="flex gap-5 items-start overflow-x-auto pb-4"
@@ -967,6 +1033,7 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                         }}>
                             <Card
                                 {...activeCard}
+                                overlay
                                 color={SECTION_COLORS[sections.findIndex(s => s.id === activeCard.section_id) % SECTION_COLORS.length] ?? SECTION_COLORS[0]}
                             />
                         </div>

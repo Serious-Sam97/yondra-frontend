@@ -197,4 +197,43 @@ test.describe('card ordering — legacy board (duplicate positions + Backlog)', 
         expect(errors.filter((e) => /185|Maximum update depth/.test(e))).toEqual([]);
         await expect(page.locator('.aero-column').first()).toBeVisible();
     });
+
+    // The "calm drag" crash: with rect-based collision (closestCorners), our own mid-drag
+    // card relocation shifts the layout, which could flip the collision target A↔B every
+    // frame while the pointer rested at a boundary — no fast movement needed. The pointer-
+    // anchored strategy kills this; holding motionless at boundary spots must stay quiet.
+    test('holding the pointer motionless at column boundaries does not crash', async ({ page }) => {
+        const errors: string[] = [];
+        page.on('pageerror', (e) => errors.push(e.message));
+        await mockBoard(page, { board: legacyBoardFixture() });
+        await page.goto('/boards/1');
+        await expect(page.getByText('Done 00')).toBeVisible();
+
+        const src = card(page, 'InProg A');
+        const s = await src.boundingBox();
+        if (!s) throw new Error('no box');
+        await page.mouse.move(s.x + s.width / 2, s.y + s.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(s.x + s.width / 2 + 8, s.y + s.height / 2 + 8, { steps: 4 });
+
+        // Park at the gutters BETWEEN columns and at a card's top edge, holding still each time.
+        const cols = await Promise.all((await page.locator('.aero-column').all()).map((c) => c.boundingBox()));
+        const spots: Array<[number, number]> = [];
+        for (let i = 0; i < cols.length - 1; i++) {
+            const a = cols[i], b = cols[i + 1];
+            if (a && b) spots.push([(a.x + a.width + b.x) / 2, a.y + 160]);
+        }
+        const edge = await card(page, 'Done 05').boundingBox();
+        if (edge) spots.push([edge.x + edge.width / 2, edge.y + 2]);
+        for (const [x, y] of spots) {
+            await page.mouse.move(x, y, { steps: 6 });
+            await page.waitForTimeout(700); // the motionless oscillation window
+        }
+        await page.mouse.move(10, 10, { steps: 5 }); // drop outside → no persist
+        await page.mouse.up();
+        await page.waitForTimeout(300);
+
+        expect(errors.filter((e) => /185|Maximum update depth/.test(e))).toEqual([]);
+        await expect(page.locator('.aero-column').first()).toBeVisible();
+    });
 });

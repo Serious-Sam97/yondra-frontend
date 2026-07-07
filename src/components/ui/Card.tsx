@@ -74,7 +74,7 @@ function DueDateBadge({ dueDate }: { dueDate: string }) {
     );
 }
 
-export function Card({ id, name, description, assigned_user, created_by, tags, due_date, priority, checklist_items, updated_at, done_at }: CardInterface & { color: string }) {
+export function Card({ id, name, description, assigned_user, created_by, tags, due_date, priority, checklist_items, updated_at, done_at, overlay }: CardInterface & { color: string; overlay?: boolean }) {
     const cardRef = useRef<HTMLDivElement>(null);
 
     const showBottom = assigned_user || created_by;
@@ -146,8 +146,7 @@ export function Card({ id, name, description, assigned_user, created_by, tags, d
         resetCard(el);
     };
 
-    return (
-        <Draggable id={`draggable-${id}`}>
+    const body = (
             <div
                 ref={cardRef}
                 onMouseMove={handleMouseMove}
@@ -266,6 +265,12 @@ export function Card({ id, name, description, assigned_user, created_by, tags, d
                     )}
                 </div>
             </div>
-        </Draggable>
     );
+
+    // The DragOverlay copy must NOT register a sortable: useSortable is keyed by id, and a
+    // second registration with the list copy's id makes the two fight over dnd-kit's registry
+    // (each re-registration invalidates the other → nested updates → React #185 crash).
+    if (overlay) return body;
+
+    return <Draggable id={`draggable-${id}`}>{body}</Draggable>;
 }
