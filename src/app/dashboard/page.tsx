@@ -5,6 +5,7 @@ import { fetchProjects, createProject } from '@/lib/api';
 import { ProjectBoard, ProjectFormData, ProjectInterface, ProjectMember, UserSummary } from '@/interfaces/ProjectInterface';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import Modal from '@/components/shared/Modal';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -235,6 +236,7 @@ function NewProjectModal({ onSave, onClose }: { onSave: (d: ProjectFormData) => 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+    useDocumentTitle('Yondra - Projects');
     const router = useRouter();
     const [user, setUser]                     = useState<UserSummary | null>(null);
     const [ownedProjects, setOwnedProjects]   = useState<ProjectInterface[]>([]);
@@ -465,7 +467,7 @@ export default function DashboardPage() {
 
             {/* ── Modal ── */}
             {showNewProject && (
-                <Modal>
+                <Modal onClose={() => setShowNewProject(false)}>
                     <NewProjectModal onSave={handleCreateProject} onClose={() => setShowNewProject(false)} />
                 </Modal>
             )}

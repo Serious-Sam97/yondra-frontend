@@ -8,6 +8,7 @@ import { faBars, faGear, faLock, faTrash, faXmark } from '@fortawesome/free-soli
 import { BoardFormModal, BoardFormData } from '@/components/ui/BoardFormModal';
 import { ProjectBoard, ProjectFormData, ProjectInterface, UserSummary } from '@/interfaces/ProjectInterface';
 import { fetchUser } from '@/lib/auth';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import {
     fetchProjects, fetchProject,
     updateProject, deleteProject,
@@ -443,6 +444,8 @@ export default function ProjectPage() {
     const [sidebarOpen, setSidebarOpen]       = useState(false);
     const [contentLoading, setContentLoading] = useState(true);
 
+    useDocumentTitle(project?.name ? `Yondra - ${project.name}` : 'Yondra - Project');
+
     type ModalState =
         | { type: 'project-edit' }
         | { type: 'board-new' }
@@ -696,7 +699,7 @@ export default function ProjectPage() {
 
             {/* ── Modals ── */}
             {modal && (
-                <Modal>
+                <Modal onClose={() => setModal(null)}>
                     {modal.type === 'project-edit' && (
                         <ProjectEditModal project={project!} onSave={handleSaveProject} onDelete={handleDeleteProject} onClose={() => setModal(null)} />
                     )}

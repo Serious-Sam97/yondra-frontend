@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react"
 import Image from "next/image";
 import YondraIcon from "@/components/icons/yondra.png";
+import { useDocumentTitle } from "@/lib/useDocumentTitle";
 
 export default function ForgotPasswordPage () {
+    useDocumentTitle('Yondra - Forgot password');
     const [email, setEmail] = useState<string>('');
     const [loading, setLoading] = useState(false);
     const [sent, setSent] = useState(false);

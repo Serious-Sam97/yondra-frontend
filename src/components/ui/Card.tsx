@@ -74,11 +74,25 @@ function DueDateBadge({ dueDate }: { dueDate: string }) {
     );
 }
 
+// The description is rich-text HTML. Derive the cover from its first image, and a
+// plain-text snippet (tags stripped) for the small card preview.
+function firstImageSrc(html?: string): string | null {
+    if (!html) return null;
+    const m = html.match(/<img[^>]+src="([^"]+)"/i);
+    return m ? m[1] : null;
+}
+function stripHtml(html?: string): string {
+    if (!html) return '';
+    return html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+}
+
 export function Card({ id, name, description, assigned_user, created_by, tags, due_date, priority, checklist_items, updated_at, done_at, ticket_key, overlay }: CardInterface & { color: string; overlay?: boolean }) {
     const cardRef = useRef<HTMLDivElement>(null);
 
     const showBottom = assigned_user || created_by;
     const priorityColor = priority ? PRIORITY_COLORS[priority] : null;
+    const coverSrc = firstImageSrc(description);
+    const descText = stripHtml(description);
 
     // Subtle tag identity: wash the first tag's hue into the cream face — a touch
     // stronger at the top, fading down — so the card quietly carries its tag color
@@ -164,6 +178,17 @@ export function Card({ id, name, description, assigned_user, created_by, tags, d
                 }}
                 className="glass-card cursor-pointer flex flex-col overflow-hidden"
             >
+                {/* Cover — first image embedded in the description, full-bleed above the body */}
+                {coverSrc && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                        src={coverSrc}
+                        alt=""
+                        style={{ height: '120px' }}
+                        className="w-full object-cover flex-shrink-0"
+                    />
+                )}
+
                 {/* Body */}
                 <div className="px-3 pt-3 pb-3 flex flex-col gap-1.5 flex-1">
                     {/* Ticket key — per-board identifier (YON-42 / #42) */}
@@ -193,9 +218,9 @@ export function Card({ id, name, description, assigned_user, created_by, tags, d
                         {name}
                     </p>
 
-                    {description && (
+                    {descText && (
                         <p style={{ color: INK_MUTED, fontSize: '11px', lineHeight: '1.4' }} className="line-clamp-3">
-                            {description}
+                            {descText}
                         </p>
                     )}
 

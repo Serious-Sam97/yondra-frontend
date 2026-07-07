@@ -1,0 +1,23 @@
+# Auto-applied by a plain `docker compose up` (Compose merges this on top of
+# docker-compose.yml). It runs the frontend in Next.js DEV mode with hot-reload.
+#
+# Uses its own image tag + Dockerfile.dev so it never reuses the production image
+# (whose entrypoint is `node server.js`, which crashes once the source is bind-mounted).
+#
+# PRODUCTION must bypass this override explicitly:
+#     docker compose -f docker-compose.yml up -d --build
+services:
+  app:
+    image: yondra-frontend-dev:latest
+    build:
+      dockerfile: Dockerfile.dev
+    environment:
+      # Poll the filesystem so edits on the macOS/Windows bind mount are seen
+      # inside the Linux container (native FS events don't cross the mount).
+      WATCHPACK_POLLING: "true"
+    volumes:
+      # Live source so edits hot-reload…
+      - .:/app
+      # …but keep the container's own Linux-built node_modules and .next cache.
+      - /app/node_modules
+      - /app/.next

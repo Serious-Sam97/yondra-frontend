@@ -7,6 +7,16 @@ export interface ChecklistItem {
     position: number;
 }
 
+export interface CardImage {
+    id: number;
+    url: string;
+    original_name?: string | null;
+    mime_type?: string | null;
+    size?: number | null;
+    position: number;
+    uploader?: { id: number; name: string } | null;
+}
+
 export interface CardInterface {
     id: number|string,
     section_id: number,
@@ -21,6 +31,7 @@ export interface CardInterface {
     priority?: 'low' | 'medium' | 'high' | null,
     position?: number,
     checklist_items?: ChecklistItem[],
+    images?: CardImage[],
     created_at?: string | null,
     updated_at?: string | null,
     archived_at?: string | null,

@@ -22,9 +22,12 @@ const PUBLIC_AUTH_PATHS = ['/api/login', '/api/register', '/api/forgot-password'
 export async function apiFetch(path: string, options: RequestInit = {}) {
   const url = `${process.env.NEXT_PUBLIC_API}${path}`;
 
+  // For FormData (file uploads) the browser must set Content-Type itself so the
+  // multipart boundary is included — never force application/json in that case.
+  const isForm = options.body instanceof FormData;
   const headers: Record<string, string> = {
     Accept: 'application/json',
-    'Content-Type': 'application/json',
+    ...(isForm ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers as Record<string, string> || {}),
   };
 
@@ -194,6 +197,30 @@ export async function updateChecklistItem(boardId: number, cardId: number | stri
 
 export async function deleteChecklistItem(boardId: number, cardId: number | string, itemId: number) {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}/checklist/${itemId}`, { method: 'DELETE' });
+}
+
+// --- Card images (attachments) ---
+
+export async function uploadCardImage(boardId: number, cardId: number | string, file: File) {
+  const form = new FormData();
+  form.append('image', file);
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/attachments`, { method: 'POST', body: form });
+}
+
+// Board-scoped inline-image upload for rich text — usable before a card exists.
+// The backend returns a host-less "/storage/..." path; resolve it against the
+// configured API origin so image URLs follow NEXT_PUBLIC_API (not the backend's APP_URL).
+export async function uploadInlineImage(boardId: number, file: File): Promise<{ url: string }> {
+  const form = new FormData();
+  form.append('image', file);
+  const data = await apiFetch(`/api/boards/${boardId}/uploads`, { method: 'POST', body: form });
+  const path: string = data?.url ?? '';
+  const url = /^https?:\/\//.test(path) ? path : `${process.env.NEXT_PUBLIC_API ?? ''}${path}`;
+  return { url };
+}
+
+export async function deleteCardImage(boardId: number, cardId: number | string, imageId: number) {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/attachments/${imageId}`, { method: 'DELETE' });
 }
 
 // --- Comments ---

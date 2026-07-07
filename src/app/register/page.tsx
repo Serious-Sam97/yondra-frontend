@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react"
 import Image from "next/image";
 import YondraIcon from "@/components/icons/yondra.png";
+import { useDocumentTitle } from "@/lib/useDocumentTitle";
 
 export default function RegisterPage () {
+    useDocumentTitle('Yondra - Register');
     const [name, setName] = useState<string>('');
     const [email, setEmail] = useState<string>('');
     const [password, setPassword] = useState<string>('');

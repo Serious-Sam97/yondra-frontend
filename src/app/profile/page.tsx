@@ -4,6 +4,7 @@ import { fetchUser, updateProfile, updatePassword, logout } from '@/lib/auth'
 import { ApiError } from '@/lib/api'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 // Turn an ApiError into something a human can read: prefer Laravel's
 // validation messages, never show raw status codes or JSON.
@@ -34,6 +35,7 @@ function avatarColor(id: number): string {
 type Feedback = { type: 'success' | 'error'; message: string } | null
 
 export default function ProfilePage() {
+    useDocumentTitle('Yondra - Profile')
     const router = useRouter()
     const [user, setUser] = useState<{ id: number; name: string; email: string } | null>(null)
 

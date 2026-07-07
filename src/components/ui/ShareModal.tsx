@@ -134,7 +134,7 @@ export default function ShareModal({ boardId, sharedWith, onClose, onUpdate }: S
     };
 
     return (
-        <Modal>
+        <Modal onClose={onClose}>
             <div className="aero-menu rounded-2xl p-6 w-[90vw] max-w-md flex flex-col gap-4 relative">
                 <span className="cf-screw" style={{ position: 'absolute', top: 8, left: 8 }} />
                 <span className="cf-screw" style={{ position: 'absolute', top: 8, right: 8 }} />

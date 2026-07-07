@@ -1123,7 +1123,7 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
 
             {/* Tags modal */}
             {isTagsOpen && (
-                <Modal>
+                <Modal onClose={() => setIsTagsOpen(false)}>
                     <div className="aero-menu p-6 w-[95vw] max-w-sm flex flex-col gap-5">
                         <div className="flex items-center justify-between">
                             <p className="cf-mono text-xs uppercase tracking-widest" style={{ color: 'var(--cf-phosphor)' }}>Board tags</p>
@@ -1187,7 +1187,7 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
 
             {/* Activity modal */}
             {isActivityOpen && (
-                <Modal>
+                <Modal onClose={() => setIsActivityOpen(false)}>
                     <div className="aero-menu p-6 w-[95vw] max-w-md flex flex-col gap-4" style={{ maxHeight: '80vh' }}>
                         <div className="flex items-center justify-between flex-shrink-0">
                             <p className="cf-mono text-xs uppercase tracking-widest" style={{ color: 'var(--cf-phosphor)' }}>Activity log</p>
@@ -1215,7 +1215,7 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
 
             {/* Archived cards modal */}
             {isArchivedOpen && (
-                <Modal>
+                <Modal onClose={() => setIsArchivedOpen(false)}>
                     <div className="aero-menu p-6 w-[95vw] max-w-md flex flex-col gap-4" style={{ maxHeight: '80vh' }}>
                         <div className="flex items-center justify-between flex-shrink-0">
                             <p className="cf-mono text-xs uppercase tracking-widest" style={{ color: 'var(--cf-phosphor)' }}>Archived cards</p>
@@ -1250,7 +1250,7 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
 
             {/* Background picker modal */}
             {isBgOpen && (
-                <Modal>
+                <Modal onClose={() => setIsBgOpen(false)}>
                     <div className="aero-menu p-6 w-[95vw] max-w-sm flex flex-col gap-5">
                         <div className="flex items-center justify-between">
                             <p className="cf-mono text-xs uppercase tracking-widest" style={{ color: 'var(--cf-phosphor)' }}>Board background</p>
@@ -1280,7 +1280,7 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
 
             {/* Board settings modal (unified: board meta + section order + delete) */}
             {settingsOpen && !isReadOnly && (
-                <Modal>
+                <Modal onClose={() => onSettingsClose?.()}>
                     <BoardSettings
                         boardId={id}
                         isDemo={isDemo}
@@ -1305,7 +1305,7 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
 
             {/* Chat modal */}
             {isChatOpen && (
-                <Modal>
+                <Modal onClose={() => setIsChatOpen(false)}>
                     <BoardChat
                         messages={chatMessages}
                         currentUserId={currentUserId}
@@ -1362,7 +1362,7 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
 
             {/* Card edit modal */}
             {isCardVisible && (
-                <Modal mobileFullscreen>
+                <Modal mobileFullscreen onClose={() => { setIsCardVisible(false); setSelectedCard(null); setNewCardSectionId(null); }}>
                     <div className="w-full sm:w-auto">
                         <CardEdit
                             card={selectedCard}

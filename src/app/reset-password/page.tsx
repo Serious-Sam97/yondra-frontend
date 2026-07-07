@@ -5,8 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react"
 import Image from "next/image";
 import YondraIcon from "@/components/icons/yondra.png";
+import { useDocumentTitle } from "@/lib/useDocumentTitle";
 
 function ResetPasswordInner () {
+    useDocumentTitle('Yondra - Reset password');
     const params = useSearchParams();
     const token = params.get('token') ?? '';
     const email = params.get('email') ?? '';

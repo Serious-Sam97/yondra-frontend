@@ -10,7 +10,10 @@ import {
     getComments, createComment, deleteComment,
     getSubtasks, createSubtask, updateSubtask,
     getTemplates, createTemplate, deleteTemplate,
+    uploadInlineImage,
 } from '@/lib/api'
+import RichTextEditor from '@/components/ui/RichTextEditor'
+import RichTextContent from '@/components/ui/RichTextContent'
 import {
     demoCreateChecklistItem, demoUpdateChecklistItem, demoDeleteChecklistItem,
     demoGetSubtasks, demoCreateSubtask, demoToggleSubtask,
@@ -107,9 +110,9 @@ const CardEdit: React.FC<CardEditProps> = ({
     const [showTemplatePicker, setShowTemplatePicker] = useState(false)
     const [templateNameInput, setTemplateNameInput] = useState('')
     const [showSaveTemplate, setShowSaveTemplate] = useState(false)
-    const [mentionUsers, setMentionUsers] = useState<BoardUser[]>([])
-    const [mentionAnchor, setMentionAnchor] = useState<number>(-1)
     const [activeTab, setActiveTab] = useState<'details' | 'checklist' | 'comments' | 'subtasks'>('details')
+    // Full-size viewer opened by clicking any inline image (description or comments).
+    const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
     // Action failure feedback — shown when a checklist/comment/subtask mutation fails.
     const [actionError, setActionError] = useState<string | null>(null)
     const actionErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -120,9 +123,15 @@ const CardEdit: React.FC<CardEditProps> = ({
     }
     useEffect(() => () => { if (actionErrorTimer.current) clearTimeout(actionErrorTimer.current) }, [])
 
-    const commentInputRef = useRef<HTMLTextAreaElement>(null)
+    // Close the image lightbox on Escape.
+    useEffect(() => {
+        if (!lightboxSrc) return
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setLightboxSrc(null) }
+        window.addEventListener('keydown', onKey)
+        return () => window.removeEventListener('keydown', onKey)
+    }, [lightboxSrc])
+
     const titleRef = useRef<HTMLTextAreaElement>(null)
-    const descRef  = useRef<HTMLTextAreaElement>(null)
     const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
     const [tabIndicator, setTabIndicator] = useState({ left: 0, width: 0 })
 
@@ -278,36 +287,30 @@ const CardEdit: React.FC<CardEditProps> = ({
         }
     }
 
-    // --- Comments with @mention ---
-
-    // Mention handles are the full name with spaces stripped (e.g. @JohnSmith) so the
-    // backend can resolve them unambiguously even when members share a first name.
-    const mentionHandle = (u: BoardUser) => u.name.replace(/\s+/g, '')
-
-    const handleCommentChange = (val: string) => {
-        setNewComment(val)
-        const cursor = val.lastIndexOf('@')
-        if (cursor !== -1 && /^@\w*$/.test(val.slice(cursor))) {
-            const query = val.slice(cursor + 1).toLowerCase()
-            setMentionAnchor(cursor)
-            setMentionUsers(users.filter(u => mentionHandle(u).toLowerCase().startsWith(query)))
-        } else {
-            setMentionAnchor(-1)
-            setMentionUsers([])
+    // --- Rich-text image upload (shared by description + comments) ---
+    // Uploads to the card's attachments endpoint and returns the public URL the
+    // editor embeds inline. Rejects in demo mode (no backend).
+    const uploadImage = async (file: File): Promise<string> => {
+        // Board-scoped so it works while composing a brand-new card (no card id yet).
+        if (isDemo || !boardId) throw new Error('uploads unavailable')
+        try {
+            const { url } = await uploadInlineImage(boardId, file)
+            return url
+        } catch {
+            reportActionError('Image upload failed — try again')
+            throw new Error('upload failed')
         }
     }
 
-    const handlePickMention = (user: BoardUser) => {
-        const before = newComment.slice(0, mentionAnchor)
-        setNewComment(`${before}@${mentionHandle(user)} `)
-        setMentionAnchor(-1)
-        setMentionUsers([])
-        commentInputRef.current?.focus()
-    }
+    // --- Comments ---
+
+    // An "empty" rich-text body is <p></p> / whitespace once tags are stripped —
+    // but an image-only comment is still valid content.
+    const isHtmlEmpty = (html: string) => !/<img\b/i.test(html) && html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() === ''
 
     const handleAddComment = async () => {
-        const body = newComment.trim()
-        if (!body || !boardId || !id) return
+        const body = newComment
+        if (isHtmlEmpty(body) || !boardId || !id) return
         let comment
         try {
             comment = await createComment(boardId, id, body)
@@ -411,7 +414,7 @@ const CardEdit: React.FC<CardEditProps> = ({
     const renderTitle = () => (
         <textarea
             ref={titleRef}
-            autoFocus={!isDesktop}
+            autoFocus={isNew || !isDesktop}
             placeholder="What needs to be done?"
             rows={2}
             disabled={isReadOnly}
@@ -427,17 +430,12 @@ const CardEdit: React.FC<CardEditProps> = ({
 
     // Roomy description — the main writing surface
     const renderDescription = () => (
-        <textarea
-            ref={descRef}
-            disabled={isReadOnly}
+        <RichTextEditor
             value={description}
-            onChange={(e) => {
-                setDescription(e.target.value)
-                descRef.current?.animate([{ filter: 'blur(1.2px)' }, { filter: 'blur(0)' }], { duration: 85, easing: 'ease-out' })
-            }}
-            placeholder="Add a description — notes, context, links…"
-            style={{ color: 'var(--cf-text)', caretColor: 'var(--cf-phosphor)', minHeight: isDesktop ? '200px' : '110px' }}
-            className="w-full bg-transparent text-[15px] placeholder-white/30 focus:outline-none resize-none leading-relaxed disabled:opacity-70 flex-shrink-0 px-1 py-1"
+            onChange={setDescription}
+            editable={!isReadOnly}
+            placeholder="Add a description — notes, context, images…"
+            onUploadImage={isDemo ? undefined : uploadImage}
         />
     )
 
@@ -748,35 +746,19 @@ const CardEdit: React.FC<CardEditProps> = ({
             {/* Compose */}
             {!isDemo && (
                 <div className="flex flex-col gap-2">
-                    <div className="relative">
-                        <textarea
-                            ref={commentInputRef}
+                    <div className="rounded-lg px-3 py-2" style={{ border: '1px solid var(--cf-edge)', background: 'rgba(0,0,0,0.14)' }}>
+                        <RichTextEditor
+                            compact
                             value={newComment}
-                            onChange={e => handleCommentChange(e.target.value)}
-                            placeholder="Write a comment... (type @ to mention)"
-                            rows={2}
-                            style={{ fontSize: '12px' }}
-                            className="glass-input w-full px-3 py-2 resize-none"
+                            onChange={setNewComment}
+                            placeholder="Write a comment… (type @ to mention, paste or drop an image)"
+                            mentionUsers={users}
+                            onUploadImage={uploadImage}
                         />
-                        {/* @mention dropdown — positioned below the textarea */}
-                        {mentionUsers.length > 0 && (
-                            <div style={{ background: '#1c1a16', borderColor: 'var(--cf-edge)', zIndex: 10 }} className="absolute top-full left-0 right-0 border rounded-lg shadow-lg flex flex-col">
-                                {mentionUsers.map(u => (
-                                    <button
-                                        key={u.id}
-                                        onMouseDown={e => { e.preventDefault(); handlePickMention(u); }}
-                                        style={{ fontSize: '12px', color: 'var(--cf-text)' }}
-                                        className="cf-mono px-3 py-2 text-left hover:bg-white/5 cursor-pointer transition-colors"
-                                    >
-                                        @{u.name.split(' ')[0]} <span style={{ fontSize: '10px', color: 'var(--cf-text-muted)' }}>{u.name}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
                     </div>
                     <button
                         onClick={handleAddComment}
-                        disabled={!newComment.trim()}
+                        disabled={isHtmlEmpty(newComment)}
                         style={{ fontSize: '11px' }}
                         className="aero-btn aero-btn--cyan self-end px-4 py-1.5 font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                     >
@@ -805,13 +787,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                             ✕
                         </button>
                     </div>
-                    <p style={{ fontSize: '12px', lineHeight: '1.4', color: 'var(--cf-text)' }}>
-                        {comment.body.split(/(@\w+)/g).map((part, i) =>
-                            /^@\w+$/.test(part)
-                                ? <span key={i} style={{ color: 'var(--cf-phosphor)', fontWeight: 'bold' }}>{part}</span>
-                                : part
-                        )}
-                    </p>
+                    <RichTextContent html={comment.body} className="text-[12px]" />
                     <div style={{ borderColor: 'var(--cf-edge)' }} className="border-b mt-1"/>
                 </div>
             ))}
@@ -853,7 +829,25 @@ const CardEdit: React.FC<CardEditProps> = ({
         <div
             style={tagTintStyle}
             className="aero-menu flex flex-col w-full min-h-[100svh] sm:min-h-0 sm:w-[95vw] sm:max-w-[520px] sm:h-auto sm:max-h-[90vh] lg:max-w-[960px] lg:h-[85vh] lg:max-h-[85vh] relative transition-[background,border-color,box-shadow] duration-300"
+            onClick={(e) => {
+                // Clicking any inline rich-text image opens it full size.
+                const t = e.target as HTMLElement
+                if (t.tagName === 'IMG' && t.closest('.rich-content')) {
+                    setLightboxSrc((t as HTMLImageElement).currentSrc || (t as HTMLImageElement).src)
+                }
+            }}
         >
+            {/* Full-size image viewer */}
+            {lightboxSrc && (
+                <div
+                    onClick={() => setLightboxSrc(null)}
+                    style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4vh', cursor: 'zoom-out' }}
+                >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={lightboxSrc} alt="" style={{ maxWidth: '92vw', maxHeight: '92vh', objectFit: 'contain', borderRadius: 8, boxShadow: '0 12px 48px rgba(0,0,0,0.6)' }} />
+                </div>
+            )}
+
             {/* Glue strip */}
             <div
                 style={{ borderColor: 'var(--cf-edge)' }}

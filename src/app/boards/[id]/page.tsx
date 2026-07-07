@@ -8,6 +8,7 @@ import { BoardInterface, SharedUser } from "@/interfaces/BoardInterface"
 import { fetchBoard, deleteBoard, ApiError } from "@/lib/api";
 import { loadDemoBoardData, loadDemoBoards, deleteDemoBoard } from "@/lib/demoStorage";
 import { fetchUser } from "@/lib/auth";
+import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -38,6 +39,8 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
 
     const isDemo = id === 'demo' || id.startsWith('demo-');
     const isOwner = board.user_id === currentUserId;
+
+    useDocumentTitle(board.name ? `Yondra - ${board.name}` : 'Yondra');
     // Prefer the server-computed, project-aware capabilities; fall back to the local
     // board-owner/share check for demo boards (which have no backend).
     const canWrite = isDemo || board.can_write === true || isOwner;

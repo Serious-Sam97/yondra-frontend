@@ -5,11 +5,13 @@ import ProjectEdit, { ProjectEditData } from "@/components/ui/ProjectEdit";
 import { loadDemoBoards, createDemoBoard, deleteDemoBoard, updateDemoBoard, DemoBoard } from "@/lib/demoStorage";
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from "react";
+import { useDocumentTitle } from "@/lib/useDocumentTitle";
 
 const CF_LEDS = ['#9aa67e', '#ffb000', '#6fe0ff'];
 const NEON_GLOW = ['neon-glow-cyan', 'neon-glow-magenta', 'neon-glow-lime'];
 
 export default function DemoPage () {
+    useDocumentTitle('Yondra - Demo');
     const router = useRouter();
     const [boards, setBoards] = useState<DemoBoard[]>([]);
     const [modalIsVisible, setModalIsVisible] = useState(false);
