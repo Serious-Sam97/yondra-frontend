@@ -17,8 +17,9 @@ interface BoardSettingsProps {
     demoId: string
     name: string
     description: string
+    ticketPrefix: string
     sections: Section[]
-    onMetaSaved: (name: string, description: string) => void
+    onMetaSaved: (name: string, description: string, ticketPrefix: string) => void
     onSectionsReordered: (sections: Section[]) => void
     onDelete: () => void
     onClose: () => void
@@ -58,9 +59,10 @@ function SortableRow({ section, index, color }: { section: Section; index: numbe
     )
 }
 
-export function BoardSettings({ boardId, isDemo, demoId, name: initialName, description: initialDesc, sections: initialSections, onMetaSaved, onSectionsReordered, onDelete, onClose }: BoardSettingsProps) {
+export function BoardSettings({ boardId, isDemo, demoId, name: initialName, description: initialDesc, ticketPrefix: initialPrefix, sections: initialSections, onMetaSaved, onSectionsReordered, onDelete, onClose }: BoardSettingsProps) {
     const [name, setName] = useState(initialName)
     const [description, setDescription] = useState(initialDesc)
+    const [ticketPrefix, setTicketPrefix] = useState(initialPrefix)
     const [sections, setSections] = useState(initialSections)
     const [saving, setSaving] = useState(false)
 
@@ -80,12 +82,14 @@ export function BoardSettings({ boardId, isDemo, demoId, name: initialName, desc
     const handleSave = async () => {
         const trimmed = name.trim()
         if (!trimmed) return
+        // Normalize to an uppercase, whitespace-free code; blank means "no prefix".
+        const prefix = ticketPrefix.replace(/\s+/g, '').toUpperCase()
         setSaving(true)
         try {
             // board meta
             if (isDemo) updateDemoBoard(demoId, trimmed, description.trim())
-            else await updateBoard(boardId, { name: trimmed, description: description.trim() })
-            onMetaSaved(trimmed, description.trim())
+            else await updateBoard(boardId, { name: trimmed, description: description.trim(), ticket_prefix: prefix || null })
+            onMetaSaved(trimmed, description.trim(), prefix)
 
             // section order (only if it actually changed)
             const changed = sections.some((s, i) => s.id !== initialSections[i]?.id)
@@ -125,6 +129,17 @@ export function BoardSettings({ boardId, isDemo, demoId, name: initialName, desc
             <div className="flex flex-col gap-1">
                 <label className="cf-label uppercase tracking-widest font-bold" style={{ fontSize: '10px', color: 'var(--cf-text-muted)' }}>Description</label>
                 <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional…" rows={2} className="glass-input cf-lcd text-sm resize-none" />
+            </div>
+            <div className="flex flex-col gap-1">
+                <label className="cf-label uppercase tracking-widest font-bold" style={{ fontSize: '10px', color: 'var(--cf-text-muted)' }}>Ticket prefix</label>
+                <input
+                    value={ticketPrefix}
+                    onChange={e => setTicketPrefix(e.target.value.replace(/\s+/g, '').toUpperCase())}
+                    maxLength={10}
+                    placeholder="e.g. YON — cards show as YON-42"
+                    className="glass-input cf-lcd text-sm uppercase"
+                />
+                <span className="cf-mono text-[10px]" style={{ color: 'var(--cf-text-muted)' }}>Leave blank to show plain numbers (#42).</span>
             </div>
 
             {/* Section order */}

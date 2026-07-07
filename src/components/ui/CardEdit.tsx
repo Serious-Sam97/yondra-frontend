@@ -862,7 +862,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                 <div className="flex items-center gap-2">
                     <span className="cf-led" style={{ background: 'var(--cf-phosphor)', boxShadow: '0 0 6px var(--cf-phosphor)' }} />
                     <span className="chrome-text" style={{ fontFamily: 'monospace', fontSize: '11px', letterSpacing: '0.15em' }}>
-                        {isNew ? 'NEW' : `#${String(id).padStart(4, '0')}`}
+                        {isNew ? 'NEW' : (card?.ticket_key ?? `#${String(id).padStart(4, '0')}`)}
                     </span>
                     {!isNew && card?.created_at && (
                         <span style={{ fontFamily: 'monospace', fontSize: '10px', color: 'var(--cf-text-muted)' }}>

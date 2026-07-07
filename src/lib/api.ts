@@ -88,7 +88,7 @@ export async function deleteBoard(id: number) {
   return apiFetch(`/api/boards/${id}`, { method: 'DELETE' });
 }
 
-export async function updateBoard(id: number, data: { name?: string; description?: string; project_id?: number | null }) {
+export async function updateBoard(id: number, data: { name?: string; description?: string; project_id?: number | null; ticket_prefix?: string | null }) {
   return apiFetch(`/api/boards/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 }
 

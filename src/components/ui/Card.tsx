@@ -74,7 +74,7 @@ function DueDateBadge({ dueDate }: { dueDate: string }) {
     );
 }
 
-export function Card({ id, name, description, assigned_user, created_by, tags, due_date, priority, checklist_items, updated_at, done_at, overlay }: CardInterface & { color: string; overlay?: boolean }) {
+export function Card({ id, name, description, assigned_user, created_by, tags, due_date, priority, checklist_items, updated_at, done_at, ticket_key, overlay }: CardInterface & { color: string; overlay?: boolean }) {
     const cardRef = useRef<HTMLDivElement>(null);
 
     const showBottom = assigned_user || created_by;
@@ -166,6 +166,13 @@ export function Card({ id, name, description, assigned_user, created_by, tags, d
             >
                 {/* Body */}
                 <div className="px-3 pt-3 pb-3 flex flex-col gap-1.5 flex-1">
+                    {/* Ticket key — per-board identifier (YON-42 / #42) */}
+                    {ticket_key && (
+                        <span className="cf-mono font-bold tracking-wider" style={{ color: INK_MUTED, fontSize: '10px', letterSpacing: '0.08em' }}>
+                            {ticket_key}
+                        </span>
+                    )}
+
                     {/* Tags as LED chips: dark chip + colored LED + mono label */}
                     {tags && tags.length > 0 && (
                         <div className="flex flex-wrap gap-1">

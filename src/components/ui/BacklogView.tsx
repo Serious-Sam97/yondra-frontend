@@ -154,7 +154,12 @@ export function BacklogView({ cards, users, onCardClick, onAddToBoard, onQuickCr
                             </div>
 
                             {/* Name */}
-                            <div className="px-3 py-3 flex items-center min-w-0 md:border-l md:border-white/10">
+                            <div className="px-3 py-3 flex items-center gap-2 min-w-0 md:border-l md:border-white/10">
+                                {card.ticket_key && (
+                                    <span className="cf-mono text-xs font-bold flex-shrink-0" style={{ color: 'var(--cf-text-muted)' }}>
+                                        {card.ticket_key}
+                                    </span>
+                                )}
                                 <span className="cf-mono text-sm truncate transition-colors leading-snug" style={{ color: 'var(--cf-text)' }}>
                                     {card.name}
                                 </span>

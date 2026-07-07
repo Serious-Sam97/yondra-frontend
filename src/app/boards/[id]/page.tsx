@@ -89,6 +89,7 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                     tags: data.tags ?? [],
                     user_id: data.user_id,
                     project_id: data.project_id ?? null,
+                    ticket_prefix: data.ticket_prefix ?? null,
                     owner: data.owner,
                     shared_with: data.shared_with ?? [],
                     can_write: data.can_write,
@@ -186,6 +187,7 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                 id={board.id}
                 name={board.name}
                 description={board.description}
+                ticket_prefix={board.ticket_prefix}
                 cards={board.cards}
                 sections={board.sections}
                 size="75"
@@ -197,7 +199,7 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                 currentUserId={currentUserId ?? 0}
                 settingsOpen={settingsOpen}
                 onSettingsClose={() => setSettingsOpen(false)}
-                onBoardMetaSaved={(n, d) => setBoard(b => ({ ...b, name: n, description: d }))}
+                onBoardMetaSaved={(n, d, prefix) => setBoard(b => ({ ...b, name: n, description: d, ticket_prefix: prefix || null }))}
                 onDeleteBoard={handleDeleteBoard}
             />
 

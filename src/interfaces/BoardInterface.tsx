@@ -24,6 +24,7 @@ export interface BoardInterface {
     tags?: TagInterface[],
     user_id?: number,
     project_id?: number | null,
+    ticket_prefix?: string | null,
     owner?: SharedUser,
     shared_with?: SharedUser[],
     // Server-computed capabilities for the current user (project-aware).

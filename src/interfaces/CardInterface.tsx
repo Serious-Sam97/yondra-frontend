@@ -27,4 +27,6 @@ export interface CardInterface {
     done_at?: string | null,
     parent_card_id?: number | null,
     is_done?: boolean,
+    ticket_number?: number | null,
+    ticket_key?: string,
 }

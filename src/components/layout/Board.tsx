@@ -139,11 +139,11 @@ interface BoardProps extends BoardInterface {
     currentUserId?: number;
     settingsOpen?: boolean;
     onSettingsClose?: () => void;
-    onBoardMetaSaved?: (name: string, description: string) => void;
+    onBoardMetaSaved?: (name: string, description: string, ticketPrefix: string) => void;
     onDeleteBoard?: () => void;
 }
 
-export function Board({ id, name, description, size, cards, sections: initialSections, tags: initialTags = [], isDemo = false, demoId = 'demo', boardUsers = [], isReadOnly = false, currentUserId = 0, settingsOpen = false, onSettingsClose, onBoardMetaSaved, onDeleteBoard }: BoardProps) {
+export function Board({ id, name, description, ticket_prefix, size, cards, sections: initialSections, tags: initialTags = [], isDemo = false, demoId = 'demo', boardUsers = [], isReadOnly = false, currentUserId = 0, settingsOpen = false, onSettingsClose, onBoardMetaSaved, onDeleteBoard }: BoardProps) {
     const [cardsProp, setCards] = useState(cards);
     const [sections, setSections] = useState(initialSections);
     const [tags, setTags] = useState<TagInterface[]>(initialTags);
@@ -1287,8 +1287,15 @@ export function Board({ id, name, description, size, cards, sections: initialSec
                         demoId={demoId}
                         name={name}
                         description={description ?? ''}
+                        ticketPrefix={ticket_prefix ?? ''}
                         sections={boardSections}
-                        onMetaSaved={(n, d) => onBoardMetaSaved?.(n, d)}
+                        onMetaSaved={(n, d, prefix) => {
+                            // Reflow every card's key immediately so the new prefix shows without a refetch.
+                            setCards(prev => prev.map(c => c.ticket_number == null
+                                ? c
+                                : { ...c, ticket_key: prefix ? `${prefix}-${c.ticket_number}` : `#${c.ticket_number}` }))
+                            onBoardMetaSaved?.(n, d, prefix)
+                        }}
                         onSectionsReordered={(reordered: SectionData[]) => setSections(backlogSection ? [...reordered, backlogSection] : reordered)}
                         onDelete={() => { onSettingsClose?.(); onDeleteBoard?.(); }}
                         onClose={() => onSettingsClose?.()}
