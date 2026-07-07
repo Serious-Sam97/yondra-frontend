@@ -38,15 +38,17 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
 
     const isDemo = id === 'demo' || id.startsWith('demo-');
     const isOwner = board.user_id === currentUserId;
-    const currentUserShare = board.shared_with?.find(u => u.id === currentUserId);
-    const isReadOnly = !isDemo && !isOwner && currentUserShare?.permission !== 'write';
+    // Prefer the server-computed, project-aware capabilities; fall back to the local
+    // board-owner/share check for demo boards (which have no backend).
+    const canWrite = isDemo || board.can_write === true || isOwner;
+    const isReadOnly = !canWrite;
 
     const boardUsers = isDemo ? [] : [
         board.owner,
         ...(board.shared_with ?? []),
     ].filter((u): u is NonNullable<typeof u> => !!u);
 
-    const canManage = !isReadOnly && (isOwner || isDemo);
+    const canManage = isDemo || board.can_manage === true || isOwner;
 
     async function handleDeleteBoard() {
         if (isDemo) { deleteDemoBoard(id); router.push('/demo'); return; }
@@ -89,6 +91,8 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                     project_id: data.project_id ?? null,
                     owner: data.owner,
                     shared_with: data.shared_with ?? [],
+                    can_write: data.can_write,
+                    can_manage: data.can_manage,
                 });
                 setCurrentUserId(user?.id ?? null);
                 setLoading(false);
@@ -166,7 +170,7 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                             <Icon icon={faGear} /> Settings
                         </button>
                     )}
-                    {isOwner && !isDemo && (
+                    {canManage && !isDemo && (
                         <button
                             onClick={() => setShareOpen(true)}
                             className="aero-btn aero-btn--ghost text-[10px] uppercase tracking-widest font-bold px-3 py-1.5 cursor-pointer"

@@ -26,4 +26,7 @@ export interface BoardInterface {
     project_id?: number | null,
     owner?: SharedUser,
     shared_with?: SharedUser[],
+    // Server-computed capabilities for the current user (project-aware).
+    can_write?: boolean,
+    can_manage?: boolean,
 }
