@@ -13,15 +13,30 @@ export interface ProjectMember extends UserSummary {
   role?: "owner" | "member" | "viewer";
 }
 
+export interface BoardFlow {
+  todo: number;
+  doing: number;
+  done: number;
+}
+
 export interface ProjectBoard {
   id: number;
   name: string;
   description?: string | null;
   project_id?: number | null;
+  color?: string | null;
+  background?: string | null;
   cards_count?: number;
+  done_count?: number;
+  flow?: BoardFlow;
+  archived_at?: string | null;
   updated_at?: string | null;
   owner?: UserSummary | null;
-  shared_with: { id: number; name: string; permission?: "read" | "write" | "owner" }[];
+  shared_with: {
+    id: number;
+    name: string;
+    permission?: "read" | "write" | "owner";
+  }[];
 }
 
 export interface ProjectInterface {
@@ -30,10 +45,15 @@ export interface ProjectInterface {
   description?: string | null;
   color: string;
   owner_id: number;
+  default_permission?: "read" | "write" | "owner";
+  archived_at?: string | null;
   owner?: UserSummary | null;
   members: ProjectMember[];
   boards?: ProjectBoard[];
+  archived_boards?: ProjectBoard[];
   boards_count?: number;
+  // Server-computed capability for the current user (co-owner-aware).
+  can_manage?: boolean;
   created_at?: string | null;
   updated_at?: string | null;
 }

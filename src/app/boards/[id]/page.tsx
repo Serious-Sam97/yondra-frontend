@@ -1,10 +1,9 @@
 'use client'
 
 import { Board } from "@/components/layout/Board"
-import ShareModal from "@/components/ui/ShareModal";
 import Icon from "@/components/ui/Icon";
 import { faGear } from "@fortawesome/free-solid-svg-icons";
-import { BoardInterface, SharedUser } from "@/interfaces/BoardInterface"
+import { BoardInterface } from "@/interfaces/BoardInterface"
 import { fetchBoard, deleteBoard, ApiError } from "@/lib/api";
 import { loadDemoBoardData, loadDemoBoards, deleteDemoBoard } from "@/lib/demoStorage";
 import { fetchUser } from "@/lib/auth";
@@ -32,7 +31,6 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
         shared_with: [],
     });
     const [currentUserId, setCurrentUserId] = useState<number | null>(null);
-    const [shareOpen, setShareOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -168,7 +166,7 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                 <div className="flex items-center gap-2 flex-shrink-0">
                     {canManage && (
                         <button
-                            onClick={() => setSettingsOpen(true)}
+                            onClick={() => isDemo ? setSettingsOpen(true) : router.push(`/boards/${id}/settings`)}
                             className="aero-btn aero-btn--ghost text-[10px] uppercase tracking-widest font-bold px-3 py-1.5 cursor-pointer inline-flex items-center gap-1.5"
                         >
                             <Icon icon={faGear} /> Settings
@@ -176,7 +174,7 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                     )}
                     {canManage && !isDemo && (
                         <button
-                            onClick={() => setShareOpen(true)}
+                            onClick={() => router.push(`/boards/${id}/settings?tab=members`)}
                             className="aero-btn aero-btn--ghost text-[10px] uppercase tracking-widest font-bold px-3 py-1.5 cursor-pointer"
                         >
                             Share
@@ -205,15 +203,6 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                 onBoardMetaSaved={(n, d, prefix) => setBoard(b => ({ ...b, name: n, description: d, ticket_prefix: prefix || null }))}
                 onDeleteBoard={handleDeleteBoard}
             />
-
-            {shareOpen && (
-                <ShareModal
-                    boardId={board.id}
-                    sharedWith={board.shared_with ?? []}
-                    onClose={() => setShareOpen(false)}
-                    onUpdate={(users: SharedUser[]) => setBoard(b => ({ ...b, shared_with: users }))}
-                />
-            )}
         </div>
     )
 }
