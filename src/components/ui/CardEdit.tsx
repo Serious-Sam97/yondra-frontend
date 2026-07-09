@@ -97,7 +97,7 @@ export interface CardFormData {
   sprint_id: number | null;
 }
 
-interface CardEditProps {
+export interface CardEditProps {
   goBack: () => void;
   submit: (card: CardFormData, isNew: boolean) => void;
   onDelete?: () => void;
@@ -119,6 +119,12 @@ interface CardEditProps {
   boardType?: "kanban" | "scrum" | "crm";
   currency?: string;
   sprints?: { id: number; name: string; is_active: boolean }[];
+  // When provided (Scrum, saved card), a top-level "Card / Planning Poker" switch
+  // appears and this node replaces the card body on the Planning tab.
+  planningTab?: React.ReactNode;
+  planningCount?: number;
+  // Story-point value the team applied in Planning Poker; syncs the points field.
+  planningAppliedValue?: number | null;
 }
 
 const SECTION_COLORS: Record<string, string> = {
@@ -201,6 +207,9 @@ const CardEdit: React.FC<CardEditProps> = ({
   boardType = "kanban",
   currency = "BRL",
   sprints = [],
+  planningTab,
+  planningCount = 0,
+  planningAppliedValue = null,
 }) => {
   const [id, setId] = useState<number | string>(0);
   const [name, setName] = useState("");
@@ -237,6 +246,13 @@ const CardEdit: React.FC<CardEditProps> = ({
   const [activeTab, setActiveTab] = useState<
     "details" | "checklist" | "comments" | "subtasks"
   >("details");
+  // Top-level switch between the card and the Planning Poker session.
+  const [topTab, setTopTab] = useState<"card" | "planning">("card");
+
+  // When Planning Poker applies an estimate, mirror it into the points field.
+  useEffect(() => {
+    if (planningAppliedValue != null) setStoryPoints(String(planningAppliedValue));
+  }, [planningAppliedValue]);
   // Full-size viewer opened by clicking any inline image (description or comments).
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   // Action failure feedback — shown when a checklist/comment/subtask mutation fails.
@@ -1716,6 +1732,52 @@ const CardEdit: React.FC<CardEditProps> = ({
         </div>
       </div>
 
+      {/* Top-level Card / Planning Poker switch (Scrum, saved cards) */}
+      {planningTab && (
+        <div
+          className="relative flex border-b px-4 pt-2 gap-4 flex-shrink-0"
+          style={{ borderColor: "var(--cf-edge)" }}
+        >
+          {(["card", "planning"] as const).map((t) => {
+            const on = topTab === t;
+            return (
+              <button
+                key={t}
+                onClick={() => setTopTab(t)}
+                style={{
+                  color: on ? "var(--cf-phosphor)" : "var(--cf-text-muted)",
+                  fontSize: "10px",
+                }}
+                className="cf-mono uppercase tracking-widest font-bold pb-2 cursor-pointer transition-colors flex items-center gap-1.5"
+              >
+                <span
+                  className="cf-led"
+                  style={{
+                    width: 6,
+                    height: 6,
+                    background: on ? "var(--cf-phosphor)" : "var(--cf-edge)",
+                    boxShadow: on ? "0 0 6px var(--cf-phosphor)" : "none",
+                  }}
+                />
+                {t === "card" ? "Card" : "Planning Poker"}
+                {t === "planning" && planningCount > 0 && (
+                  <span
+                    className="cf-mono px-1.5 rounded-sm"
+                    style={{ background: "#1c1a16", color: "var(--cf-phosphor)", fontSize: "10px" }}
+                  >
+                    {planningCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {topTab === "planning" && planningTab ? (
+        <div className="sm:flex-1 sm:overflow-y-auto min-h-0">{planningTab}</div>
+      ) : (
+        <>
       {/* Tabs (existing cards, mobile only — desktop uses the two-pane worklog) */}
       {!isNew && !isDesktop && (
         <div
@@ -1838,6 +1900,8 @@ const CardEdit: React.FC<CardEditProps> = ({
           {!isNew && activeTab === "subtasks" && renderSubtasks()}
           {!isNew && activeTab === "comments" && renderComments()}
         </div>
+      )}
+        </>
       )}
     </div>
   );

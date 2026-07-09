@@ -11,7 +11,8 @@ import { CardInterface } from "@/interfaces/CardInterface";
 import { SprintInterface } from "@/interfaces/SprintInterface";
 import { TagInterface } from "@/interfaces/TagInterface";
 import { useConsole } from "@/contexts/ConsoleContext";
-import CardEdit, { CardFormData, Template } from "../ui/CardEdit";
+import { CardFormData, Template } from "../ui/CardEdit";
+import { CardWorkspace } from "../ui/CardWorkspace";
 import Modal from "../shared/Modal";
 import {
     createCard, updateCard, deleteCard, reorderCards,
@@ -1557,7 +1558,8 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
             {isCardVisible && (
                 <Modal mobileFullscreen onClose={() => { setIsCardVisible(false); setSelectedCard(null); setNewCardSectionId(null); }}>
                     <div className="w-full sm:w-auto">
-                        <CardEdit
+                        <CardWorkspace
+                            currentUserId={currentUserId}
                             card={selectedCard}
                             sections={sections}
                             users={boardUsers}
