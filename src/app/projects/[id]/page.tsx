@@ -254,7 +254,13 @@ export default function ProjectPage() {
       setModal(null);
       return;
     }
-    const saved = await createBoard(data);
+    const saved = await createBoard({
+      name: data.name,
+      description: data.description,
+      project_id: data.project_id,
+      type: data.type,
+      currency: data.currency,
+    });
     setProject((p) => ({
       ...p!,
       boards: [

@@ -2,6 +2,9 @@
 
 import { useRef } from "react";
 import { CardInterface } from "@/interfaces/CardInterface";
+import type { BoardType } from "@/interfaces/BoardInterface";
+import { formatMoney } from "@/lib/currency";
+import { useAged } from "@/lib/aging";
 import { Draggable } from "../shared/Draggable";
 
 const AVATAR_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107', '#00BCD4', '#E91E63'];
@@ -86,13 +89,28 @@ function stripHtml(html?: string): string {
     return html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 }
 
-export function Card({ id, name, description, assigned_user, created_by, tags, due_date, priority, checklist_items, updated_at, done_at, ticket_key, overlay }: CardInterface & { color: string; overlay?: boolean }) {
+export function Card({ id, name, description, assigned_user, created_by, tags, due_date, priority, checklist_items, updated_at, done_at, ticket_key, value, story_points, section_entered_at, overlay, boardType = 'kanban', currency = 'BRL', agingHours }: CardInterface & { color: string; overlay?: boolean; boardType?: BoardType; currency?: string; agingHours?: number | null }) {
     const cardRef = useRef<HTMLDivElement>(null);
 
     const showBottom = assigned_user || created_by;
     const priorityColor = priority ? PRIORITY_COLORS[priority] : null;
     const coverSrc = firstImageSrc(description);
     const descText = stripHtml(description);
+
+    // CRM deal value (Laravel serializes decimals as strings).
+    const hasValue = boardType === 'crm' && value !== null && value !== undefined && value !== '';
+
+    // SLA aging ("rot"): a CRM deal that has sat in its stage past the stage's
+    // aging_hours threshold turns red — spot overdue deals without opening the card.
+    // useAged re-renders exactly when the threshold passes, so an open board flips live.
+    const aged = boardType === 'crm' && useAged(section_entered_at, agingHours, done_at);
+
+    // An aged deal washes its whole face red (not just the border) so it's unmistakable
+    // across a full board — overrides the tag tint below.
+    const agedFace = {
+        background: `linear-gradient(to bottom, color-mix(in srgb, var(--cf-red) 38%, #e6e0cb), color-mix(in srgb, var(--cf-red) 26%, #d4cdb6))`,
+        borderColor: `color-mix(in srgb, var(--cf-red) 72%, #b9b39d)`,
+    };
 
     // Subtle tag identity: wash the first tag's hue into the cream face — a touch
     // stronger at the top, fading down — so the card quietly carries its tag color
@@ -173,8 +191,11 @@ export function Card({ id, name, description, assigned_user, created_by, tags, d
                     minHeight: '120px',
                     position: 'relative',
                     willChange: 'transform',
-                    ...tagTint,
-                    borderLeft: priorityColor ? `3px solid ${priorityColor}` : undefined,
+                    // Aged deals wash red over any tag tint; otherwise carry the tag hue.
+                    ...(aged ? agedFace : tagTint),
+                    // Aging deals claim the accent border (urgent) over priority.
+                    borderLeft: aged ? '3px solid var(--cf-red)' : priorityColor ? `3px solid ${priorityColor}` : undefined,
+                    ...(aged ? { boxShadow: '0 0 0 1px var(--cf-red), 0 0 14px color-mix(in srgb, var(--cf-red) 40%, transparent), inset 0 1px 0 rgba(255,255,255,0.35)' } : null),
                 }}
                 className="glass-card cursor-pointer flex flex-col overflow-hidden"
             >
@@ -217,6 +238,41 @@ export function Card({ id, name, description, assigned_user, created_by, tags, d
                     <p style={{ color: INK, fontSize: '13px', lineHeight: '1.3' }} className="font-bold">
                         {name}
                     </p>
+
+                    {/* CRM deal value + aging indicator / Scrum story points */}
+                    {(hasValue || aged || (boardType === 'scrum' && story_points != null)) && (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                            {hasValue && (
+                                <span
+                                    style={{ backgroundColor: CHIP_BG, fontSize: '11px', letterSpacing: '0.02em', width: 'fit-content' }}
+                                    className="cf-mono inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm font-bold"
+                                >
+                                    <span className="cf-led flex-shrink-0" style={{ background: 'var(--cf-phosphor)', boxShadow: '0 0 5px var(--cf-phosphor)', width: 5, height: 5 }} />
+                                    <span style={{ color: 'var(--cf-phosphor)' }}>{formatMoney(value, currency)}</span>
+                                </span>
+                            )}
+                            {aged && (
+                                <span
+                                    style={{ backgroundColor: CHIP_BG, fontSize: '9px', letterSpacing: '0.08em', width: 'fit-content' }}
+                                    className="cf-mono inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm uppercase"
+                                    title="This deal has been in its stage past the SLA limit"
+                                >
+                                    <span className="cf-led flex-shrink-0" style={{ background: 'var(--cf-red)', boxShadow: '0 0 5px var(--cf-red)', width: 5, height: 5 }} />
+                                    <span style={{ color: 'var(--cf-red)' }}>Aging</span>
+                                </span>
+                            )}
+                            {boardType === 'scrum' && story_points != null && (
+                                <span
+                                    style={{ backgroundColor: CHIP_BG, fontSize: '9px', letterSpacing: '0.08em', width: 'fit-content' }}
+                                    className="cf-mono inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm uppercase"
+                                    title="Story points"
+                                >
+                                    <span className="cf-led flex-shrink-0" style={{ background: 'var(--cf-cyan)', boxShadow: '0 0 5px var(--cf-cyan)', width: 5, height: 5 }} />
+                                    <span style={{ color: 'var(--cf-text)' }}>{story_points} pts</span>
+                                </span>
+                            )}
+                        </div>
+                    )}
 
                     {descText && (
                         <p style={{ color: INK_MUTED, fontSize: '11px', lineHeight: '1.4' }} className="line-clamp-3">

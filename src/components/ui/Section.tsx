@@ -6,10 +6,11 @@ import { Card } from "./Card"
 import { SectionInterface } from "@/interfaces/SectionInterface"
 import { playWipReject } from "@/lib/sound"
 import { hapticReject } from "@/lib/haptics"
+import { formatMoney, toNumber } from "@/lib/currency"
 import Icon from "@/components/ui/Icon"
 import { faGear, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons"
 
-export function Section({id, name, color, cards, handleClick, onDelete, onRename, wipLimit, onSetWipLimit}: SectionInterface) {
+export function Section({id, name, color, cards, handleClick, onDelete, onRename, wipLimit, onSetWipLimit, boardType = 'kanban', currency = 'BRL', agingHours}: SectionInterface) {
     const [editing, setEditing] = useState(false)
     const [editValue, setEditValue] = useState(name)
     const [editingWip, setEditingWip] = useState(false)
@@ -43,6 +44,9 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
     }
 
     const count = cards.length
+    // CRM: sum of the column's deal values, shown as a funnel-stage total.
+    const isCrm = boardType === 'crm'
+    const columnTotal = isCrm ? cards.reduce((sum, c) => sum + toNumber(c.value), 0) : 0
     const atLimit  = wipLimit != null && count === wipLimit
     const overLimit = wipLimit != null && count > wipLimit
     // Status LED cycles green (nominal) / amber (at limit) / red (over limit)
@@ -127,6 +131,7 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
                 )}
 
                 {/* Count / WIP readout */}
+                {/* (CRM value total rendered on its own strip below the header) */}
                 <span
                     style={{ color: countColor, backgroundColor: countBg, fontSize: '11px', letterSpacing: '0.06em' }}
                     className="cf-mono ml-auto px-2 py-0.5 rounded-sm flex-shrink-0 tabular-nums"
@@ -158,6 +163,22 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
                     </button>
                 )}
             </div>
+
+            {/* CRM funnel-stage total: sum of deal values + deal count */}
+            {isCrm && (
+                <div className="flex items-center gap-2 mx-3 mb-2">
+                    <span
+                        className="cf-mono px-2 py-0.5 rounded-sm tabular-nums font-bold"
+                        style={{ color: 'var(--cf-phosphor)', background: '#0d1410', fontSize: '11px', letterSpacing: '0.04em' }}
+                        title={`${count} deal${count !== 1 ? 's' : ''} · ${formatMoney(columnTotal, currency)}`}
+                    >
+                        {formatMoney(columnTotal, currency)}
+                    </span>
+                    <span className="cf-mono" style={{ color: 'var(--cf-text-muted)', fontSize: '9px', letterSpacing: '0.08em' }}>
+                        {count} deal{count !== 1 ? 's' : ''}
+                    </span>
+                </div>
+            )}
 
             {/* WIP limit inline editor */}
             {editingWip && (
@@ -204,7 +225,7 @@ export function Section({id, name, color, cards, handleClick, onDelete, onRename
                     <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
                         {cards.map((card: CardInterface) => (
                             <div key={card.id} onClick={() => handleClick(card)}>
-                                <Card {...card} color={color} />
+                                <Card {...card} color={color} boardType={boardType} currency={currency} agingHours={agingHours} />
                             </div>
                         ))}
                     </SortableContext>

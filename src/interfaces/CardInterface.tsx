@@ -47,6 +47,13 @@ export interface CardInterface {
   due_date?: string | null;
   priority?: "low" | "medium" | "high" | null;
   position?: number;
+  // CRM: deal value (board currency). Serialized as a string by Laravel's decimal cast.
+  value?: number | string | null;
+  // When the card entered its current section — drives CRM SLA aging.
+  section_entered_at?: string | null;
+  // Scrum: effort estimate + sprint assignment.
+  story_points?: number | null;
+  sprint_id?: number | null;
   checklist_items?: ChecklistItem[];
   images?: CardImage[];
   links?: CardLink[];

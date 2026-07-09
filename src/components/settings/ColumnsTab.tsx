@@ -28,6 +28,7 @@ import {
   createSection,
   deleteSection,
   reorderSections,
+  updateBoard,
   updateSection,
 } from "@/lib/api";
 import { type Feedback, FeedbackBanner, PanelHeading } from "./shared";
@@ -47,6 +48,7 @@ const isReserved = (n: string) =>
 interface Props {
   board: BoardInterface;
   onChange: (sections: SectionData[]) => void;
+  onBoardPatch?: (patch: Partial<BoardInterface>) => void;
 }
 
 function SortableRow({
@@ -55,12 +57,16 @@ function SortableRow({
   color,
   onRename,
   onDelete,
+  isCrm,
+  onSetAging,
 }: {
   section: SectionData;
   index: number;
   color: string;
   onRename: (id: number, name: string) => void;
   onDelete: (id: number) => void;
+  isCrm: boolean;
+  onSetAging: (id: number, hours: number | null) => void;
 }) {
   const {
     attributes,
@@ -141,6 +147,26 @@ function SortableRow({
         </button>
       )}
 
+      {/* CRM: per-stage SLA aging threshold (hours). Blank = no aging. */}
+      {isCrm && (
+        <div className="flex items-center gap-1 flex-shrink-0" title="Cards turn red after this many hours in this stage. Blank = off.">
+          <input
+            type="number"
+            min={1}
+            defaultValue={section.aging_hours ?? ""}
+            onBlur={(e) => {
+              const raw = e.target.value.trim();
+              const n = raw === "" ? null : Math.max(1, parseInt(raw, 10) || 0) || null;
+              if (n !== (section.aging_hours ?? null)) onSetAging(section.id, n);
+            }}
+            placeholder="SLA"
+            className="glass-input cf-lcd text-xs py-1 w-16 text-center"
+            style={{ color: "var(--cf-ink)" }}
+          />
+          <span className="cf-mono" style={{ fontSize: "9px", color: "rgba(42,38,32,0.55)" }}>h</span>
+        </div>
+      )}
+
       <span
         className="cf-mono text-[10px]"
         style={{ color: "rgba(42,38,32,0.55)" }}
@@ -206,13 +232,20 @@ function SortableRow({
   );
 }
 
-export default function ColumnsTab({ board, onChange }: Props) {
+export default function ColumnsTab({ board, onChange, onBoardPatch }: Props) {
   const backlog = board.sections.find((s) => s.name === BACKLOG_NAME) ?? null;
   const [rows, setRows] = useState<SectionData[]>(
     board.sections.filter((s) => s !== backlog),
   );
   const [adding, setAdding] = useState("");
   const [feedback, setFeedback] = useState<Feedback>(null);
+  // Which column marks a card done/closed. CRM → the "won" stage; else "done".
+  const [doneSectionId, setDoneSectionId] = useState<number | null>(
+    board.done_section_id ?? null,
+  );
+  const isCrm = board.type === "crm";
+  const doneLabel = isCrm ? "Won column (closed deal)" : "Done column";
+  const doneVerb = isCrm ? "won" : "done";
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -249,7 +282,7 @@ export default function ColumnsTab({ board, onChange }: Props) {
     setRows(next);
     onChange(backlog ? [...next, backlog] : next);
     try {
-      await updateSection(board.id, id, name);
+      await updateSection(board.id, id, { name });
     } catch {
       setRows(prev);
       setFeedback({ type: "error", message: "Rename failed." });
@@ -261,11 +294,46 @@ export default function ColumnsTab({ board, onChange }: Props) {
     const next = rows.filter((s) => s.id !== id);
     setRows(next);
     onChange(backlog ? [...next, backlog] : next);
+    // The backend clears done_section_id on delete (nullOnDelete); mirror it here.
+    if (id === doneSectionId) {
+      setDoneSectionId(null);
+      onBoardPatch?.({ done_section_id: null });
+    }
     try {
       await deleteSection(board.id, id);
     } catch {
       setRows(prev);
       setFeedback({ type: "error", message: "Delete failed." });
+    }
+  };
+
+  const handleSetDone = async (raw: string) => {
+    const next = raw === "" ? null : Number(raw);
+    const prev = doneSectionId;
+    setDoneSectionId(next);
+    onBoardPatch?.({ done_section_id: next });
+    try {
+      await updateBoard(board.id, { done_section_id: next });
+    } catch {
+      setDoneSectionId(prev);
+      onBoardPatch?.({ done_section_id: prev });
+      setFeedback({
+        type: "error",
+        message: `Could not save the ${doneVerb} column.`,
+      });
+    }
+  };
+
+  const handleSetAging = async (id: number, hours: number | null) => {
+    const prev = rows;
+    const next = rows.map((s) => (s.id === id ? { ...s, aging_hours: hours } : s));
+    setRows(next);
+    onChange(backlog ? [...next, backlog] : next);
+    try {
+      await updateSection(board.id, id, { aging_hours: hours });
+    } catch {
+      setRows(prev);
+      setFeedback({ type: "error", message: "Could not save SLA." });
     }
   };
 
@@ -293,6 +361,40 @@ export default function ColumnsTab({ board, onChange }: Props) {
       <PanelHeading>Columns</PanelHeading>
       <FeedbackBanner feedback={feedback} />
 
+      {/* Done/won column — which stage marks a card as done/closed. */}
+      <div
+        className="flex flex-col gap-1.5 pb-4 border-b"
+        style={{ borderColor: "var(--cf-edge)" }}
+      >
+        <label
+          className="cf-label uppercase tracking-widest font-bold"
+          style={{ fontSize: "10px", color: "var(--cf-text-muted)" }}
+        >
+          {doneLabel}
+        </label>
+        <select
+          value={doneSectionId ?? ""}
+          onChange={(e) => handleSetDone(e.target.value)}
+          className="glass-input cf-lcd text-sm cursor-pointer"
+        >
+          <option value="" className="text-black">
+            None — a column named “Done”
+          </option>
+          {rows.map((s) => (
+            <option key={s.id} value={s.id} className="text-black">
+              {s.name}
+            </option>
+          ))}
+        </select>
+        <span
+          className="cf-mono text-[10px]"
+          style={{ color: "var(--cf-text-muted)" }}
+        >
+          Moving a card into this column marks it as {doneVerb}
+          {isCrm ? " — and the deal stops aging." : "."}
+        </span>
+      </div>
+
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <SortableContext
           items={rows.map((s) => s.id)}
@@ -307,6 +409,8 @@ export default function ColumnsTab({ board, onChange }: Props) {
                 color={SECTION_COLORS[i % SECTION_COLORS.length]}
                 onRename={handleRename}
                 onDelete={handleDelete}
+                isCrm={board.type === "crm"}
+                onSetAging={handleSetAging}
               />
             ))}
           </div>

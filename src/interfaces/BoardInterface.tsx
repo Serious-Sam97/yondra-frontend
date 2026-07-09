@@ -1,12 +1,17 @@
 import type { CardInterface } from "./CardInterface";
+import type { SprintInterface } from "./SprintInterface";
 import type { TagInterface } from "./TagInterface";
 
 export interface SectionData {
   id: number;
   name: string;
+  // CRM SLA aging threshold (hours); null = no aging for this stage.
+  aging_hours?: number | null;
 }
 
 export type BoardPermission = "read" | "write" | "owner";
+
+export type BoardType = "kanban" | "scrum" | "crm";
 
 export interface SharedUser {
   id: number;
@@ -18,8 +23,14 @@ export interface SharedUser {
 export interface BoardInterface {
   id: number;
   name: string;
+  type?: BoardType;
+  currency?: string;
+  // Section that marks a card done/closed (CRM "won" stage, or any chosen column).
+  // null = fall back to a column literally named "Done".
+  done_section_id?: number | null;
   description: string;
   sections: SectionData[];
+  sprints?: SprintInterface[];
   cards: CardInterface[];
   tags?: TagInterface[];
   user_id?: number;

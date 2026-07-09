@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Section } from "../ui/Section";
 import { BoardInterface, SectionData, SharedUser } from "@/interfaces/BoardInterface";
 import { CardInterface } from "@/interfaces/CardInterface";
+import { SprintInterface } from "@/interfaces/SprintInterface";
 import { TagInterface } from "@/interfaces/TagInterface";
 import { useConsole } from "@/contexts/ConsoleContext";
 import CardEdit, { CardFormData, Template } from "../ui/CardEdit";
@@ -26,6 +27,9 @@ import { DueDateBanner } from "../ui/DueDateBanner";
 import { ListView } from "../ui/ListView";
 import { AnalyticsView } from "../ui/AnalyticsView";
 import { getEcho } from "@/lib/echo";
+import { formatMoney, toNumber } from "@/lib/currency";
+import { completeSprint as apiCompleteSprint, createSprint as apiCreateSprint, startSprint as apiStartSprint, deleteSprint as apiDeleteSprint, updateSprint, fetchSprints } from "@/lib/api";
+import { demoCreateSprint, demoStartSprint, demoCompleteSprint, demoDeleteSprint, demoUpdateSprint, loadDemoSprints } from "@/lib/demoStorage";
 import {
     demoCreateCard, demoUpdateCard,
     demoCreateSection, demoUpdateSection, demoDeleteSection,
@@ -45,6 +49,10 @@ import {
     faMagnifyingGlass, faTriangleExclamation, faPlus, faLayerGroup,
 } from "@fortawesome/free-solid-svg-icons";
 import { BacklogView } from "../ui/BacklogView";
+import { SprintStatusBar } from "../ui/SprintStatusBar";
+import { SprintBacklog } from "../ui/SprintBacklog";
+import { CompleteSprintModal } from "../ui/CompleteSprintModal";
+import { SprintReport } from "../ui/SprintReport";
 
 const SECTION_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107'];
 
@@ -127,6 +135,8 @@ type BoardEventPayload =
     | { type: 'section.created' | 'section.updated'; payload: SectionData }
     | { type: 'section.deleted'; payload: { id: number } }
     | { type: 'sections.reordered'; payload: { section_ids: number[] } }
+    | { type: 'sprint.created' | 'sprint.updated'; payload: SprintInterface }
+    | { type: 'sprint.deleted'; payload: { id: number } }
     | { type: 'message.created'; payload: ChatMessage }
     | { type: 'message.deleted'; payload: { id: number } };
 
@@ -143,10 +153,14 @@ interface BoardProps extends BoardInterface {
     onDeleteBoard?: () => void;
 }
 
-export function Board({ id, name, description, ticket_prefix, size, cards, sections: initialSections, tags: initialTags = [], isDemo = false, demoId = 'demo', boardUsers = [], isReadOnly = false, currentUserId = 0, settingsOpen = false, onSettingsClose, onBoardMetaSaved, onDeleteBoard }: BoardProps) {
+export function Board({ id, name, type = 'kanban', currency = 'BRL', description, ticket_prefix, size, cards, sections: initialSections, sprints: initialSprints = [], tags: initialTags = [], isDemo = false, demoId = 'demo', boardUsers = [], isReadOnly = false, currentUserId = 0, settingsOpen = false, onSettingsClose, onBoardMetaSaved, onDeleteBoard }: BoardProps) {
     const [cardsProp, setCards] = useState(cards);
     const [sections, setSections] = useState(initialSections);
+    const [sprints, setSprints] = useState(initialSprints);
     const [tags, setTags] = useState<TagInterface[]>(initialTags);
+    // Scrum modals: the sprint being completed, and the sprint whose report is open.
+    const [completingSprint, setCompletingSprint] = useState<SprintInterface | null>(null);
+    const [reportSprint, setReportSprint] = useState<SprintInterface | null>(null);
     const [isCardVisible, setIsCardVisible] = useState(false);
     const [selectedCard, setSelectedCard] = useState<CardInterface | null>(null);
     const [isAddingSection, setIsAddingSection] = useState(false);
@@ -313,6 +327,19 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
                 });
                 break;
             }
+            case 'sprint.created':
+                setSprints(prev => prev.some(s => s.id === e.payload.id) ? prev : [...prev, e.payload]);
+                break;
+            case 'sprint.updated':
+                setSprints(prev => {
+                    // A sprint becoming active deactivates the others (single-active invariant).
+                    const next = prev.map(s => s.id === e.payload.id ? { ...s, ...e.payload } : s);
+                    return e.payload.is_active ? next.map(s => s.id === e.payload.id ? s : { ...s, is_active: false }) : next;
+                });
+                break;
+            case 'sprint.deleted':
+                setSprints(prev => prev.filter(s => s.id !== e.payload.id));
+                break;
             case 'message.created':
                 setChatMessages(prev => prev.some(m => m.id === e.payload.id) ? prev : [...prev, e.payload]);
                 break;
@@ -390,7 +417,7 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
         setSections(prev => prev.map(s => s.id === sectionId ? { ...s, name: newName } : s));
         try {
             if (isDemo) demoUpdateSection(demoId, sectionId, newName);
-            else await updateSection(id, sectionId, newName);
+            else await updateSection(id, sectionId, { name: newName });
         } catch {
             setSections(prev => prev.map(s => s.id === sectionId ? { ...s, name: previousName ?? s.name } : s));
             reportSyncError('Rename failed — change reverted');
@@ -457,13 +484,25 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
         return true;
     };
 
+    // Scrum boards show only the active sprint on the Board; planning lives in the Backlog.
+    const activeSprint = sprints.find(s => s.status === 'active') ?? null;
+    const matchesSprint = (card: CardInterface) => {
+        if (type !== 'scrum') return true;
+        if (!activeSprint) return false;
+        return (card.sprint_id ?? null) === activeSprint.id;
+    };
+
     const sectionCards = (sectionId: number) => boardCards
-        .filter(card => card.section_id === sectionId && matchesFilters(card))
+        .filter(card => card.section_id === sectionId && matchesFilters(card) && matchesSprint(card))
         .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
     const totalCards = boardCards.length;
     const doneSection = boardSections.find(s => s.name?.toLowerCase() === 'done');
     const doneCards = doneSection ? boardCards.filter(c => c.section_id === doneSection.id).length : 0;
+
+    // CRM: total value of every deal on the board (the headline figure).
+    const isCrm = type === 'crm';
+    const crmTotal = isCrm ? boardCards.reduce((sum, c) => sum + toNumber(c.value), 0) : 0;
 
     // --- Backlog handlers ---
 
@@ -480,7 +519,8 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
         const previousSectionId = prevCard?.section_id;
         const previousPosition = prevCard?.position;
         const newPosition = Math.max(-1, ...cardsProp.filter(c => c.section_id === sectionId).map(c => c.position ?? 0)) + 1;
-        setCards(prev => prev.map(c => c.id === cardId ? { ...c, section_id: sectionId, position: newPosition } : c));
+        const movingToDone = sectionId === doneSection?.id;
+        setCards(prev => prev.map(c => c.id === cardId ? { ...c, section_id: sectionId, position: newPosition, done_at: movingToDone ? (c.done_at ?? new Date().toISOString()) : null } : c));
         if (isDemo) { demoUpdateCard(demoId, cardId as number, { section_id: sectionId }); return; }
         updateCard(id, cardId, { section_id: sectionId, position: newPosition }).catch(() => {
             if (previousSectionId !== undefined) {
@@ -527,6 +567,33 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
         }
     };
 
+    // --- Scrum planning (Backlog view) ---
+
+    // Assign a ticket to a sprint (or back to the product backlog: sprintId = null).
+    const handleAssignSprint = (cardId: number, sprintId: number | null) => {
+        const prevCard = cardsProp.find(c => c.id === cardId);
+        setCards(prev => prev.map(c => c.id === cardId ? { ...c, sprint_id: sprintId } : c));
+        if (isDemo) { demoUpdateCard(demoId, cardId, { sprint_id: sprintId }); return; }
+        updateCard(id, cardId, { sprint_id: sprintId }).catch(() => {
+            setCards(prev => prev.map(c => c.id === cardId ? { ...c, sprint_id: prevCard?.sprint_id ?? null } : c));
+            reportSyncError('Could not move ticket — change reverted');
+        });
+    };
+
+    // Quick-create a ticket in the planning backlog, into the given sprint (or backlog).
+    const handleScrumQuickCreate = async (cardName: string, sprintId: number | null) => {
+        const section = boardSections[0];
+        if (!section) return;
+        try {
+            const saved = isDemo
+                ? demoCreateCard(demoId, { section_id: section.id, name: cardName, description: '', sprint_id: sprintId })
+                : await createCard(id, { section_id: section.id, name: cardName, description: '', sprint_id: sprintId });
+            setCards(prev => prev.some(c => c.id === saved.id) ? prev : [...prev, saved]);
+        } catch {
+            reportSyncError('Could not create ticket — try again');
+        }
+    };
+
     // Full editor: open CardEdit for a new card pre-seeded to the backlog section.
     const handleOpenBacklogEditor = async () => {
         try {
@@ -551,13 +618,13 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
         try {
             if (isNew) {
                 const saved = isDemo
-                    ? demoCreateCard(demoId, { section_id: card.section_id, name: card.name, description: card.description, tag_ids: card.tag_ids, due_date: card.due_date, priority: card.priority })
-                    : await createCard(id, { section_id: card.section_id, assigned_user_id: card.assigned_user_id, tag_ids: card.tag_ids, name: card.name, description: card.description, due_date: card.due_date, priority: card.priority });
+                    ? demoCreateCard(demoId, { section_id: card.section_id, name: card.name, description: card.description, tag_ids: card.tag_ids, due_date: card.due_date, priority: card.priority, value: card.value, story_points: card.story_points, sprint_id: card.sprint_id })
+                    : await createCard(id, { section_id: card.section_id, assigned_user_id: card.assigned_user_id, tag_ids: card.tag_ids, name: card.name, description: card.description, due_date: card.due_date, priority: card.priority, value: card.value, story_points: card.story_points, sprint_id: card.sprint_id });
                 setCards(prev => prev.some(c => c.id === saved.id) ? prev.map(c => c.id === saved.id ? { ...c, ...saved } : c) : [...prev, saved]);
             } else {
                 const saved = isDemo
-                    ? demoUpdateCard(demoId, card.id as number, { section_id: card.section_id, name: card.name, description: card.description, tag_ids: card.tag_ids, due_date: card.due_date, priority: card.priority })
-                    : await updateCard(id, card.id, { section_id: card.section_id, assigned_user_id: card.assigned_user_id, tag_ids: card.tag_ids, name: card.name, description: card.description, due_date: card.due_date, priority: card.priority });
+                    ? demoUpdateCard(demoId, card.id as number, { section_id: card.section_id, name: card.name, description: card.description, tag_ids: card.tag_ids, due_date: card.due_date, priority: card.priority, value: card.value, story_points: card.story_points, sprint_id: card.sprint_id })
+                    : await updateCard(id, card.id, { section_id: card.section_id, assigned_user_id: card.assigned_user_id, tag_ids: card.tag_ids, name: card.name, description: card.description, due_date: card.due_date, priority: card.priority, value: card.value, story_points: card.story_points, sprint_id: card.sprint_id });
                 setCards(prev => prev.map(c => c.id === card.id ? { ...saved, checklist_items: card.checklist_items } : c));
             }
         } catch {
@@ -568,6 +635,81 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
         setIsCardVisible(false);
         setSelectedCard(null);
         setNewCardSectionId(null);
+    };
+
+    // --- Scrum sprint lifecycle (demo mirrors the backend locally) ---
+
+    // Re-read the whole sprint list (dates cascade server-side, so a single response isn't enough).
+    const refreshSprints = async () => {
+        if (isDemo) { setSprints(loadDemoSprints(demoId) as SprintInterface[]); return; }
+        try { const list = await fetchSprints(id); if (Array.isArray(list)) setSprints(list); } catch { /* keep current */ }
+    };
+
+    const handleCreateSprint = async (data: { name: string; start_date: string; end_date: string }) => {
+        try {
+            if (isDemo) demoCreateSprint(demoId, data.name, data.start_date, data.end_date);
+            else await apiCreateSprint(id, data);
+            await refreshSprints();
+        } catch { reportSyncError('Could not create sprint — try again'); }
+    };
+
+    const handleUpdateSprintDates = async (sprintId: number, dates: { start_date: string; end_date: string }) => {
+        try {
+            if (isDemo) demoUpdateSprint(demoId, sprintId, dates);
+            else await updateSprint(id, sprintId, dates);
+            await refreshSprints();
+        } catch { reportSyncError('Could not update sprint dates — try again'); }
+    };
+
+    const handleStartSprint = async (sprintId: number) => {
+        try {
+            const saved: SprintInterface = isDemo
+                ? demoStartSprint(demoId, sprintId) as SprintInterface
+                : await apiStartSprint(id, sprintId);
+            setSprints(prev => prev.map(s => s.id === sprintId ? saved : { ...s, is_active: false, status: s.status === 'active' ? 'future' : s.status }));
+        } catch { reportSyncError('Could not start sprint — another may be active'); }
+    };
+
+    const handleDeleteSprint = async (sprintId: number) => {
+        const prev = sprints;
+        setSprints(p => p.filter(s => s.id !== sprintId));
+        try {
+            if (isDemo) demoDeleteSprint(demoId, sprintId);
+            else await apiDeleteSprint(id, sprintId);
+        } catch { setSprints(prev); reportSyncError('Could not delete sprint — try again'); }
+    };
+
+    // Complete the active sprint: freeze it, rehome incomplete tickets per the dialog.
+    const handleCompleteSprint = async (data: { move_to: string; new_sprint_name?: string }) => {
+        const sprint = completingSprint;
+        if (!sprint) return;
+        try {
+            let completed: SprintInterface;
+            let newSprint: SprintInterface | null = null;
+            let targetId: number | null;
+            if (isDemo) {
+                completed = demoCompleteSprint(demoId, sprint.id, data.move_to, data.new_sprint_name) as SprintInterface;
+                const all = loadDemoSprints(demoId) as SprintInterface[];
+                newSprint = data.move_to === 'new' ? all.find(s => s.name === data.new_sprint_name && s.status === 'future') ?? null : null;
+                targetId = data.move_to === 'backlog' ? null : data.move_to === 'new' ? (newSprint?.id ?? null) : Number(data.move_to);
+            } else {
+                const res = await apiCompleteSprint(id, sprint.id, data);
+                completed = res.sprint;
+                newSprint = res.new_sprint ?? null;
+                targetId = res.target_sprint_id ?? null;
+            }
+            setSprints(prev => {
+                let next = prev.map(s => s.id === completed.id ? completed : s);
+                if (newSprint && !next.some(s => s.id === newSprint!.id)) next = [...next, newSprint];
+                return next;
+            });
+            // Reflect moved tickets locally: incomplete cards move to the chosen destination.
+            setCards(prev => prev.map(c =>
+                c.sprint_id === sprint.id && !c.done_at ? { ...c, sprint_id: targetId } : c));
+            setCompletingSprint(null);
+        } catch {
+            reportSyncError('Could not complete sprint — try again');
+        }
     };
 
     const handleArchiveCard = async () => {
@@ -836,8 +978,16 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
                     <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none" style={{ color: 'var(--cf-phosphor)' }}><Icon icon={faMagnifyingGlass} /></span>
                 </div>
 
-                {/* Progress counter — LCD strip */}
-                {totalCards > 0 && (
+                {/* CRM total — headline funnel value (LCD strip) */}
+                {isCrm && (
+                    <span className="cf-screen cf-mono text-xs flex-shrink-0 px-2.5 py-1 font-bold inline-flex items-center gap-1.5" style={{ color: 'var(--cf-phosphor)' }} title="Total value of all deals on the board">
+                        <span className="cf-led" style={{ background: 'var(--cf-phosphor)', boxShadow: '0 0 6px var(--cf-phosphor)' }} />
+                        {formatMoney(crmTotal, currency)} · {totalCards} deal{totalCards !== 1 ? 's' : ''}
+                    </span>
+                )}
+
+                {/* Progress counter — LCD strip (task boards only) */}
+                {!isCrm && totalCards > 0 && (
                     <span className="cf-screen cf-mono text-xs flex-shrink-0 px-2.5 py-1" style={{ color: 'var(--cf-phosphor)' }}>
                         {doneCards}/{totalCards} done
                     </span>
@@ -852,7 +1002,7 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
                         { key: 'calendar',  icon: faCalendarDays, label: 'Cal' },
                         { key: 'analytics', icon: faChartColumn,  label: 'Stats' },
                     ] as const).map(({ key, icon, label }) => (
-                        <button key={key} onClick={() => { if (key === 'backlog') ensureBacklogSection().catch(() => {}); setViewMode(key); }}
+                        <button key={key} onClick={() => { if (key === 'backlog' && type !== 'scrum') ensureBacklogSection().catch(() => {}); setViewMode(key); }}
                             style={viewMode === key
                                 ? { background: 'var(--cf-edge)', borderColor: 'var(--cf-phosphor)', color: 'var(--cf-text)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 0 8px rgba(154,166,126,0.35)' }
                                 : { color: 'var(--cf-text-muted)' }}
@@ -949,11 +1099,25 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
 
             {/* List view */}
             {viewMode === 'list' && (
-                <ListView cards={boardCards.filter(matchesFilters)} sections={boardSections} users={boardUsers} onCardClick={handleClick} />
+                <ListView cards={boardCards.filter(matchesFilters)} sections={boardSections} users={boardUsers} onCardClick={handleClick} boardType={type} currency={currency} />
             )}
 
-            {/* Backlog view — parked tickets not yet on the board */}
-            {viewMode === 'backlog' && (
+            {/* Backlog view — Scrum: sprint planning; other board types: reserved-section parking lot */}
+            {viewMode === 'backlog' && (type === 'scrum' ? (
+                <SprintBacklog
+                    sprints={sprints}
+                    cards={boardCards.filter(matchesFilters)}
+                    canManage={!isReadOnly}
+                    onAssignSprint={handleAssignSprint}
+                    onCreateSprint={handleCreateSprint}
+                    onStartSprint={handleStartSprint}
+                    onDeleteSprint={handleDeleteSprint}
+                    onUpdateSprintDates={handleUpdateSprintDates}
+                    onQuickCreate={handleScrumQuickCreate}
+                    onCardClick={handleClick}
+                    onOpenReport={setReportSprint}
+                />
+            ) : (
                 <BacklogView
                     cards={backlogCards.filter(matchesFilters)}
                     users={boardUsers}
@@ -964,10 +1128,34 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
                     canPromote={boardSections.length > 0}
                     isReadOnly={isReadOnly}
                 />
+            ))}
+
+            {/* Scrum: compact active-sprint status bar (Board view shows the active sprint only) */}
+            {type === 'scrum' && (viewMode === 'kanban' || viewMode === 'list') && activeSprint && (
+                <SprintStatusBar
+                    sprint={activeSprint}
+                    sections={boardSections}
+                    sprintCards={boardCards.filter(c => c.sprint_id === activeSprint.id)}
+                    canManage={!isReadOnly}
+                    onComplete={setCompletingSprint}
+                    onOpenReport={setReportSprint}
+                />
             )}
 
-            {/* Board columns — kanban only */}
-            {viewMode === 'kanban' && <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy} measuring={KANBAN_MEASURING} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
+            {/* Scrum: no active sprint → prompt to plan one in the Backlog */}
+            {type === 'scrum' && viewMode === 'kanban' && !activeSprint && (
+                <div className="glass-panel flex flex-col items-center gap-3 text-center px-6 py-14 rounded-2xl">
+                    <Icon icon={faLayerGroup} style={{ fontSize: 28, color: 'var(--cf-text-muted)' }} />
+                    <p className="cf-mono uppercase tracking-widest font-bold" style={{ fontSize: '13px', color: 'var(--cf-text)' }}>No active sprint</p>
+                    <p className="cf-mono" style={{ fontSize: '11px', color: 'var(--cf-text-muted)' }}>Plan and start a sprint from the Backlog to begin.</p>
+                    <button onClick={() => setViewMode('backlog')}
+                        className="aero-btn aero-btn--cyan text-[10px] uppercase tracking-widest font-bold px-4 py-2 cursor-pointer inline-flex items-center gap-1.5">
+                        <Icon icon={faLayerGroup} style={{ fontSize: '9px' }} /> Go to Backlog
+                    </button>
+                </div>
+            )}
+
+            {viewMode === 'kanban' && !(type === 'scrum' && !activeSprint) && <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy} measuring={KANBAN_MEASURING} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
                 <div
                     ref={kanbanRef}
                     className="flex gap-5 items-start overflow-x-auto pb-4"
@@ -986,6 +1174,9 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
                             onRename={isReadOnly ? undefined : (newName) => handleRenameSection(section.id, newName)}
                             wipLimit={wipLimits[section.id] ?? null}
                             onSetWipLimit={isReadOnly ? undefined : (limit) => handleSetWipLimit(section.id, limit)}
+                            boardType={type}
+                            currency={currency}
+                            agingHours={section.aging_hours ?? null}
                         />
                     ))}
 
@@ -1034,6 +1225,8 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
                             <Card
                                 {...activeCard}
                                 overlay
+                                boardType={type}
+                                currency={currency}
                                 color={SECTION_COLORS[sections.findIndex(s => s.id === activeCard.section_id) % SECTION_COLORS.length] ?? SECTION_COLORS[0]}
                             />
                         </div>
@@ -1369,6 +1562,9 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
                             sections={sections}
                             users={boardUsers}
                             tags={tags}
+                            boardType={type}
+                            currency={currency}
+                            sprints={sprints}
                             boardId={isDemo ? undefined : id}
                             isDemo={isDemo}
                             demoId={demoId}
@@ -1384,6 +1580,33 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
                             onDelete={selectedCard && !isReadOnly ? () => { setCardToDelete(selectedCard); setIsCardVisible(false); } : undefined}
                         />
                     </div>
+                </Modal>
+            )}
+
+            {/* Complete sprint dialog */}
+            {completingSprint && (
+                <Modal onClose={() => setCompletingSprint(null)}>
+                    <CompleteSprintModal
+                        sprint={completingSprint}
+                        cards={boardCards.filter(c => c.sprint_id === completingSprint.id)}
+                        futureSprints={sprints.filter(s => s.status === 'future')}
+                        onConfirm={handleCompleteSprint}
+                        onClose={() => setCompletingSprint(null)}
+                    />
+                </Modal>
+            )}
+
+            {/* Sprint report */}
+            {reportSprint && (
+                <Modal mobileFullscreen onClose={() => setReportSprint(null)}>
+                    <SprintReport
+                        boardId={id}
+                        sprint={reportSprint}
+                        sprints={sprints}
+                        cards={cardsProp.filter(c => c.sprint_id === reportSprint.id)}
+                        isDemo={isDemo}
+                        onClose={() => setReportSprint(null)}
+                    />
                 </Modal>
             )}
         </>
@@ -1444,9 +1667,15 @@ export function Board({ id, name, description, ticket_prefix, size, cards, secti
 
             // Commit normalised integer positions (and the new section) locally.
             const snapshot = dragStartCardsRef.current ?? cardsProp;  // pre-drag state for rollback
+            const destIsDone = destSection === doneSection?.id;
             setCards(prev => prev.map(c => {
                 const idx = orderedIds.indexOf(c.id);
-                return idx === -1 ? c : { ...c, section_id: destSection, position: idx };
+                if (idx === -1) return c;
+                const next = { ...c, section_id: destSection, position: idx };
+                // Keep done_at in sync locally so sprint metrics / the complete dialog stay
+                // accurate without a refetch (the backend applies the same rule on reorder).
+                if (c.id === activeCardId) next.done_at = destIsDone ? (c.done_at ?? new Date().toISOString()) : null;
+                return next;
             }));
 
             if (isDemo) { demoUpdateCard(demoId, activeCardId, { section_id: destSection }); return; }

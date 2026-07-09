@@ -3,7 +3,7 @@ const boardDataKey = (id: string) => `yondra_demo_data_${id}`;
 const LEGACY_KEY = 'yondra_demo';
 
 export type DemoTag            = { id: number; name: string; color: string };
-export type DemoSection        = { id: number; name: string };
+export type DemoSection        = { id: number; name: string; aging_hours?: number | null };
 export type DemoChecklistItem  = { id: number; text: string; is_done: boolean; position: number };
 export type DemoCard           = {
     id: number;
@@ -15,14 +15,37 @@ export type DemoCard           = {
     due_date?: string | null;
     priority?: 'low' | 'medium' | 'high' | null;
     position?: number;
+    value?: number | null;
+    story_points?: number | null;
+    sprint_id?: number | null;
+    section_entered_at?: string | null;
+    done_at?: string | null;
     archived_at?: string | null;
     checklist_items?: DemoChecklistItem[];
     parent_card_id?: number | null;
     is_done?: boolean;
 };
 export type DemoTemplate       = { id: number; name: string; template_data: object };
-export type DemoBoardData = { sections: DemoSection[]; cards: DemoCard[]; tags: DemoTag[]; templates?: DemoTemplate[] };
-export type DemoBoard = { id: string; name: string; description: string };
+export type DemoSprint         = {
+    id: number;
+    board_id: number;
+    name: string;
+    status: 'future' | 'active' | 'completed';
+    goal?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+    is_active: boolean;
+    started_at?: string | null;
+    completed_at?: string | null;
+    committed_points?: number | null;
+    committed_count?: number | null;
+    completed_points?: number | null;
+    completed_count?: number | null;
+    report_snapshot?: { id: number; name: string; points?: number | null; done_at?: string | null }[] | null;
+};
+export type DemoBoardData = { sections: DemoSection[]; cards: DemoCard[]; tags: DemoTag[]; templates?: DemoTemplate[]; sprints?: DemoSprint[] };
+export type DemoBoardType = 'kanban' | 'scrum' | 'crm';
+export type DemoBoard = { id: string; name: string; description: string; type?: DemoBoardType; currency?: string };
 
 const DEFAULT_DATA: DemoBoardData = {
     sections: [
@@ -84,13 +107,30 @@ export function loadDemoBoards(): DemoBoard[] {
     return JSON.parse(raw);
 }
 
-export function createDemoBoard(name: string, description: string): DemoBoard {
+export function createDemoBoard(
+    name: string,
+    description: string,
+    type: DemoBoardType = 'kanban',
+    currency = 'BRL',
+): DemoBoard {
     const boards = loadDemoBoards();
     const id = `demo-${Date.now()}`;
-    const board: DemoBoard = { id, name, description };
+    const board: DemoBoard = { id, name, description, type, currency };
     boards.push(board);
     localStorage.setItem(DEMO_BOARDS_KEY, JSON.stringify(boards));
-    saveBoardData(id, structuredClone(DEFAULT_DATA));
+    // CRM boards start as a sales funnel; others get the classic workflow lanes.
+    const data = structuredClone(DEFAULT_DATA);
+    if (type === 'crm') {
+        data.sections = [
+            { id: 1, name: 'Lead In' },
+            { id: 2, name: 'Contact Made' },
+            { id: 3, name: 'Proposal Made' },
+            { id: 4, name: 'Negotiations Started' },
+            { id: 5, name: 'Won' },
+        ];
+        data.cards = [];
+    }
+    saveBoardData(id, data);
     return board;
 }
 
@@ -192,6 +232,9 @@ export function demoCreateCard(boardId: string, cardData: {
     assigned_user_id?: number | null;
     due_date?: string | null;
     priority?: 'low' | 'medium' | 'high' | null;
+    value?: number | null;
+    story_points?: number | null;
+    sprint_id?: number | null;
 }): DemoCard & { tags: DemoTag[] } {
     const data = loadBoardData(boardId);
     const newId = data.cards.length > 0 ? Math.max(...data.cards.map(c => c.id)) + 1 : 1;
@@ -202,6 +245,7 @@ export function demoCreateCard(boardId: string, cardData: {
         tag_ids: cardData.tag_ids ?? [],
         position,
         checklist_items: [],
+        section_entered_at: new Date().toISOString(),
     };
     data.cards.push(card);
     saveBoardData(boardId, data);
@@ -216,11 +260,28 @@ export function demoUpdateCard(boardId: string, cardId: number, cardData: {
     assigned_user_id?: number | null;
     due_date?: string | null;
     priority?: 'low' | 'medium' | 'high' | null;
+    value?: number | null;
+    story_points?: number | null;
+    sprint_id?: number | null;
 }): (DemoCard & { tags: DemoTag[] }) | null {
     const data = loadBoardData(boardId);
     const idx = data.cards.findIndex(c => c.id === cardId);
     if (idx === -1) return null;
-    data.cards[idx] = { ...data.cards[idx], ...cardData };
+    const prev = data.cards[idx];
+    // Moving to a different column resets the SLA-aging clock and stamps/clears done_at
+    // (mirrors the backend: a card is "done" once it enters a Done-named column).
+    const movedColumn = cardData.section_id !== undefined && cardData.section_id !== prev.section_id;
+    let doneAt = prev.done_at ?? null;
+    if (movedColumn) {
+        const target = data.sections.find(s => s.id === cardData.section_id);
+        doneAt = target && target.name.toLowerCase() === 'done' ? (doneAt ?? new Date().toISOString()) : null;
+    }
+    data.cards[idx] = {
+        ...prev,
+        ...cardData,
+        section_entered_at: movedColumn ? new Date().toISOString() : prev.section_entered_at,
+        done_at: doneAt,
+    };
     saveBoardData(boardId, data);
     return resolveCardTags(data.cards[idx], data.tags);
 }
@@ -334,5 +395,122 @@ export function saveDemoTemplate(boardId: string, name: string, templateData: ob
 export function deleteDemoTemplate(boardId: string, templateId: number): void {
     const data = loadBoardData(boardId);
     data.templates = (data.templates ?? []).filter(t => t.id !== templateId);
+    saveBoardData(boardId, data);
+}
+
+// --- Sprints (scrum) ---
+
+export function loadDemoSprints(boardId: string): DemoSprint[] {
+    return loadBoardData(boardId).sprints ?? [];
+}
+
+// --- Sprint schedule helpers (mirror the backend's date logic) ---
+function demoYmd(d: Date) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function demoAddDays(dateStr: string, n: number) { const d = new Date(dateStr + 'T00:00:00'); d.setDate(d.getDate() + n); return demoYmd(d); }
+function demoDiffDays(a: string, b: string) { return Math.round((new Date(b + 'T00:00:00').getTime() - new Date(a + 'T00:00:00').getTime()) / 86400000); }
+
+// Enforce non-overlapping schedules: any sprint starting before the previous one ends is
+// pushed to start at the previous end, preserving its duration.
+function demoCascadeDates(sprints: DemoSprint[]): DemoSprint[] {
+    const ordered = [...sprints]
+        .filter(s => s.status !== 'completed' && s.start_date && s.end_date)
+        .sort((a, b) => (a.start_date! < b.start_date! ? -1 : 1));
+    for (let i = 1; i < ordered.length; i++) {
+        const prev = ordered[i - 1], cur = ordered[i];
+        // Must begin the day AFTER the previous sprint ends (no shared boundary day).
+        if (cur.start_date! <= prev.end_date!) {
+            const duration = demoDiffDays(cur.start_date!, cur.end_date!);
+            cur.start_date = demoAddDays(prev.end_date!, 1);
+            cur.end_date = demoAddDays(cur.start_date, duration);
+        }
+    }
+    return sprints; // mutated in place (ordered holds the same object refs)
+}
+
+export function demoCreateSprint(boardId: string, name: string, startDate?: string, endDate?: string): DemoSprint {
+    const data = loadBoardData(boardId);
+    const sprints = data.sprints ?? [];
+    const newId = sprints.length > 0 ? Math.max(...sprints.map(s => s.id)) + 1 : 1;
+    // Default: start the day after the latest sprint ends (or today), run two weeks.
+    const lastEnd = sprints.map(s => s.end_date).filter(Boolean).sort().pop() as string | undefined;
+    const start = startDate ?? (lastEnd ? demoAddDays(lastEnd, 1) : demoYmd(new Date()));
+    const end = endDate ?? demoAddDays(start, 14);
+    const sprint: DemoSprint = { id: newId, board_id: 0, name, status: 'future', is_active: false, start_date: start, end_date: end };
+    data.sprints = demoCascadeDates([...sprints, sprint]);
+    saveBoardData(boardId, data);
+    return sprint;
+}
+
+export function demoUpdateSprint(boardId: string, sprintId: number, dates: { start_date?: string; end_date?: string }): void {
+    const data = loadBoardData(boardId);
+    data.sprints = (data.sprints ?? []).map(s => s.id === sprintId ? { ...s, ...dates } : s);
+    data.sprints = demoCascadeDates(data.sprints);
+    saveBoardData(boardId, data);
+}
+
+export function demoStartSprint(boardId: string, sprintId: number): DemoSprint | null {
+    const data = loadBoardData(boardId);
+    const sprints = data.sprints ?? [];
+    const idx = sprints.findIndex(s => s.id === sprintId);
+    if (idx === -1) return null;
+    const inSprint = data.cards.filter(c => c.sprint_id === sprintId && !c.archived_at);
+    const now = new Date();
+    data.sprints = sprints.map(s => s.id === sprintId
+        ? {
+            ...s, status: 'active', is_active: true, started_at: now.toISOString(),
+            start_date: s.start_date ?? now.toISOString().slice(0, 10),
+            committed_points: inSprint.reduce((sum, c) => sum + (c.story_points ?? 0), 0),
+            committed_count: inSprint.length,
+        }
+        : { ...s, is_active: false });
+    saveBoardData(boardId, data);
+    return data.sprints[idx];
+}
+
+export function demoCompleteSprint(
+    boardId: string,
+    sprintId: number,
+    moveTo: string,
+    newSprintName?: string,
+): DemoSprint | null {
+    const data = loadBoardData(boardId);
+    const sprints = data.sprints ?? [];
+    const sprint = sprints.find(s => s.id === sprintId);
+    if (!sprint) return null;
+
+    const inSprint = data.cards.filter(c => c.sprint_id === sprintId && !c.archived_at);
+    const done = inSprint.filter(c => c.done_at);
+
+    // Resolve destination for incomplete cards.
+    let targetId: number | null = null;
+    let nextSprints = [...sprints];
+    if (moveTo === 'new' && newSprintName) {
+        const newId = sprints.length > 0 ? Math.max(...sprints.map(s => s.id)) + 1 : 1;
+        nextSprints.push({ id: newId, board_id: 0, name: newSprintName, status: 'future', is_active: false });
+        targetId = newId;
+    } else if (moveTo !== 'backlog') {
+        targetId = Number(moveTo) || null;
+    }
+
+    data.cards = data.cards.map(c =>
+        c.sprint_id === sprintId && !c.done_at ? { ...c, sprint_id: targetId } : c);
+
+    data.sprints = nextSprints.map(s => s.id === sprintId
+        ? {
+            ...s, status: 'completed', is_active: false, completed_at: new Date().toISOString(),
+            completed_points: done.reduce((sum, c) => sum + (c.story_points ?? 0), 0),
+            completed_count: done.length,
+            // Freeze the ticket set so the report stays accurate after cards move out.
+            report_snapshot: inSprint.map(c => ({ id: c.id, name: c.name, points: c.story_points ?? 0, done_at: c.done_at ?? null })),
+        }
+        : s);
+    saveBoardData(boardId, data);
+    return data.sprints.find(s => s.id === sprintId) ?? null;
+}
+
+export function demoDeleteSprint(boardId: string, sprintId: number): void {
+    const data = loadBoardData(boardId);
+    data.sprints = (data.sprints ?? []).filter(s => s.id !== sprintId);
+    data.cards = data.cards.map(c => c.sprint_id === sprintId ? { ...c, sprint_id: null } : c);
     saveBoardData(boardId, data);
 }

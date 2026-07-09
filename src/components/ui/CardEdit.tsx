@@ -49,6 +49,13 @@ import {
 } from "@/lib/demoStorage";
 import { hapticDone } from "@/lib/haptics";
 import { playComplete } from "@/lib/sound";
+import { FIBONACCI } from "@/lib/estimation";
+import {
+  currencySymbol,
+  formatMoneyInput,
+  maskMoneyInput,
+  parseMoneyInput,
+} from "@/lib/currency";
 
 interface BoardUser {
   id: number;
@@ -85,6 +92,9 @@ export interface CardFormData {
   due_date: string | null;
   priority: "low" | "medium" | "high" | null;
   checklist_items: ChecklistItem[];
+  value: number | null;
+  story_points: number | null;
+  sprint_id: number | null;
 }
 
 interface CardEditProps {
@@ -105,6 +115,10 @@ interface CardEditProps {
   onAddToBoard?: () => void;
   backlogSectionId?: number;
   onSendToBacklog?: () => void;
+  // Board type drives which extra fields show: crm → deal value, scrum → points/sprint.
+  boardType?: "kanban" | "scrum" | "crm";
+  currency?: string;
+  sprints?: { id: number; name: string; is_active: boolean }[];
 }
 
 const SECTION_COLORS: Record<string, string> = {
@@ -184,6 +198,9 @@ const CardEdit: React.FC<CardEditProps> = ({
   onAddToBoard,
   backlogSectionId,
   onSendToBacklog,
+  boardType = "kanban",
+  currency = "BRL",
+  sprints = [],
 }) => {
   const [id, setId] = useState<number | string>(0);
   const [name, setName] = useState("");
@@ -199,6 +216,10 @@ const CardEdit: React.FC<CardEditProps> = ({
   );
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [newChecklistText, setNewChecklistText] = useState("");
+  // CRM deal value + scrum estimate/sprint (empty string = unset).
+  const [value, setValue] = useState("");
+  const [storyPoints, setStoryPoints] = useState("");
+  const [sprintId, setSprintId] = useState<number | null>(null);
   const [links, setLinks] = useState<CardLink[]>([]);
   const [newLinkUrl, setNewLinkUrl] = useState("");
   const [linkBusy, setLinkBusy] = useState(false);
@@ -261,6 +282,12 @@ const CardEdit: React.FC<CardEditProps> = ({
       setPriority(card.priority ?? null);
       setChecklistItems(card.checklist_items ?? []);
       setLinks(card.links ?? []);
+      setValue(formatMoneyInput(card.value));
+      setStoryPoints(card.story_points != null ? String(card.story_points) : "");
+      setSprintId(card.sprint_id ?? null);
+    } else if (boardType === "scrum") {
+      // New scrum cards default into the active sprint, if one exists.
+      setSprintId(sprints.find((s) => s.is_active)?.id ?? null);
     }
   }, []);
 
@@ -331,6 +358,9 @@ const CardEdit: React.FC<CardEditProps> = ({
         due_date: dueDate || null,
         priority: priority ?? null,
         checklist_items: checklistItems,
+        value: parseMoneyInput(value),
+        story_points: storyPoints.trim() === "" ? null : Number(storyPoints),
+        sprint_id: sprintId,
       },
       isNew,
     );
@@ -760,6 +790,99 @@ const CardEdit: React.FC<CardEditProps> = ({
           className="glass-input px-2 py-1.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed w-full"
         />
       </div>
+
+      {/* CRM: deal value */}
+      {boardType === "crm" && (
+        <div
+          className="flex flex-col gap-2 py-4 border-t"
+          style={{ borderColor: "var(--cf-edge)" }}
+        >
+          {propLabel(`Deal value (${currency})`)}
+          <div className="relative">
+            <span
+              className="cf-mono absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ fontSize: "12px", color: "var(--cf-text-muted)" }}
+            >
+              {currencySymbol(currency)}
+            </span>
+            <input
+              type="text"
+              inputMode="decimal"
+              disabled={isReadOnly}
+              value={value}
+              onChange={(e) => setValue(maskMoneyInput(e.target.value))}
+              placeholder="0,00"
+              style={{ fontSize: "12px", paddingLeft: "2.6em" }}
+              className="glass-input py-1.5 pr-2 text-right disabled:opacity-60 disabled:cursor-not-allowed w-full tabular-nums"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Scrum: story points + sprint */}
+      {boardType === "scrum" && (
+        <div
+          className="flex flex-col gap-2 py-4 border-t"
+          style={{ borderColor: "var(--cf-edge)" }}
+        >
+          {propLabel("Story points")}
+          <div className="flex gap-1.5 flex-wrap">
+            {FIBONACCI.map((pt) => {
+              const active = storyPoints === String(pt);
+              return (
+                <button
+                  key={pt}
+                  type="button"
+                  disabled={isReadOnly}
+                  onClick={() => setStoryPoints(active ? "" : String(pt))}
+                  style={{
+                    borderColor: active ? "var(--cf-cyan)" : "var(--cf-edge)",
+                    backgroundColor: active ? "var(--cf-cyan)" : "transparent",
+                    color: active ? "#1c1a16" : "var(--cf-cyan)",
+                    boxShadow: active ? "0 0 8px var(--cf-cyan)55" : "none",
+                    fontSize: "11px",
+                    minWidth: "34px",
+                  }}
+                  className="cf-mono tracking-widest px-2 py-1 rounded-sm border cursor-pointer font-bold disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                >
+                  {pt}
+                </button>
+              );
+            })}
+            {/* Clear / unestimated */}
+            <button
+              type="button"
+              disabled={isReadOnly}
+              onClick={() => setStoryPoints("")}
+              style={{
+                borderColor: storyPoints === "" ? "var(--cf-text-muted)" : "var(--cf-edge)",
+                color: "var(--cf-text-muted)",
+                fontSize: "11px",
+                minWidth: "34px",
+              }}
+              className="cf-mono tracking-widest px-2 py-1 rounded-sm border cursor-pointer font-bold disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+              title="No estimate"
+            >
+              ?
+            </button>
+          </div>
+          <div className="mt-2">{propLabel("Sprint")}</div>
+          <select
+            disabled={isReadOnly}
+            value={sprintId ?? ""}
+            onChange={(e) => setSprintId(e.target.value === "" ? null : Number(e.target.value))}
+            style={{ fontSize: "12px" }}
+            className="glass-input px-2 py-1.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed w-full"
+          >
+            <option value="" className="text-black">Backlog (no sprint)</option>
+            {sprints.map((s) => (
+              <option key={s.id} value={s.id} className="text-black">
+                {s.name}{s.is_active ? " · active" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* GitHub */}
       {canUseLinks && (

@@ -200,6 +200,7 @@ export default function BoardSettingsPage({
             <ColumnsTab
               board={board}
               onChange={(s: SectionData[]) => patch({ sections: s })}
+              onBoardPatch={patch}
             />
           )}
           {active === "tags" && (

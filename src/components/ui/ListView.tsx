@@ -3,6 +3,9 @@
 import { useState } from 'react'
 import Icon from '@/components/ui/Icon'
 import { CardInterface } from '@/interfaces/CardInterface'
+import type { BoardType } from '@/interfaces/BoardInterface'
+import { formatMoney } from '@/lib/currency'
+import { agingThresholdMs, useAgingTick } from '@/lib/aging'
 import { faSortUp, faSortDown, faSort } from '@fortawesome/free-solid-svg-icons'
 
 const SECTION_COLORS = ['#9aa67e', '#ffb000', '#6fe0ff', '#ff5a4d', '#c08bff', '#ffd24a']
@@ -12,7 +15,7 @@ const PRIORITY_COLOR: Record<string, string> = { high: '#ff5a4d', medium: '#ffb0
 type SortKey = 'name' | 'section' | 'priority' | 'due_date'
 type SortDir = 'asc' | 'desc'
 
-interface Section { id: number; name: string }
+interface Section { id: number; name: string; aging_hours?: number | null }
 interface User { id: number; name: string }
 
 interface ListViewProps {
@@ -20,15 +23,24 @@ interface ListViewProps {
     sections: Section[]
     users: User[]
     onCardClick: (card: CardInterface) => void
+    boardType?: BoardType
+    currency?: string
 }
 
 function initials(name: string) {
     return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 }
 
-export function ListView({ cards, sections, users, onCardClick }: ListViewProps) {
+export function ListView({ cards, sections, users, onCardClick, boardType = 'kanban', currency = 'BRL' }: ListViewProps) {
     const [sortKey, setSortKey] = useState<SortKey>('due_date')
     const [sortDir, setSortDir] = useState<SortDir>('asc')
+
+    const isCrm = boardType === 'crm'
+    // Resolve each card's SLA threshold via its section, then keep one live timer so
+    // rows flip to red the moment a deal crosses its stage limit.
+    const thresholdFor = (card: CardInterface) =>
+        agingThresholdMs(card.section_entered_at, sections.find(s => s.id === card.section_id)?.aging_hours, card.done_at)
+    useAgingTick(cards, isCrm, thresholdFor)
 
     const now = new Date()
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
@@ -101,13 +113,18 @@ export function ListView({ cards, sections, users, onCardClick }: ListViewProps)
                     const due     = card.due_date?.slice(0, 10)
                     const isOverdue  = due && due < todayStr
                     const isDueToday = due && due === todayStr
+                    const th   = thresholdFor(card)
+                    const aged = isCrm && th != null && Date.now() >= th
 
                     return (
                         <button
                             key={card.id}
                             onClick={() => onCardClick(card)}
                             className="grid grid-cols-[28px_1fr_auto_auto] md:grid-cols-[28px_1fr_140px_130px_110px_36px] w-full text-left hover:bg-white/10 transition-colors cursor-pointer group last:border-0"
-                            style={{ borderBottom: '1px solid var(--cf-edge)' }}
+                            style={{
+                                borderBottom: '1px solid var(--cf-edge)',
+                                ...(aged ? { background: 'color-mix(in srgb, var(--cf-red) 14%, transparent)', boxShadow: 'inset 3px 0 0 var(--cf-red)' } : null),
+                            }}
                         >
                             {/* Priority */}
                             <div className="flex items-center justify-center py-3">
@@ -117,11 +134,25 @@ export function ListView({ cards, sections, users, onCardClick }: ListViewProps)
                                 />
                             </div>
 
-                            {/* Name */}
-                            <div className="px-3 py-3 flex items-center min-w-0 md:border-l md:border-white/10">
+                            {/* Name (+ CRM deal value / aging) */}
+                            <div className="px-3 py-3 flex items-center gap-2 min-w-0 md:border-l md:border-white/10">
                                 <span className="cf-mono text-sm truncate transition-colors leading-snug" style={{ color: 'var(--cf-text)' }}>
                                     {card.name}
                                 </span>
+                                {isCrm && card.value != null && card.value !== '' && (
+                                    <span className="cf-mono text-[10px] font-bold whitespace-nowrap flex-shrink-0" style={{ color: 'var(--cf-phosphor)' }}>
+                                        {formatMoney(card.value, currency)}
+                                    </span>
+                                )}
+                                {aged && (
+                                    <span
+                                        className="cf-mono text-[9px] uppercase tracking-widest font-bold px-1.5 py-0.5 rounded-sm whitespace-nowrap flex-shrink-0"
+                                        style={{ color: 'var(--cf-red)', background: 'color-mix(in srgb, var(--cf-red) 18%, transparent)', border: '1px solid var(--cf-red)' }}
+                                        title="This deal has been in its stage past the SLA limit"
+                                    >
+                                        Aging
+                                    </span>
+                                )}
                             </div>
 
                             {/* Section */}

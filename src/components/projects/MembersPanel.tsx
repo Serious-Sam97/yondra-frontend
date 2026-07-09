@@ -24,14 +24,14 @@ export default function MembersPanel({
         <div className="flex items-center gap-2">
           <p
             className="cf-label uppercase tracking-widest font-bold"
-            style={{ fontSize: 9, color: "var(--cf-text-muted)" }}
+            style={{ fontSize: 11, color: "var(--cf-text-muted)" }}
           >
             Members
           </p>
           <span
             className="cf-mono font-bold rounded-full"
             style={{
-              fontSize: 9,
+              fontSize: 10,
               color: "var(--cf-ink)",
               background: "var(--cf-phosphor)",
               padding: "1px 7px",
@@ -52,17 +52,17 @@ export default function MembersPanel({
               className="flex items-center gap-2.5 px-4 py-2.5"
               style={{ borderBottom: "1px solid rgba(74,70,63,0.4)" }}
             >
-              <Avatar user={m} size={22} />
+              <Avatar user={m} size={26} />
               <div className="flex-1 min-w-0">
                 <p
                   className="font-bold truncate"
-                  style={{ fontSize: 11, color: "var(--cf-text)" }}
+                  style={{ fontSize: 12.5, color: "var(--cf-text)" }}
                 >
                   {m.name}
                 </p>
                 <p
                   className="cf-mono uppercase tracking-wide"
-                  style={{ fontSize: 8, color: "var(--cf-text-muted)" }}
+                  style={{ fontSize: 9.5, color: "var(--cf-text-muted)" }}
                 >
                   {role}
                 </p>
@@ -73,7 +73,7 @@ export default function MembersPanel({
         {members.length === 0 && (
           <p
             className="cf-mono text-center py-6"
-            style={{ fontSize: 10, color: "var(--cf-text-dim)" }}
+            style={{ fontSize: 11, color: "var(--cf-text-dim)" }}
           >
             No members yet
           </p>

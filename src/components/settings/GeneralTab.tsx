@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { BoardTypeFields } from "@/components/ui/BoardTypeFields";
 import type {
   BoardInterface,
   BoardPermission,
+  BoardType,
 } from "@/interfaces/BoardInterface";
 import { updateBoard } from "@/lib/api";
 import {
@@ -22,6 +24,8 @@ interface Props {
 
 export default function GeneralTab({ board, onSaved }: Props) {
   const [name, setName] = useState(board.name);
+  const [boardType, setBoardType] = useState<BoardType>(board.type ?? "kanban");
+  const [currency, setCurrency] = useState(board.currency ?? "BRL");
   const [description, setDescription] = useState(board.description ?? "");
   const [ticketPrefix, setTicketPrefix] = useState(board.ticket_prefix ?? "");
   const [nextTicket, setNextTicket] = useState(
@@ -46,6 +50,8 @@ export default function GeneralTab({ board, onSaved }: Props) {
     try {
       await updateBoard(board.id, {
         name: trimmed,
+        type: boardType,
+        currency,
         description: description.trim(),
         ticket_prefix: prefix || null,
         next_ticket_number: nextNum,
@@ -54,6 +60,8 @@ export default function GeneralTab({ board, onSaved }: Props) {
       });
       onSaved({
         name: trimmed,
+        type: boardType,
+        currency,
         description: description.trim(),
         ticket_prefix: prefix || null,
         next_ticket_number: nextNum,
@@ -93,6 +101,14 @@ export default function GeneralTab({ board, onSaved }: Props) {
             className="glass-input resize-none"
           />
         </div>
+
+        {/* Board type + (CRM) currency */}
+        <BoardTypeFields
+          type={boardType}
+          currency={currency}
+          onTypeChange={setBoardType}
+          onCurrencyChange={setCurrency}
+        />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>

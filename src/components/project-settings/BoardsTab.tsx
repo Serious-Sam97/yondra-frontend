@@ -8,7 +8,9 @@ import {
   FeedbackBanner,
   PanelHeading,
 } from "@/components/settings/shared";
+import { BoardTypeFields } from "@/components/ui/BoardTypeFields";
 import Icon from "@/components/ui/Icon";
+import type { BoardType } from "@/interfaces/BoardInterface";
 import type {
   ProjectBoard,
   ProjectInterface,
@@ -25,6 +27,8 @@ export default function BoardsTab({ project, canManage, onChange }: Props) {
   const router = useRouter();
   const boards = project.boards ?? [];
   const [name, setName] = useState("");
+  const [boardType, setBoardType] = useState<BoardType>("kanban");
+  const [currency, setCurrency] = useState("BRL");
   const [creating, setCreating] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
@@ -38,6 +42,8 @@ export default function BoardsTab({ project, canManage, onChange }: Props) {
         name: trimmed,
         description: "",
         project_id: project.id,
+        type: boardType,
+        currency,
       });
       onChange([
         ...boards,
@@ -112,26 +118,34 @@ export default function BoardsTab({ project, canManage, onChange }: Props) {
 
       {canManage && (
         <div
-          className="flex items-center gap-2 pt-3 border-t"
+          className="flex flex-col gap-3 pt-3 border-t"
           style={{ borderColor: "var(--cf-edge)" }}
         >
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleCreate();
-            }}
-            placeholder="New board name…"
-            className="glass-input cf-lcd text-sm flex-1"
+          <BoardTypeFields
+            type={boardType}
+            currency={currency}
+            onTypeChange={setBoardType}
+            onCurrencyChange={setCurrency}
           />
-          <button
-            onClick={handleCreate}
-            disabled={creating || !name.trim()}
-            className="aero-btn aero-btn--cyan px-4 py-2 inline-flex items-center gap-1.5 disabled:opacity-50"
-          >
-            <Icon icon={faPlus} style={{ fontSize: "10px" }} />{" "}
-            {creating ? "…" : "Add"}
-          </button>
+          <div className="flex items-center gap-2">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleCreate();
+              }}
+              placeholder="New board name…"
+              className="glass-input cf-lcd text-sm flex-1"
+            />
+            <button
+              onClick={handleCreate}
+              disabled={creating || !name.trim()}
+              className="aero-btn aero-btn--cyan px-4 py-2 inline-flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <Icon icon={faPlus} style={{ fontSize: "10px" }} />{" "}
+              {creating ? "…" : "Add"}
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -166,6 +166,9 @@ export async function updateBoard(
   id: number,
   data: {
     name?: string;
+    type?: "kanban" | "scrum" | "crm";
+    currency?: string;
+    done_section_id?: number | null;
     description?: string;
     project_id?: number | null;
     ticket_prefix?: string | null;
@@ -204,6 +207,8 @@ export async function createBoard(data: {
   name: string;
   description: string;
   project_id?: number | null;
+  type?: "kanban" | "scrum" | "crm";
+  currency?: string;
 }) {
   return apiFetch("/api/boards", {
     method: "POST",
@@ -233,11 +238,11 @@ export async function createSection(boardId: number, name: string) {
 export async function updateSection(
   boardId: number,
   sectionId: number,
-  name: string,
+  data: { name?: string; aging_hours?: number | null },
 ) {
   return apiFetch(`/api/boards/${boardId}/sections/${sectionId}`, {
     method: "PUT",
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(data),
   });
 }
 
@@ -287,6 +292,9 @@ export async function createCard(
     description: string;
     due_date?: string | null;
     priority?: string | null;
+    value?: number | null;
+    story_points?: number | null;
+    sprint_id?: number | null;
   },
 ) {
   return apiFetch(`/api/boards/${boardId}/cards`, {
@@ -307,11 +315,85 @@ export async function updateCard(
     due_date?: string | null;
     priority?: string | null;
     position?: number;
+    value?: number | null;
+    story_points?: number | null;
+    sprint_id?: number | null;
   },
 ) {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}`, {
     method: "PUT",
     body: JSON.stringify(data),
+  });
+}
+
+// --- Sprints (scrum) ---
+
+export async function fetchSprints(boardId: number) {
+  return apiFetch(`/api/boards/${boardId}/sprints`, { method: "GET" });
+}
+
+export async function createSprint(
+  boardId: number,
+  data: {
+    name: string;
+    start_date?: string | null;
+    end_date?: string | null;
+    is_active?: boolean;
+  },
+) {
+  return apiFetch(`/api/boards/${boardId}/sprints`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateSprint(
+  boardId: number,
+  sprintId: number,
+  data: {
+    name?: string;
+    start_date?: string | null;
+    end_date?: string | null;
+    is_active?: boolean;
+  },
+) {
+  return apiFetch(`/api/boards/${boardId}/sprints/${sprintId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function startSprint(
+  boardId: number,
+  sprintId: number,
+  data: { goal?: string | null; start_date?: string | null; end_date?: string | null } = {},
+) {
+  return apiFetch(`/api/boards/${boardId}/sprints/${sprintId}/start`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function completeSprint(
+  boardId: number,
+  sprintId: number,
+  data: { move_to: string; new_sprint_name?: string },
+) {
+  return apiFetch(`/api/boards/${boardId}/sprints/${sprintId}/complete`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getSprintReport(boardId: number, sprintId: number) {
+  return apiFetch(`/api/boards/${boardId}/sprints/${sprintId}/report`, {
+    method: "GET",
+  });
+}
+
+export async function deleteSprint(boardId: number, sprintId: number) {
+  return apiFetch(`/api/boards/${boardId}/sprints/${sprintId}`, {
+    method: "DELETE",
   });
 }
 

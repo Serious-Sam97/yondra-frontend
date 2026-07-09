@@ -65,10 +65,13 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
             setBoard({
                 id: 0,
                 name: boardMeta?.name ?? 'Demo Board',
+                type: boardMeta?.type ?? 'kanban',
+                currency: boardMeta?.currency ?? 'BRL',
                 description: boardMeta?.description ?? 'Try it out — everything is saved in your browser.',
                 sections: demo.sections,
                 cards: demo.cards,
                 tags: demo.tags,
+                sprints: demo.sprints ?? [],
                 shared_with: [],
             });
             setLoading(false);
@@ -84,10 +87,13 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                 setBoard({
                     id: data.id,
                     name: data.name,
+                    type: data.type ?? 'kanban',
+                    currency: data.currency ?? 'BRL',
                     description: data.description ?? '',
                     sections: data.sections ?? [],
                     cards: data.cards ?? [],
                     tags: data.tags ?? [],
+                    sprints: data.sprints ?? [],
                     user_id: data.user_id,
                     project_id: data.project_id ?? null,
                     ticket_prefix: data.ticket_prefix ?? null,
@@ -187,10 +193,13 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
             <Board
                 id={board.id}
                 name={board.name}
+                type={board.type}
+                currency={board.currency}
                 description={board.description}
                 ticket_prefix={board.ticket_prefix}
                 cards={board.cards}
                 sections={board.sections}
+                sprints={board.sprints}
                 size="75"
                 isDemo={isDemo}
                 demoId={id}

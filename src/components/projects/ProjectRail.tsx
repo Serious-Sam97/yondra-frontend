@@ -34,7 +34,7 @@ function FolderTab({
   return (
     <button onClick={onClick} className="w-full text-left focus:outline-none">
       <div
-        className="flex items-center gap-2.5 px-2 py-2 border-l-[3px] rounded-r-lg transition-colors duration-100 cursor-pointer"
+        className="flex items-center gap-3 px-2.5 py-2.5 border-l-[3px] rounded-r-lg transition-colors duration-100 cursor-pointer"
         style={{
           borderLeftColor: active ? project.color : "transparent",
           background: active ? "#2f2d27" : "transparent",
@@ -46,6 +46,8 @@ function FolderTab({
         <span
           className="cf-led flex-shrink-0"
           style={{
+            width: 8,
+            height: 8,
             background: project.color,
             boxShadow: `0 0 6px ${project.color}`,
           }}
@@ -53,9 +55,9 @@ function FolderTab({
         <div
           className="cf-mono rounded-md flex items-center justify-center font-bold flex-shrink-0 border"
           style={{
-            width: 24,
-            height: 24,
-            fontSize: 12,
+            width: 27,
+            height: 27,
+            fontSize: 13,
             background: "#211f1b",
             color: "var(--cf-text)",
             borderColor: "var(--cf-edge)",
@@ -67,7 +69,7 @@ function FolderTab({
           <p
             className="font-bold truncate leading-tight"
             style={{
-              fontSize: 11,
+              fontSize: 12.5,
               color: active ? "var(--cf-text)" : "var(--cf-text-muted)",
             }}
           >
@@ -75,7 +77,7 @@ function FolderTab({
           </p>
           <p
             className="cf-mono truncate"
-            style={{ fontSize: 8, color: "var(--cf-text-dim)" }}
+            style={{ fontSize: 9.5, color: "var(--cf-text-dim)" }}
           >
             {count} board{count !== 1 ? "s" : ""}
             {pct !== null ? ` · ${pct}%` : ""}
@@ -106,8 +108,8 @@ export default function ProjectRail({
         {owned.length > 0 && (
           <>
             <p
-              className="cf-label px-3 pt-3 pb-1 uppercase tracking-widest"
-              style={{ fontSize: 8, color: "var(--cf-text-muted)" }}
+              className="cf-label px-3 pt-3 pb-1.5 uppercase tracking-widest"
+              style={{ fontSize: 10, color: "var(--cf-text-muted)" }}
             >
               Yours
             </p>
@@ -144,9 +146,9 @@ export default function ProjectRail({
       <div className="p-2.5" style={{ borderTop: "1px solid var(--cf-edge)" }}>
         <button
           onClick={onNewProject}
-          className="aero-btn aero-btn--cyan w-full uppercase tracking-widest font-bold px-3 py-2.5 text-[9px] inline-flex items-center justify-center gap-1.5"
+          className="aero-btn aero-btn--cyan w-full uppercase tracking-widest font-bold px-3 py-2.5 text-[11px] inline-flex items-center justify-center gap-1.5"
         >
-          <Icon icon={faPlus} style={{ fontSize: 10 }} /> New project
+          <Icon icon={faPlus} style={{ fontSize: 11 }} /> New project
         </button>
       </div>
     </div>
