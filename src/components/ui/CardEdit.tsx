@@ -125,6 +125,9 @@ export interface CardEditProps {
   planningCount?: number;
   // Story-point value the team applied in Planning Poker; syncs the points field.
   planningAppliedValue?: number | null;
+  // Sentinel (QA) tab — a node replacing the card body, plus the rollup status LED colour.
+  qaTab?: React.ReactNode;
+  qaStatusColor?: string | null;
 }
 
 const SECTION_COLORS: Record<string, string> = {
@@ -210,6 +213,8 @@ const CardEdit: React.FC<CardEditProps> = ({
   planningTab,
   planningCount = 0,
   planningAppliedValue = null,
+  qaTab,
+  qaStatusColor,
 }) => {
   const [id, setId] = useState<number | string>(0);
   const [name, setName] = useState("");
@@ -246,8 +251,8 @@ const CardEdit: React.FC<CardEditProps> = ({
   const [activeTab, setActiveTab] = useState<
     "details" | "checklist" | "comments" | "subtasks"
   >("details");
-  // Top-level switch between the card and the Planning Poker session.
-  const [topTab, setTopTab] = useState<"card" | "planning">("card");
+  // Top-level switch between the card, Planning Poker, and Sentinel (QA).
+  const [topTab, setTopTab] = useState<"card" | "planning" | "qa">("card");
 
   // When Planning Poker applies an estimate, mirror it into the points field.
   useEffect(() => {
@@ -1732,50 +1737,56 @@ const CardEdit: React.FC<CardEditProps> = ({
         </div>
       </div>
 
-      {/* Top-level Card / Planning Poker switch (Scrum, saved cards) */}
-      {planningTab && (
+      {/* Top-level Card / Planning Poker / Sentinel switch (saved cards) */}
+      {(planningTab || qaTab) && (
         <div
           className="relative flex border-b px-4 pt-2 gap-4 flex-shrink-0"
           style={{ borderColor: "var(--cf-edge)" }}
         >
-          {(["card", "planning"] as const).map((t) => {
-            const on = topTab === t;
-            return (
-              <button
-                key={t}
-                onClick={() => setTopTab(t)}
-                style={{
-                  color: on ? "var(--cf-phosphor)" : "var(--cf-text-muted)",
-                  fontSize: "10px",
-                }}
-                className="cf-mono uppercase tracking-widest font-bold pb-2 cursor-pointer transition-colors flex items-center gap-1.5"
-              >
-                <span
-                  className="cf-led"
-                  style={{
-                    width: 6,
-                    height: 6,
-                    background: on ? "var(--cf-phosphor)" : "var(--cf-edge)",
-                    boxShadow: on ? "0 0 6px var(--cf-phosphor)" : "none",
-                  }}
-                />
-                {t === "card" ? "Card" : "Planning Poker"}
-                {t === "planning" && planningCount > 0 && (
+          {[
+            { key: "card" as const, label: "Card", show: true, led: undefined as string | undefined, badge: 0 },
+            { key: "planning" as const, label: "Planning Poker", show: !!planningTab, led: undefined, badge: planningCount },
+            { key: "qa" as const, label: "Sentinel · QA", show: !!qaTab, led: qaStatusColor ?? undefined, badge: 0 },
+          ]
+            .filter((t) => t.show)
+            .map((t) => {
+              const on = topTab === t.key;
+              const activeColor = t.led ?? "var(--cf-phosphor)";
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => setTopTab(t.key)}
+                  style={{ color: on ? "var(--cf-text)" : "var(--cf-text-muted)", fontSize: "10px" }}
+                  className="cf-mono uppercase tracking-widest font-bold pb-2 cursor-pointer transition-colors flex items-center gap-1.5"
+                >
                   <span
-                    className="cf-mono px-1.5 rounded-sm"
-                    style={{ background: "#1c1a16", color: "var(--cf-phosphor)", fontSize: "10px" }}
-                  >
-                    {planningCount}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+                    className="cf-led"
+                    style={{
+                      width: 6,
+                      height: 6,
+                      background: t.led ?? (on ? "var(--cf-phosphor)" : "var(--cf-edge)"),
+                      boxShadow: t.led || on ? `0 0 6px ${activeColor}` : "none",
+                    }}
+                  />
+                  {t.label}
+                  {t.badge > 0 && (
+                    <span
+                      className="cf-mono px-1.5 rounded-sm"
+                      style={{ background: "#1c1a16", color: "var(--cf-phosphor)", fontSize: "10px" }}
+                    >
+                      {t.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
         </div>
       )}
 
       {topTab === "planning" && planningTab ? (
         <div className="sm:flex-1 sm:overflow-y-auto min-h-0">{planningTab}</div>
+      ) : topTab === "qa" && qaTab ? (
+        <div className="sm:flex-1 sm:overflow-y-auto min-h-0">{qaTab}</div>
       ) : (
         <>
       {/* Tabs (existing cards, mobile only — desktop uses the two-pane worklog) */}

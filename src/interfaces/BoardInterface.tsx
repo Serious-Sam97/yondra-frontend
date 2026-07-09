@@ -28,6 +28,8 @@ export interface BoardInterface {
   // Section that marks a card done/closed (CRM "won" stage, or any chosen column).
   // null = fall back to a column literally named "Done".
   done_section_id?: number | null;
+  // Sentinel (QA) module toggle for this board.
+  qa_enabled?: boolean;
   description: string;
   sections: SectionData[];
   sprints?: SprintInterface[];

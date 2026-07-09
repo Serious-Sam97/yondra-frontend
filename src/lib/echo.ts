@@ -8,9 +8,6 @@ export function getEcho(): Echo<'reverb'> {
 
     (window as Window & { Pusher?: typeof Pusher }).Pusher = Pusher;
 
-    // TEMP DIAGNOSTIC: log pusher/reverb protocol traffic to the console.
-    Pusher.logToConsole = true;
-
     echo = new Echo({
         broadcaster: 'reverb',
         key: process.env.NEXT_PUBLIC_REVERB_APP_KEY!,

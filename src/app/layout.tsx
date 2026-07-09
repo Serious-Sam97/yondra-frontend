@@ -10,6 +10,7 @@ config.autoAddCss = false;
 import MenuAppBar from '@/components/layout/MenuAppBar'; // make sure this is a client component
 import { SystemProvider } from '@/contexts/SystemContext';
 import { ConsoleProvider } from '@/contexts/ConsoleContext';
+import { ToastProvider } from '@/contexts/ToastContext';
 import { SpringTrail } from '@/components/ui/SpringTrail';
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
@@ -26,14 +27,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <SystemProvider>
           <ConsoleProvider>
-            <div className="aero-fixed-bg" aria-hidden>
-              <div className="aero-bg__sun" />
-              <div className="aero-bg__grid" />
-              <div className="aero-bg__scan" />
-            </div>
-            <MenuAppBar />
-            {children}
-            <SpringTrail />
+            <ToastProvider>
+              <div className="aero-fixed-bg" aria-hidden>
+                <div className="aero-bg__sun" />
+                <div className="aero-bg__grid" />
+                <div className="aero-bg__scan" />
+              </div>
+              <MenuAppBar />
+              {children}
+              <SpringTrail />
+            </ToastProvider>
           </ConsoleProvider>
         </SystemProvider>
       </body>

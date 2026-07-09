@@ -205,6 +205,12 @@ input[type="number"]:focus {
 }
 .bell-ring { animation: bell-ring 0.65s var(--ease-expo) both; }
 
+/* Notification toast: slide in from the right edge. */
+@keyframes toast-in {
+  0%   { transform: translateX(16px); opacity: 0; }
+  100% { transform: translateX(0);    opacity: 1; }
+}
+
 /* ─── WIP limit column shake ───────────────────────────────────────────────── */
 @keyframes wip-shake {
   0%   { transform: translateX(0); }

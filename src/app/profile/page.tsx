@@ -5,6 +5,7 @@ import { ApiError } from '@/lib/api'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import NotificationPreferences from '@/components/ui/NotificationPreferences'
 
 // Turn an ApiError into something a human can read: prefer Laravel's
 // validation messages, never show raw status codes or JSON.
@@ -258,6 +259,9 @@ export default function ProfilePage() {
                         {passwordLoading ? 'Updating…' : 'Update password'}
                     </button>
                 </div>
+
+                {/* Notification preferences */}
+                <NotificationPreferences />
 
                 {/* Danger zone */}
                 <div className="glass-panel p-6 flex items-center justify-between gap-4">

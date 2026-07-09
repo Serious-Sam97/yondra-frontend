@@ -13,8 +13,10 @@ import { TagInterface } from "@/interfaces/TagInterface";
 import { useConsole } from "@/contexts/ConsoleContext";
 import { CardFormData, Template } from "../ui/CardEdit";
 import { CardWorkspace } from "../ui/CardWorkspace";
+import { TestPlansOverview } from "../ui/sentinel/TestPlansOverview";
 import Modal from "../shared/Modal";
 import {
+    ApiError,
     createCard, updateCard, deleteCard, reorderCards,
     createSection, updateSection, deleteSection, reorderSections,
     createTag, deleteTag,
@@ -48,6 +50,7 @@ import {
     faTag, faClipboardList, faCommentDots, faBoxArchive, faPalette,
     faTableCells, faBars, faCalendarDays, faChartColumn,
     faMagnifyingGlass, faTriangleExclamation, faPlus, faLayerGroup,
+    faSquareCheck,
 } from "@fortawesome/free-solid-svg-icons";
 import { BacklogView } from "../ui/BacklogView";
 import { SprintStatusBar } from "../ui/SprintStatusBar";
@@ -148,13 +151,14 @@ interface BoardProps extends BoardInterface {
     boardUsers?: SharedUser[];
     isReadOnly?: boolean;
     currentUserId?: number;
+    qaEnabled?: boolean;
     settingsOpen?: boolean;
     onSettingsClose?: () => void;
     onBoardMetaSaved?: (name: string, description: string, ticketPrefix: string) => void;
     onDeleteBoard?: () => void;
 }
 
-export function Board({ id, name, type = 'kanban', currency = 'BRL', description, ticket_prefix, size, cards, sections: initialSections, sprints: initialSprints = [], tags: initialTags = [], isDemo = false, demoId = 'demo', boardUsers = [], isReadOnly = false, currentUserId = 0, settingsOpen = false, onSettingsClose, onBoardMetaSaved, onDeleteBoard }: BoardProps) {
+export function Board({ id, name, type = 'kanban', currency = 'BRL', description, ticket_prefix, size, cards, sections: initialSections, sprints: initialSprints = [], tags: initialTags = [], isDemo = false, demoId = 'demo', boardUsers = [], isReadOnly = false, currentUserId = 0, qaEnabled = false, settingsOpen = false, onSettingsClose, onBoardMetaSaved, onDeleteBoard }: BoardProps) {
     const [cardsProp, setCards] = useState(cards);
     const [sections, setSections] = useState(initialSections);
     const [sprints, setSprints] = useState(initialSprints);
@@ -192,7 +196,7 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
     const chatLoadedRef = useRef(false);
     const [isToolbarOpen, setIsToolbarOpen] = useState(false);
     const touchStartY = useRef<number>(0);
-    const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'calendar' | 'analytics' | 'backlog'>('kanban');
+    const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'calendar' | 'analytics' | 'backlog' | 'plans'>('kanban');
     const [isCommandOpen, setIsCommandOpen] = useState(false);
     // Section a newly-created card should default into (used by backlog "+ New" → full editor)
     const [newCardSectionId, setNewCardSectionId] = useState<number | null>(null);
@@ -359,20 +363,13 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
     }, [applyBoardEvent]);
 
     useEffect(() => {
-        // TEMP DIAGNOSTIC: show whether the subscription effect runs and why it might bail.
-        console.log('[reverb] subscribe effect', { id, isDemo, currentUserId });
         if (isDemo || id === 0 || currentUserId === 0) return;
 
         const echo = getEcho();
         const channel = echo.private(`board.${id}`);
         chatChannelRef.current = channel;
 
-        // TEMP DIAGNOSTIC: surface subscription success / auth failure.
-        channel.subscribed(() => console.log(`[reverb] subscribed to board.${id}`));
-        channel.error((err: unknown) => console.error(`[reverb] subscription error on board.${id}`, err));
-
         channel.listen('.board.event', (e: BoardEventPayload) => {
-            console.log('[reverb] board.event received', e);
             // Never mutate the board while dragging — queue and replay on drop/cancel.
             if (isDraggingRef.current) { pendingBoardEventsRef.current.push(e); return; }
             applyBoardEvent(e);
@@ -621,6 +618,20 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
         setSelectedCard(card);
         setIsCardVisible(true);
     };
+
+    // Deep-link: a notification links to `/boards/{id}?card={cardId}`. Once the
+    // board's cards are loaded, open the referenced card (once).
+    const openedDeepLinkRef = useRef(false);
+    useEffect(() => {
+        if (openedDeepLinkRef.current || cardsProp.length === 0) return;
+        const cardId = Number(new URLSearchParams(window.location.search).get('card'));
+        if (!cardId) return;
+        const target = cardsProp.find(c => c.id === cardId);
+        if (target) {
+            openedDeepLinkRef.current = true;
+            handleClick(target);
+        }
+    }, [cardsProp]);
 
     const handleSubmit = async (card: CardFormData, isNew: boolean) => {
         try {
@@ -1009,7 +1020,8 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
                         { key: 'backlog',   icon: faLayerGroup,   label: 'Backlog' },
                         { key: 'calendar',  icon: faCalendarDays, label: 'Cal' },
                         { key: 'analytics', icon: faChartColumn,  label: 'Stats' },
-                    ] as const).map(({ key, icon, label }) => (
+                        ...(qaEnabled ? [{ key: 'plans', icon: faSquareCheck, label: 'QA' }] : []),
+                    ] as { key: typeof viewMode; icon: typeof faTableCells; label: string }[]).map(({ key, icon, label }) => (
                         <button key={key} onClick={() => { if (key === 'backlog' && type !== 'scrum') ensureBacklogSection().catch(() => {}); setViewMode(key); }}
                             style={viewMode === key
                                 ? { background: 'var(--cf-edge)', borderColor: 'var(--cf-phosphor)', color: 'var(--cf-text)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 0 8px rgba(154,166,126,0.35)' }
@@ -1103,6 +1115,11 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
             {/* Analytics view */}
             {viewMode === 'analytics' && (
                 <AnalyticsView cards={boardCards} sections={boardSections} />
+            )}
+
+            {/* QA — test-plan overview (cross-card suites) */}
+            {viewMode === 'plans' && qaEnabled && (
+                <TestPlansOverview boardId={id} onCaseClick={(cardId) => { const c = boardCards.find(x => x.id === cardId); if (c) handleClick(c); }} />
             )}
 
             {/* List view */}
@@ -1567,6 +1584,7 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
                     <div className="w-full sm:w-auto">
                         <CardWorkspace
                             currentUserId={currentUserId}
+                            qaEnabled={qaEnabled}
                             card={selectedCard}
                             sections={sections}
                             users={boardUsers}
@@ -1688,9 +1706,13 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
             }));
 
             if (isDemo) { demoUpdateCard(demoId, activeCardId, { section_id: destSection }); return; }
-            reorderCards(id, destSection, orderedIds).catch(() => {
+            reorderCards(id, destSection, orderedIds).catch((e) => {
                 setCards(snapshot);
-                reportSyncError('Reorder failed — change reverted');
+                if (e instanceof ApiError && e.status === 422) {
+                    reportSyncError('Quality gate: card has tests that failed or were not run — move to Done blocked');
+                } else {
+                    reportSyncError('Reorder failed — change reverted');
+                }
             });
         } finally {
             // Drag is over: unfreeze and replay any realtime events that arrived meanwhile.

@@ -169,6 +169,7 @@ export async function updateBoard(
     type?: "kanban" | "scrum" | "crm";
     currency?: string;
     done_section_id?: number | null;
+    qa_enabled?: boolean;
     description?: string;
     project_id?: number | null;
     ticket_prefix?: string | null;
@@ -586,12 +587,31 @@ export async function getNotifications() {
   return apiFetch("/api/notifications");
 }
 
-export async function markNotificationRead(id: number) {
+export async function markNotificationRead(id: string | number) {
   return apiFetch(`/api/notifications/${id}/read`, { method: "PUT" });
 }
 
 export async function markAllNotificationsRead() {
   return apiFetch("/api/notifications/read-all", { method: "PUT" });
+}
+
+export type NotificationMatrix = Record<string, Record<string, boolean>>;
+
+export type NotificationPreferenceCatalog = {
+  event_types: { key: string; label: string; description: string; active: boolean }[];
+  channels: { key: string; label: string }[];
+  preferences: NotificationMatrix;
+};
+
+export async function getNotificationPreferences(): Promise<NotificationPreferenceCatalog> {
+  return apiFetch("/api/notifications/preferences");
+}
+
+export async function updateNotificationPreferences(preferences: NotificationMatrix): Promise<NotificationPreferenceCatalog> {
+  return apiFetch("/api/notifications/preferences", {
+    method: "PUT",
+    body: JSON.stringify({ preferences }),
+  });
 }
 
 // --- Sharing ---
@@ -758,4 +778,140 @@ export async function applyPlanning(
     method: "POST",
     body: JSON.stringify({ value }),
   });
+}
+
+// --- Sentinel (QA) ---
+
+const qaBase = (boardId: number, cardId: number | string) =>
+  `/api/boards/${boardId}/cards/${cardId}/qa`;
+
+export async function getQa(
+  boardId: number,
+  cardId: number | string,
+  signal?: AbortSignal,
+) {
+  return apiFetch(qaBase(boardId, cardId), { method: "GET", signal });
+}
+
+export async function createTestCase(
+  boardId: number,
+  cardId: number | string,
+  data: { title: string; type?: string },
+) {
+  return apiFetch(`${qaBase(boardId, cardId)}/cases`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateTestCase(
+  boardId: number,
+  cardId: number | string,
+  caseId: number,
+  data: Record<string, unknown>,
+) {
+  return apiFetch(`${qaBase(boardId, cardId)}/cases/${caseId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteTestCase(
+  boardId: number,
+  cardId: number | string,
+  caseId: number,
+) {
+  return apiFetch(`${qaBase(boardId, cardId)}/cases/${caseId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function createTestRun(
+  boardId: number,
+  cardId: number | string,
+  caseId: number,
+  data: {
+    status: string;
+    environment?: string | null;
+    device?: string | null;
+    logs?: string | null;
+    evidence?: { url: string; kind?: string }[];
+  },
+) {
+  return apiFetch(`${qaBase(boardId, cardId)}/cases/${caseId}/runs`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function linkBug(
+  boardId: number,
+  cardId: number | string,
+  caseId: number,
+) {
+  return apiFetch(`${qaBase(boardId, cardId)}/cases/${caseId}/bug`, {
+    method: "POST",
+  });
+}
+
+// Reusable step library (per board).
+const stepBase = (boardId: number) => `/api/boards/${boardId}/qa/steps`;
+
+export async function getSteps(boardId: number, signal?: AbortSignal) {
+  return apiFetch(stepBase(boardId), { method: "GET", signal });
+}
+
+export async function createStep(
+  boardId: number,
+  data: { title: string; content?: string },
+) {
+  return apiFetch(stepBase(boardId), { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function updateStep(
+  boardId: number,
+  stepId: number,
+  data: { title?: string; content?: string | null },
+) {
+  return apiFetch(`${stepBase(boardId)}/${stepId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteStep(boardId: number, stepId: number) {
+  return apiFetch(`${stepBase(boardId)}/${stepId}`, { method: "DELETE" });
+}
+
+// Test plans / suites (per board).
+const planBase = (boardId: number) => `/api/boards/${boardId}/qa/plans`;
+
+export async function getTestPlans(boardId: number, signal?: AbortSignal) {
+  return apiFetch(planBase(boardId), { method: "GET", signal });
+}
+
+export async function getQaOverview(boardId: number, signal?: AbortSignal) {
+  return apiFetch(`/api/boards/${boardId}/qa/overview`, { method: "GET", signal });
+}
+
+export async function createTestPlan(
+  boardId: number,
+  data: { name: string; description?: string },
+) {
+  return apiFetch(planBase(boardId), { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function updateTestPlan(
+  boardId: number,
+  planId: number,
+  data: { name?: string; description?: string | null },
+) {
+  return apiFetch(`${planBase(boardId)}/${planId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteTestPlan(boardId: number, planId: number) {
+  return apiFetch(`${planBase(boardId)}/${planId}`, { method: "DELETE" });
 }

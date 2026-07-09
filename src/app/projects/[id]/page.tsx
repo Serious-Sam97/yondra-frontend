@@ -40,6 +40,7 @@ import {
   updateBoard,
 } from "@/lib/api";
 import { fetchUser } from "@/lib/auth";
+import { getEcho } from "@/lib/echo";
 import { boardProgress, PROJECT_COLORS } from "@/lib/ui";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 
@@ -187,6 +188,38 @@ export default function ProjectPage() {
         });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
+
+  // Live board list: when anyone creates a board in this project, add it here.
+  useEffect(() => {
+    if (!projectId || Number.isNaN(projectId)) return;
+
+    const channel = getEcho().private(`project.${projectId}`);
+    channel.listen(
+      ".project.event",
+      (e: { type: string; payload: ProjectBoard }) => {
+        if (e.type !== "board.created") return;
+        const b = e.payload;
+        setProject((p) => {
+          if (!p || (p.boards ?? []).some((x) => x.id === b.id)) return p; // dedupe (incl. self-echo)
+          const item: ProjectBoard = {
+            ...b,
+            cards_count: b.cards_count ?? 0,
+            flow: b.flow ?? { todo: 0, doing: 0, done: 0 },
+            shared_with: b.shared_with ?? [],
+          };
+          return {
+            ...p,
+            boards: [...(p.boards ?? []), item],
+            boards_count: (p.boards_count ?? 0) + 1,
+          };
+        });
+      },
+    );
+
+    return () => {
+      getEcho().leave(`project.${projectId}`);
+    };
   }, [projectId]);
 
   const boards: ProjectBoard[] = useMemo(

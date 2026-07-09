@@ -97,6 +97,8 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                     user_id: data.user_id,
                     project_id: data.project_id ?? null,
                     ticket_prefix: data.ticket_prefix ?? null,
+                    done_section_id: data.done_section_id ?? null,
+                    qa_enabled: data.qa_enabled ?? false,
                     owner: data.owner,
                     shared_with: data.shared_with ?? [],
                     can_write: data.can_write,
@@ -207,6 +209,7 @@ export default function BoardPage ({ params }: { params: Promise<Params> }) {
                 tags={board.tags ?? []}
                 isReadOnly={isReadOnly}
                 currentUserId={currentUserId ?? 0}
+                qaEnabled={board.qa_enabled ?? false}
                 settingsOpen={settingsOpen}
                 onSettingsClose={() => setSettingsOpen(false)}
                 onBoardMetaSaved={(n, d, prefix) => setBoard(b => ({ ...b, name: n, description: d, ticket_prefix: prefix || null }))}
