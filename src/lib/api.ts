@@ -708,3 +708,54 @@ export async function updateSubtask(
     { method: "PUT", body: JSON.stringify(data) },
   );
 }
+
+// --- Planning Poker ---
+
+const planningBase = (boardId: number, cardId: number | string) =>
+  `/api/boards/${boardId}/cards/${cardId}/planning`;
+
+export async function getPlanning(
+  boardId: number,
+  cardId: number | string,
+  signal?: AbortSignal,
+) {
+  return apiFetch(planningBase(boardId, cardId), { method: "GET", signal });
+}
+
+export async function joinPlanning(boardId: number, cardId: number | string) {
+  return apiFetch(`${planningBase(boardId, cardId)}/join`, { method: "POST" });
+}
+
+export async function leavePlanning(boardId: number, cardId: number | string) {
+  return apiFetch(`${planningBase(boardId, cardId)}/leave`, { method: "POST" });
+}
+
+export async function votePlanning(
+  boardId: number,
+  cardId: number | string,
+  value: string,
+) {
+  return apiFetch(`${planningBase(boardId, cardId)}/vote`, {
+    method: "POST",
+    body: JSON.stringify({ value }),
+  });
+}
+
+export async function revealPlanning(boardId: number, cardId: number | string) {
+  return apiFetch(`${planningBase(boardId, cardId)}/reveal`, { method: "POST" });
+}
+
+export async function resetPlanning(boardId: number, cardId: number | string) {
+  return apiFetch(`${planningBase(boardId, cardId)}/reset`, { method: "POST" });
+}
+
+export async function applyPlanning(
+  boardId: number,
+  cardId: number | string,
+  value: number,
+) {
+  return apiFetch(`${planningBase(boardId, cardId)}/apply`, {
+    method: "POST",
+    body: JSON.stringify({ value }),
+  });
+}
