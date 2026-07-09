@@ -358,13 +358,20 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
     }, [applyBoardEvent]);
 
     useEffect(() => {
+        // TEMP DIAGNOSTIC: show whether the subscription effect runs and why it might bail.
+        console.log('[reverb] subscribe effect', { id, isDemo, currentUserId });
         if (isDemo || id === 0 || currentUserId === 0) return;
 
         const echo = getEcho();
         const channel = echo.private(`board.${id}`);
         chatChannelRef.current = channel;
 
+        // TEMP DIAGNOSTIC: surface subscription success / auth failure.
+        channel.subscribed(() => console.log(`[reverb] subscribed to board.${id}`));
+        channel.error((err: unknown) => console.error(`[reverb] subscription error on board.${id}`, err));
+
         channel.listen('.board.event', (e: BoardEventPayload) => {
+            console.log('[reverb] board.event received', e);
             // Never mutate the board while dragging — queue and replay on drop/cancel.
             if (isDraggingRef.current) { pendingBoardEventsRef.current.push(e); return; }
             applyBoardEvent(e);
