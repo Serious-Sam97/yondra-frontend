@@ -28,7 +28,11 @@ export async function fetchBoards() {
     return await apiFetch(`/api/boards`, { method: 'GET' });
 }
 
-export async function updateProfile(data: { name: string; email: string }) {
+export async function updateProfile(data: {
+    name: string;
+    email: string;
+    whatsapp_number?: string | null;
+}) {
     return await apiFetch('/api/user', { method: 'PUT', body: JSON.stringify(data) });
 }
 

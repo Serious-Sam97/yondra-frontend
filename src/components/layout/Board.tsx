@@ -3,6 +3,7 @@
 import { CollisionDetection, DndContext, DragEndEvent, DragOverEvent, DragOverlay, DragStartEvent, MeasuringStrategy, MouseSensor, TouchSensor, UniqueIdentifier, closestCenter, getFirstCollision, pointerWithin, rectIntersection, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import type Echo from "laravel-echo";
+import { useRouter } from "next/navigation";
 import { Card } from "../ui/Card";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Section } from "../ui/Section";
@@ -159,6 +160,7 @@ interface BoardProps extends BoardInterface {
 }
 
 export function Board({ id, name, type = 'kanban', currency = 'BRL', description, ticket_prefix, size, cards, sections: initialSections, sprints: initialSprints = [], tags: initialTags = [], isDemo = false, demoId = 'demo', boardUsers = [], isReadOnly = false, currentUserId = 0, qaEnabled = false, settingsOpen = false, onSettingsClose, onBoardMetaSaved, onDeleteBoard }: BoardProps) {
+    const router = useRouter();
     const [cardsProp, setCards] = useState(cards);
     const [sections, setSections] = useState(initialSections);
     const [sprints, setSprints] = useState(initialSprints);
@@ -166,6 +168,10 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
     // Scrum modals: the sprint being completed, and the sprint whose report is open.
     const [completingSprint, setCompletingSprint] = useState<SprintInterface | null>(null);
     const [reportSprint, setReportSprint] = useState<SprintInterface | null>(null);
+    // Real boards open the report on its own route (roomier than a modal); demo boards
+    // have no server route to fetch from, so they keep the in-memory modal.
+    const openReport = (sprint: SprintInterface) =>
+        isDemo ? setReportSprint(sprint) : router.push(`/boards/${id}/report/${sprint.id}`);
     const [isCardVisible, setIsCardVisible] = useState(false);
     const [selectedCard, setSelectedCard] = useState<CardInterface | null>(null);
     const [isAddingSection, setIsAddingSection] = useState(false);
@@ -456,10 +462,13 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
             return;
         }
         // Keep the reserved Backlog section pinned to the end — new columns go before it.
+        // Dedupe by id: the `.board.event` self-echo may have already inserted `saved`
+        // (the WS push can beat this POST's response), so re-add idempotently to avoid a
+        // duplicate column that only clears on refresh.
         const bl = backlogSection;
         setSections(prev => {
-            const withoutBl = bl ? prev.filter(s => s !== bl) : prev;
-            return bl ? [...withoutBl, saved, bl] : [...withoutBl, saved];
+            const cleaned = prev.filter(s => s.id !== saved.id && (!bl || s.id !== bl.id));
+            return bl ? [...cleaned, saved, bl] : [...cleaned, saved];
         });
         // Persist the order so Backlog stays last on the backend too (demo storage handles this itself).
         if (bl && !isDemo) reorderSections(id, [...boardSections, saved, bl].map(s => s.id)).catch(() => {});
@@ -540,8 +549,7 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
         const target = boardSections[0];
         if (!card || !target) return;
         moveCard(card.id, target.id);
-        setIsCardVisible(false);
-        setSelectedCard(null);
+        closeCard();
     };
 
     // Send a board card back to the backlog.
@@ -555,8 +563,7 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
             return;
         }
         moveCard(card.id, bl.id);
-        setIsCardVisible(false);
-        setSelectedCard(null);
+        closeCard();
     };
 
     // Quick-add: create a backlog ticket instantly from just a name.
@@ -614,13 +621,54 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
 
     // --- Card management ---
 
-    const handleClick = (card: CardInterface) => {
+    // Reflect the open card in the URL as `?card=<id>` so the address bar itself is a
+    // shareable card link and the browser Back button closes the card. We use the History
+    // API directly (not the Next router) to avoid re-running the route/refetching the board.
+    const setCardParam = useCallback((cardId: number | string | null) => {
+        const params = new URLSearchParams(window.location.search);
+        if (cardId != null) params.set('card', String(cardId));
+        else params.delete('card');
+        const qs = params.toString();
+        return qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+    }, []);
+
+    // True when *we* pushed a history entry for the currently-open card (vs. arriving via a
+    // deep link, where the `?card` entry already existed and must not be popped away).
+    const pushedCardEntryRef = useRef(false);
+
+    // Open a card. `pushUrl` adds a history entry (so Back closes it) — skipped when we're
+    // merely reacting to a URL that already points here (deep link / popstate).
+    const openCard = useCallback((card: CardInterface, pushUrl = true) => {
         setSelectedCard(card);
         setIsCardVisible(true);
-    };
+        if (pushUrl && new URLSearchParams(window.location.search).get('card') !== String(card.id)) {
+            window.history.pushState(null, '', setCardParam(card.id));
+            pushedCardEntryRef.current = true;
+        }
+    }, [setCardParam]);
+
+    // Close the card and drop `?card` from the URL. If we pushed the entry ourselves, pop it
+    // (history.back) so Back/Forward stay clean — the popstate handler then closes the modal.
+    // Otherwise (deep link) strip the param in place without touching the history stack.
+    const closeCard = useCallback(() => {
+        if (pushedCardEntryRef.current && new URLSearchParams(window.location.search).has('card')) {
+            pushedCardEntryRef.current = false;
+            window.history.back();
+            return;
+        }
+        setIsCardVisible(false);
+        setSelectedCard(null);
+        setNewCardSectionId(null);
+        if (new URLSearchParams(window.location.search).has('card')) {
+            window.history.replaceState(null, '', setCardParam(null));
+        }
+    }, [setCardParam]);
+
+    const handleClick = (card: CardInterface) => openCard(card);
 
     // Deep-link: a notification links to `/boards/{id}?card={cardId}`. Once the
-    // board's cards are loaded, open the referenced card (once).
+    // board's cards are loaded, open the referenced card (once). Don't push a new
+    // history entry — the URL already points here.
     const openedDeepLinkRef = useRef(false);
     useEffect(() => {
         if (openedDeepLinkRef.current || cardsProp.length === 0) return;
@@ -629,8 +677,31 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
         const target = cardsProp.find(c => c.id === cardId);
         if (target) {
             openedDeepLinkRef.current = true;
-            handleClick(target);
+            openCard(target, false);
         }
+    }, [cardsProp, openCard]);
+
+    // Keep the modal in sync with Back/Forward navigation: when `?card` changes, open the
+    // referenced card or close the modal to match.
+    useEffect(() => {
+        const onPop = () => {
+            const cardId = Number(new URLSearchParams(window.location.search).get('card'));
+            const target = cardId ? cardsProp.find(c => c.id === cardId) : null;
+            if (target) {
+                // Landed on a `?card` entry (e.g. Forward) — treat it as our pushed entry so a
+                // subsequent close pops it cleanly.
+                pushedCardEntryRef.current = true;
+                setSelectedCard(target);
+                setIsCardVisible(true);
+            } else {
+                pushedCardEntryRef.current = false;
+                setIsCardVisible(false);
+                setSelectedCard(null);
+                setNewCardSectionId(null);
+            }
+        };
+        window.addEventListener('popstate', onPop);
+        return () => window.removeEventListener('popstate', onPop);
     }, [cardsProp]);
 
     const handleSubmit = async (card: CardFormData, isNew: boolean) => {
@@ -651,9 +722,7 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
             reportSyncError('Could not save card — try again');
             return;
         }
-        setIsCardVisible(false);
-        setSelectedCard(null);
-        setNewCardSectionId(null);
+        closeCard();
     };
 
     // --- Scrum sprint lifecycle (demo mirrors the backend locally) ---
@@ -743,8 +812,7 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
         }
         setCards(prev => prev.filter(c => c.id !== cardToDelete.id));
         setCardToDelete(null);
-        setIsCardVisible(false);
-        setSelectedCard(null);
+        closeCard();
     };
 
     const handleOpenArchived = async () => {
@@ -1140,7 +1208,7 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
                     onUpdateSprintDates={handleUpdateSprintDates}
                     onQuickCreate={handleScrumQuickCreate}
                     onCardClick={handleClick}
-                    onOpenReport={setReportSprint}
+                    onOpenReport={openReport}
                 />
             ) : (
                 <BacklogView
@@ -1163,7 +1231,7 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
                     sprintCards={boardCards.filter(c => c.sprint_id === activeSprint.id)}
                     canManage={!isReadOnly}
                     onComplete={setCompletingSprint}
-                    onOpenReport={setReportSprint}
+                    onOpenReport={openReport}
                 />
             )}
 
@@ -1580,7 +1648,7 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
 
             {/* Card edit modal */}
             {isCardVisible && (
-                <Modal mobileFullscreen onClose={() => { setIsCardVisible(false); setSelectedCard(null); setNewCardSectionId(null); }}>
+                <Modal mobileFullscreen onClose={closeCard}>
                     <div className="w-full sm:w-auto">
                         <CardWorkspace
                             currentUserId={currentUserId}
@@ -1602,9 +1670,9 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
                             onAddToBoard={selectedCard ? () => handleAddToBoard(selectedCard) : undefined}
                             backlogSectionId={backlogSection?.id}
                             onSendToBacklog={selectedCard ? () => handleSendToBacklog(selectedCard) : undefined}
-                            goBack={() => { setIsCardVisible(false); setSelectedCard(null); setNewCardSectionId(null); }}
+                            goBack={closeCard}
                             submit={handleSubmit}
-                            onDelete={selectedCard && !isReadOnly ? () => { setCardToDelete(selectedCard); setIsCardVisible(false); } : undefined}
+                            onDelete={selectedCard && !isReadOnly ? () => { setCardToDelete(selectedCard); closeCard(); } : undefined}
                         />
                     </div>
                 </Modal>

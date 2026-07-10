@@ -1,6 +1,6 @@
 "use client";
 
-import { faGithub } from "@fortawesome/free-brands-svg-icons";
+import { faGithub, faWhatsapp } from "@fortawesome/free-brands-svg-icons";
 import {
   faBoxArchive,
   faClockRotateLeft,
@@ -21,6 +21,7 @@ import GitHubTab from "@/components/settings/GitHubTab";
 import MembersTab from "@/components/settings/MembersTab";
 import SettingsTabs, { type TabDef } from "@/components/settings/SettingsTabs";
 import TagsTab from "@/components/settings/TagsTab";
+import WhatsAppTab from "@/components/settings/WhatsAppTab";
 import type {
   BoardInterface,
   SectionData,
@@ -105,6 +106,7 @@ export default function BoardSettingsPage({
     }
     if (canManage) t.push({ key: "members", label: "Members", icon: faUsers });
     if (canManage) t.push({ key: "github", label: "GitHub", icon: faGithub });
+    if (canManage) t.push({ key: "whatsapp", label: "WhatsApp", icon: faWhatsapp });
     t.push({ key: "activity", label: "Activity", icon: faClockRotateLeft });
     if (canManage) {
       t.push({ key: "archived", label: "Archived", icon: faBoxArchive });
@@ -196,6 +198,7 @@ export default function BoardSettingsPage({
         <div className="flex-1 min-w-0">
           {active === "general" && <GeneralTab board={board} onSaved={patch} />}
           {active === "github" && <GitHubTab board={board} onSaved={patch} />}
+          {active === "whatsapp" && <WhatsAppTab board={board} onSaved={patch} />}
           {active === "columns" && (
             <ColumnsTab
               board={board}

@@ -2,27 +2,15 @@
 
 import * as React from 'react';
 import Image from 'next/image';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import YondraIcon from '../icons/yondra.png';
 import { logout, fetchUser } from '@/lib/auth';
 import { useSystem } from '@/contexts/SystemContext';
 import { useConsole } from '@/contexts/ConsoleContext';
-import { useToast } from '@/contexts/ToastContext';
-import { getNotifications, markAllNotificationsRead, markNotificationRead } from '@/lib/api';
-import { getEcho } from '@/lib/echo';
+import { useNotifications } from '@/hooks/useNotifications';
+import NotificationsPanel from '@/components/layout/NotificationsPanel';
 import Icon from '@/components/ui/Icon';
 import { faBell } from '@fortawesome/free-solid-svg-icons';
-
-type Notification = {
-    id: string;
-    type?: string | null;
-    message: string;
-    board_id?: number | null;
-    card_id?: number | null;
-    deep_link?: string | null;
-    read_at?: string | null;
-    created_at: string;
-};
 
 const AVATAR_COLORS = ['#4CAF50', '#FF9800', '#1976D2', '#F44336', '#7B1FA2', '#FFC107', '#00BCD4', '#E91E63'];
 
@@ -79,14 +67,14 @@ function SessionTimer() {
 export default function MenuAppBar() {
     const { isLogged, setIsLogged } = useSystem();
     const { location, activity, pushActivity } = useConsole();
-    const { pushToast } = useToast();
     const pathname = usePathname();
-    const router = useRouter();
 
     const [user, setUser] = React.useState<{ id: number; name: string } | null>(null);
     const [menuOpen, setMenuOpen] = React.useState(false);
     const [notifOpen, setNotifOpen] = React.useState(false);
-    const [notifications, setNotifications] = React.useState<Notification[]>([]);
+    // Stand down on the dashboard — its sidebar owns the notification subscription there.
+    const onDashboard = !!pathname?.startsWith('/dashboard');
+    const { notifications, unreadCount, markOneRead, markAllRead } = useNotifications(user?.id, !onDashboard);
 
     // collapse the activity terminal once the user starts scrolling (any scroller)
     const [scrolled, setScrolled] = React.useState(false);
@@ -119,69 +107,13 @@ export default function MenuAppBar() {
         fetchUser().then(u => setUser(u)).catch(() => {});
     }, [isLogged]);
 
-    const refetchNotifs = React.useCallback(
-        () => getNotifications().then(d => setNotifications(Array.isArray(d) ? d : [])).catch(() => {}),
-        [],
-    );
-
-    // Slow reconcile poll — real-time push (below) is the primary channel; this
-    // is just a safety net if the socket drops. Was 30s when polling was the
-    // only mechanism.
-    React.useEffect(() => {
-        if (!isLogged) return;
-        refetchNotifs();
-        const interval = setInterval(refetchNotifs, 120000);
-        return () => clearInterval(interval);
-    }, [isLogged, refetchNotifs]);
-
-    // Live push over Reverb on the user's private channel. On a new notification
-    // we toast it and refetch the canonical list (keeps ids/read-state exact).
-    React.useEffect(() => {
-        if (!isLogged || !user?.id) return;
-        const channelName = `App.Models.User.${user.id}`;
-        let echo: ReturnType<typeof getEcho> | null = null;
-        try {
-            echo = getEcho();
-            echo.private(channelName).listen('.notification', (payload: Notification) => {
-                pushToast({
-                    type: payload?.type,
-                    message: payload?.message ?? 'New notification',
-                    deepLink: payload?.deep_link ?? null,
-                });
-                pushActivity(`alert · ${payload?.message ?? 'notification'}`);
-                refetchNotifs();
-            });
-        } catch {
-            // Echo/Reverb not configured in this environment — polling still covers it.
-        }
-        return () => { echo?.leave(channelName); };
-    }, [isLogged, user?.id, pushToast, pushActivity, refetchNotifs]);
-
     // ── activity tracking ────────────────────────────────────────────────────
     React.useEffect(() => { pushActivity('console online · ready'); }, [pushActivity]);
     React.useEffect(() => { pushActivity('entered ' + routeLabel(pathname)); }, [pathname, pushActivity]);
 
-    const unreadCount = notifications.filter(n => !n.read_at).length;
-
     const handleOpenNotifs = () => {
         setMenuOpen(false);
         setNotifOpen(prev => !prev);
-    };
-
-    // Click a notification → mark just that one read, then deep-link to it.
-    const handleNotifClick = (n: Notification) => {
-        setNotifOpen(false);
-        if (!n.read_at) {
-            setNotifications(prev => prev.map(x => (x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x)));
-            markNotificationRead(n.id).catch(() => {});
-        }
-        if (n.deep_link) router.push(n.deep_link);
-    };
-
-    const handleMarkAllRead = async () => {
-        if (unreadCount === 0) return;
-        setNotifications(prev => prev.map(n => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })));
-        await markAllNotificationsRead().catch(() => {});
     };
 
     const handleLogout = async () => {
@@ -265,6 +197,11 @@ export default function MenuAppBar() {
         </div>
     );
 
+    // The dashboard is a self-contained "home base" with its own sidebar shell,
+    // so the global header steps aside there (its bell + user menu live in the
+    // sidebar, driven by the same useNotifications hook).
+    if (onDashboard) return null;
+
     return (
         <header ref={headerRef} className="sticky top-0 z-50" style={facePlate}>
             <Screw style={{ top: 6, left: 6 }} />
@@ -340,45 +277,13 @@ export default function MenuAppBar() {
                 bell/avatar in both the tall desktop deck and the slim
                 mobile bar. ──────────────────────────────────────────────────── */}
             {notifOpen && (
-                <>
-                    <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
-                    <div className="modal-content aero-menu absolute right-2 z-50 w-80 overflow-hidden" style={{ top: '52px', maxHeight: '420px' }}>
-                        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--cf-edge)' }}>
-                            <p className="cf-label font-bold" style={{ color: 'var(--cf-phosphor)' }}>Notifications</p>
-                            <div className="flex items-center gap-3">
-                                {unreadCount > 0 && (
-                                    <button onClick={handleMarkAllRead} className="btn-physical text-xs cursor-pointer cf-mono" style={{ color: 'var(--cf-phosphor)' }}>Mark all read</button>
-                                )}
-                                <button onClick={() => setNotifOpen(false)} className="btn-physical text-xs cursor-pointer" style={{ color: 'var(--cf-text-muted)' }}>✕</button>
-                            </div>
-                        </div>
-                        <div className="overflow-y-auto" style={{ maxHeight: '360px' }}>
-                            {notifications.length === 0 && (
-                                <p className="text-xs text-center py-8 cf-mono" style={{ color: 'var(--cf-text-muted)' }}>No notifications yet.</p>
-                            )}
-                            {notifications.map(n => (
-                                <button
-                                    key={n.id}
-                                    onClick={() => handleNotifClick(n)}
-                                    className="btn-physical w-full text-left px-4 py-3 block"
-                                    style={{ borderBottom: '1px solid var(--cf-edge)', background: !n.read_at ? 'rgba(154,166,126,0.08)' : 'transparent', cursor: n.deep_link ? 'pointer' : 'default' }}
-                                >
-                                    <div className="flex items-start gap-2">
-                                        {!n.read_at && (
-                                            <span className="cf-led flex-shrink-0" aria-hidden style={{ marginTop: 4, width: 6, height: 6, background: 'var(--cf-amber)', boxShadow: '0 0 5px var(--cf-amber)' }} />
-                                        )}
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-xs" style={{ color: 'var(--cf-text)' }}>{n.message}</p>
-                                            <p className="text-xs mt-0.5 cf-mono" style={{ color: 'var(--cf-text-muted)' }}>
-                                                {new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </>
+                <NotificationsPanel
+                    notifications={notifications}
+                    unreadCount={unreadCount}
+                    onItemClick={(n) => { setNotifOpen(false); markOneRead(n); }}
+                    onMarkAll={markAllRead}
+                    onClose={() => setNotifOpen(false)}
+                />
             )}
 
             {menuOpen && (

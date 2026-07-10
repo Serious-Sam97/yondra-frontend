@@ -38,10 +38,11 @@ type Feedback = { type: 'success' | 'error'; message: string } | null
 export default function ProfilePage() {
     useDocumentTitle('Yondra - Profile')
     const router = useRouter()
-    const [user, setUser] = useState<{ id: number; name: string; email: string } | null>(null)
+    const [user, setUser] = useState<{ id: number; name: string; email: string; whatsapp_number?: string | null } | null>(null)
 
     const [name, setName] = useState('')
     const [email, setEmail] = useState('')
+    const [whatsappNumber, setWhatsappNumber] = useState('')
     const [profileFeedback, setProfileFeedback] = useState<Feedback>(null)
     const [profileLoading, setProfileLoading] = useState(false)
 
@@ -57,6 +58,7 @@ export default function ProfilePage() {
                 setUser(u)
                 setName(u.name)
                 setEmail(u.email)
+                setWhatsappNumber(u.whatsapp_number ?? '')
             })
             .catch(() => router.push('/login'))
     }, [])
@@ -65,7 +67,7 @@ export default function ProfilePage() {
         setProfileFeedback(null)
         setProfileLoading(true)
         try {
-            const updated = await updateProfile({ name, email })
+            const updated = await updateProfile({ name, email, whatsapp_number: whatsappNumber.trim() || null })
             setUser(updated)
             setProfileFeedback({ type: 'success', message: 'Profile updated successfully.' })
         } catch (e) {
@@ -184,6 +186,19 @@ export default function ProfilePage() {
                                 onChange={e => setEmail(e.target.value)}
                                 className="glass-input"
                             />
+                        </div>
+                        <div>
+                            <label className="cf-label block mb-2">WhatsApp number</label>
+                            <input
+                                type="tel"
+                                value={whatsappNumber}
+                                onChange={e => setWhatsappNumber(e.target.value)}
+                                placeholder="e.g. 5511987654321 (country code + number)"
+                                className="glass-input"
+                            />
+                            <p className="text-xs mt-1.5 cf-mono" style={{ color: 'var(--cf-text-muted)' }}>
+                                Used for WhatsApp notifications. Enable it per event below.
+                            </p>
                         </div>
                     </div>
 

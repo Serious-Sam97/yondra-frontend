@@ -294,20 +294,27 @@ export default function ProjectPage() {
       type: data.type,
       currency: data.currency,
     });
-    setProject((p) => ({
-      ...p!,
-      boards: [
-        ...(p!.boards ?? []),
-        {
-          ...saved,
-          cards_count: 0,
-          flow: { todo: 0, doing: 0, done: 0 },
-          owner: user ?? undefined,
-          shared_with: [],
-        },
-      ],
-      boards_count: (p!.boards_count ?? 0) + 1,
-    }));
+    // Dedupe by id: the `.project.event` self-echo may have already inserted this board
+    // (the WS push can beat this POST's response), so skip the optimistic add if it's
+    // already present — otherwise the board shows twice until the next refresh.
+    setProject((p) => {
+      if (!p) return p;
+      if ((p.boards ?? []).some((b) => b.id === saved.id)) return p;
+      return {
+        ...p,
+        boards: [
+          ...(p.boards ?? []),
+          {
+            ...saved,
+            cards_count: 0,
+            flow: { todo: 0, doing: 0, done: 0 },
+            owner: user ?? undefined,
+            shared_with: [],
+          },
+        ],
+        boards_count: (p.boards_count ?? 0) + 1,
+      };
+    });
     setModal(null);
   }
 

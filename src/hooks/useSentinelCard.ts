@@ -6,11 +6,13 @@ import {
   createTestCase,
   createTestRun,
   deleteTestCase,
+  generateCiToken as apiGenerateCiToken,
   getQa,
   linkBug as apiLinkBug,
+  setCaseVerdict,
   updateTestCase,
 } from '@/lib/api'
-import type { TestCase } from '@/interfaces/QAInterface'
+import type { TestCase, Verdict } from '@/interfaces/QAInterface'
 
 type IncomingEvent = { type: string; payload: unknown }
 
@@ -147,6 +149,26 @@ export function useSentinelCard(
     [run, boardId, numericCardId, upsert],
   )
 
+  const setVerdict = useCallback(
+    (caseId: number, verdict: Verdict | null) =>
+      run(async () => {
+        const c: TestCase = await setCaseVerdict(boardId!, numericCardId, caseId, verdict)
+        upsert(c)
+        return c
+      }),
+    [run, boardId, numericCardId, upsert],
+  )
+
+  const generateCiToken = useCallback(
+    (caseId: number) =>
+      run(async () => {
+        const c: TestCase = await apiGenerateCiToken(boardId!, numericCardId, caseId)
+        upsert(c)
+        return c
+      }),
+    [run, boardId, numericCardId, upsert],
+  )
+
   return {
     cases,
     selectedCaseId,
@@ -158,5 +180,7 @@ export function useSentinelCard(
     removeCase,
     launchRun,
     linkBug,
+    setVerdict,
+    generateCiToken,
   }
 }

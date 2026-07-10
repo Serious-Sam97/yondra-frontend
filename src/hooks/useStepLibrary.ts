@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getEcho } from '@/lib/echo'
 import { createStep, deleteStep, getSteps, updateStep } from '@/lib/api'
-import type { ReusableStep } from '@/interfaces/QAInterface'
+import type { GherkinLine, ReusableStep } from '@/interfaces/QAInterface'
 
 type IncomingEvent = { type: string; payload: unknown }
 
@@ -66,9 +66,9 @@ export function useStepLibrary(boardId: number | undefined, enabled: boolean) {
   }, [])
 
   const create = useCallback(
-    (title: string, content?: string) =>
+    (title: string, opts?: { content?: string; gherkin_lines?: GherkinLine[] }) =>
       run(async () => {
-        const s: ReusableStep = await createStep(boardId!, { title, content })
+        const s: ReusableStep = await createStep(boardId!, { title, ...opts })
         setStepsById((m) => ({ ...m, [s.id]: s }))
         return s
       }),
@@ -76,7 +76,7 @@ export function useStepLibrary(boardId: number | undefined, enabled: boolean) {
   )
 
   const update = useCallback(
-    (id: number, patch: { title?: string; content?: string | null }) =>
+    (id: number, patch: { title?: string; content?: string | null; gherkin_lines?: GherkinLine[] }) =>
       run(async () => {
         const s: ReusableStep = await updateStep(boardId!, id, patch)
         setStepsById((m) => ({ ...m, [s.id]: s }))

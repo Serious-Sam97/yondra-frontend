@@ -65,6 +65,16 @@ export async function fetchProjects() {
   return apiFetch("/api/projects");
 }
 
+// --- Dashboard ---
+
+export async function fetchDashboard() {
+  return apiFetch("/api/dashboard");
+}
+
+export async function searchWorkspace(q: string) {
+  return apiFetch(`/api/search?q=${encodeURIComponent(q)}`);
+}
+
 export async function fetchProject(id: number) {
   return apiFetch(`/api/projects/${id}`);
 }
@@ -178,6 +188,12 @@ export async function updateBoard(
     default_permission?: "read" | "write" | "owner";
     github_repo?: string | null;
     github_token?: string | null;
+    whatsapp_provider?: "meta" | "bsp" | null;
+    whatsapp_phone_number_id?: string | null;
+    whatsapp_waba_id?: string | null;
+    whatsapp_token?: string | null;
+    whatsapp_app_secret?: string | null;
+    whatsapp_verify_token?: string | null;
   },
 ) {
   return apiFetch(`/api/boards/${id}`, {
@@ -575,6 +591,52 @@ export async function deleteComment(
   );
 }
 
+// --- WhatsApp ---
+
+export async function getWhatsappThread(boardId: number, cardId: number | string) {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/whatsapp`);
+}
+
+export async function sendWhatsappReply(
+  boardId: number,
+  cardId: number | string,
+  body: string,
+) {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/whatsapp`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
+  });
+}
+
+export async function getWhatsappAutomations(boardId: number) {
+  return apiFetch(`/api/boards/${boardId}/whatsapp/automations`);
+}
+
+export async function upsertWhatsappAutomation(
+  boardId: number,
+  sectionId: number,
+  data: {
+    template_name: string;
+    language?: string;
+    enabled?: boolean;
+    resume?: boolean;
+  },
+) {
+  return apiFetch(`/api/boards/${boardId}/whatsapp/automations/${sectionId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteWhatsappAutomation(
+  boardId: number,
+  sectionId: number,
+) {
+  return apiFetch(`/api/boards/${boardId}/whatsapp/automations/${sectionId}`, {
+    method: "DELETE",
+  });
+}
+
 // --- Activity ---
 
 export async function getActivity(boardId: number) {
@@ -836,6 +898,7 @@ export async function createTestRun(
     device?: string | null;
     logs?: string | null;
     evidence?: { url: string; kind?: string }[];
+    items?: import("@/interfaces/QAInterface").RunItem[];
   },
 ) {
   return apiFetch(`${qaBase(boardId, cardId)}/cases/${caseId}/runs`, {
@@ -854,6 +917,30 @@ export async function linkBug(
   });
 }
 
+// Quality Gate — set (or clear, with null) the human verdict on a case.
+export async function setCaseVerdict(
+  boardId: number,
+  cardId: number | string,
+  caseId: number,
+  verdict: import("@/interfaces/QAInterface").Verdict | null,
+) {
+  return apiFetch(`${qaBase(boardId, cardId)}/cases/${caseId}/verdict`, {
+    method: "POST",
+    body: JSON.stringify({ verdict }),
+  });
+}
+
+// Mint / rotate the CI webhook token for a case.
+export async function generateCiToken(
+  boardId: number,
+  cardId: number | string,
+  caseId: number,
+) {
+  return apiFetch(`${qaBase(boardId, cardId)}/cases/${caseId}/ci-token`, {
+    method: "POST",
+  });
+}
+
 // Reusable step library (per board).
 const stepBase = (boardId: number) => `/api/boards/${boardId}/qa/steps`;
 
@@ -863,7 +950,7 @@ export async function getSteps(boardId: number, signal?: AbortSignal) {
 
 export async function createStep(
   boardId: number,
-  data: { title: string; content?: string },
+  data: { title: string; content?: string; gherkin_lines?: import("@/interfaces/QAInterface").GherkinLine[] },
 ) {
   return apiFetch(stepBase(boardId), { method: "POST", body: JSON.stringify(data) });
 }
@@ -871,7 +958,7 @@ export async function createStep(
 export async function updateStep(
   boardId: number,
   stepId: number,
-  data: { title?: string; content?: string | null },
+  data: { title?: string; content?: string | null; gherkin_lines?: import("@/interfaces/QAInterface").GherkinLine[] },
 ) {
   return apiFetch(`${stepBase(boardId)}/${stepId}`, {
     method: "PUT",

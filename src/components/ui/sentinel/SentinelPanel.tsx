@@ -1,19 +1,52 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  faBug,
+  faBullseye,
+  faCheck,
+  faChevronDown,
+  faClockRotateLeft,
+  faCube,
+  faCubes,
+  faDice,
+  faEllipsis,
+  faFloppyDisk,
+  faGripVertical,
+  faLink,
+  faListCheck,
+  faPause,
+  faPaperclip,
+  faPlay,
+  faPlus,
+  faRocket,
+  faScrewdriverWrench,
+  faTrash,
+  faXmark,
+} from '@fortawesome/free-solid-svg-icons'
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core'
+import Icon from '@/components/ui/Icon'
 import { uploadInlineImage } from '@/lib/api'
 import type { useSentinelCard } from '@/hooks/useSentinelCard'
 import { useStepLibrary } from '@/hooks/useStepLibrary'
 import { useTestPlans } from '@/hooks/useTestPlans'
 import {
   deriveCaseStatus,
+  headerState,
   rollupStatus,
   STATUS_META,
+  VERDICT_META,
   type DataMatrix,
+  type Evidence,
+  type GherkinKeyword,
+  type GherkinLine,
+  type ReusableStep,
+  type RunItem,
   type RunStatus,
   type StepRef,
   type TestCase,
   type TestType,
+  type Verdict,
 } from '@/interfaces/QAInterface'
 
 type Library = ReturnType<typeof useStepLibrary>
@@ -21,7 +54,44 @@ type Plans = ReturnType<typeof useTestPlans>
 
 const CHIP_BG = '#1c1a16'
 const TYPES: TestType[] = ['manual', 'automated', 'performance', 'security']
-const RUN_STATUSES: RunStatus[] = ['passed', 'failed', 'blocked']
+const KEYWORDS: GherkinKeyword[] = ['DADO', 'QUANDO', 'ENTÃO', 'E']
+const VERDICTS: Verdict[] = ['approved', 'rejected', 'blocked', 'awaiting_info']
+
+// A timeline block resolved from a step_ref — global blocks read title/lines live from
+// the library (so edits propagate); local blocks carry them inline.
+type ResolvedBlock = {
+  key: string
+  scope: 'local' | 'global'
+  stepId: number | null
+  title: string
+  lines: GherkinLine[]
+  evidence: Evidence[]
+  missing: boolean
+}
+
+function resolveBlock(ref: StepRef, idx: number, stepsById: Record<number, ReusableStep>): ResolvedBlock {
+  if (ref.step_id != null) {
+    const step = stepsById[ref.step_id]
+    return {
+      key: `g${ref.step_id}`,
+      scope: 'global',
+      stepId: ref.step_id,
+      title: step?.title ?? `Step #${ref.step_id}`,
+      lines: step?.gherkin_lines ?? [],
+      evidence: ref.evidence ?? [],
+      missing: !step,
+    }
+  }
+  return {
+    key: ref.local_key ?? `l${idx}`,
+    scope: 'local',
+    stepId: null,
+    title: ref.title ?? 'Local block',
+    lines: ref.lines ?? [],
+    evidence: ref.evidence ?? [],
+    missing: false,
+  }
+}
 
 function StatusLed({ status, size = 8 }: { status: keyof typeof STATUS_META; size?: number }) {
   const { color } = STATUS_META[status]
@@ -33,8 +103,31 @@ function StatusLed({ status, size = 8 }: { status: keyof typeof STATUS_META; siz
   )
 }
 
+// Section heading with a FontAwesome glyph.
+function SectionHead({ icon, children, color = 'var(--cf-phosphor)' }: { icon: IconDefinition; children: React.ReactNode; color?: string }) {
+  return (
+    <div className="cf-mono uppercase flex items-center gap-2" style={{ fontSize: '11px', letterSpacing: '0.16em', color }}>
+      <Icon icon={icon} style={{ fontSize: '11px' }} />
+      {children}
+    </div>
+  )
+}
+
+function MiniLabel({ icon, children }: { icon?: IconDefinition; children: React.ReactNode }) {
+  return (
+    <span className="cf-mono uppercase flex items-center gap-1.5" style={{ fontSize: '10px', letterSpacing: '0.14em', color: 'var(--cf-text-dim)' }}>
+      {icon && <Icon icon={icon} style={{ fontSize: '9px' }} />}
+      {children}
+    </span>
+  )
+}
+
 function initials(name: string) {
   return name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+}
+
+function localKey() {
+  return `l_${Math.random().toString(36).slice(2, 9)}`
 }
 
 export function SentinelPanel({
@@ -59,15 +152,15 @@ export function SentinelPanel({
       <div className="flex flex-col items-center justify-center gap-4 py-16 px-6 text-center">
         <p style={{ color: 'var(--cf-text-muted)', fontSize: '13px' }}>No test cases on this card yet.</p>
         <p className="cf-mono" style={{ color: 'var(--cf-text-dim)', fontSize: '11px' }}>
-          Document a test, then log runs — the card header reflects the latest result.
+          Document a test, run it as a checklist — the card header reflects the verdict.
         </p>
         {canWrite && (
           <button
             onClick={() => createCase('New test case')}
             disabled={busy}
-            className="aero-btn aero-btn--cyan px-5 py-2 uppercase tracking-widest font-bold text-xs disabled:opacity-50"
+            className="aero-btn aero-btn--cyan px-5 py-2 uppercase tracking-widest font-bold text-xs disabled:opacity-50 inline-flex items-center gap-2"
           >
-            + New test case
+            <Icon icon={faPlus} /> New test case
           </button>
         )}
       </div>
@@ -80,9 +173,9 @@ export function SentinelPanel({
 
   return (
     <div className="flex flex-col">
-      {/* Header — card-level rollup + breakdown */}
+      {/* Header — card-level rollup + selected-case verdict tag */}
       <div
-        className="flex items-center justify-between px-5 py-3 border-b flex-wrap gap-2"
+        className="flex items-center justify-between px-5 py-3 border-b flex-wrap gap-3"
         style={{ borderColor: 'var(--cf-edge)' }}
       >
         <div className="flex items-center gap-2.5">
@@ -100,47 +193,18 @@ export function SentinelPanel({
             </div>
           </div>
         </div>
-        {canWrite && (
-          <button
-            onClick={() => createCase('New test case')}
-            disabled={busy}
-            className="aero-btn aero-btn--cyan px-3 py-1.5 uppercase tracking-widest font-bold text-[10px] disabled:opacity-50"
-          >
-            + New case
-          </button>
-        )}
+        {selected && <VerdictTag testCase={selected} />}
       </div>
 
-      {/* Test-case navigator */}
-      <div className="flex gap-2 px-5 py-3 border-b overflow-x-auto" style={{ borderColor: 'var(--cf-edge)' }}>
-        {cases.map((c) => {
-          const st = deriveCaseStatus(c)
-          const on = c.id === selectedCaseId
-          return (
-            <button
-              key={c.id}
-              onClick={() => setSelectedCaseId(c.id)}
-              className="flex flex-col gap-1 rounded-lg px-3 py-2 text-left flex-shrink-0 cursor-pointer"
-              style={{
-                minWidth: 150,
-                background: 'var(--cf-screen)',
-                border: `1px solid ${on ? STATUS_META[st].color : 'var(--cf-edge)'}`,
-                boxShadow: on ? `inset 0 0 0 1px ${STATUS_META[st].color}55` : undefined,
-              }}
-            >
-              <span className="flex items-center gap-2">
-                <StatusLed status={st} />
-                <span className="cf-mono truncate" style={{ fontSize: '12px', color: on ? 'var(--cf-text)' : 'var(--cf-text-muted)' }}>
-                  {c.title}
-                </span>
-              </span>
-              <span className="cf-mono" style={{ fontSize: '10px', color: 'var(--cf-text-dim)' }}>
-                {c.type} · {c.runs.length} run{c.runs.length !== 1 ? 's' : ''}
-              </span>
-            </button>
-          )
-        })}
-      </div>
+      {/* Case tabs — same underline + sliding-indicator logic as the card modal */}
+      <CaseTabs
+        cases={cases}
+        selectedCaseId={selectedCaseId}
+        onSelect={setSelectedCaseId}
+        canWrite={canWrite}
+        busy={busy}
+        onNew={() => createCase('New test case')}
+      />
 
       {selected && (
         <CaseDetail
@@ -155,19 +219,102 @@ export function SentinelPanel({
           onDelete={() => removeCase(selected.id)}
           onRun={(payload) => launchRun(selected.id, payload)}
           onLinkBug={() => s.linkBug(selected.id)}
+          onVerdict={(v) => s.setVerdict(selected.id, v)}
+          onCiToken={() => s.generateCiToken(selected.id)}
         />
       )}
     </div>
   )
 }
 
-// ── Selected case: documentation workbench + execution ────────────────────────
+// Header tag — the human verdict wins; else the run-derived status.
+function VerdictTag({ testCase }: { testCase: TestCase }) {
+  const { color, label } = headerState(testCase)
+  return (
+    <span
+      className="cf-mono inline-flex items-center gap-2 px-3 py-1.5 rounded-lg uppercase"
+      style={{ color, border: `1.5px solid ${color}`, background: CHIP_BG, fontSize: '12px', letterSpacing: '0.1em' }}
+    >
+      <span className="cf-led" style={{ width: 9, height: 9, background: color, boxShadow: `0 0 6px ${color}` }} />
+      {label}
+    </span>
+  )
+}
+
+// Underline tabs with a springy sliding indicator (mirrors CardEdit's tab logic).
+function CaseTabs({
+  cases,
+  selectedCaseId,
+  onSelect,
+  canWrite,
+  busy,
+  onNew,
+}: {
+  cases: TestCase[]
+  selectedCaseId: number | null
+  onSelect: (id: number) => void
+  canWrite: boolean
+  busy: boolean
+  onNew: () => void
+}) {
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+  const [ind, setInd] = useState<{ left: number; width: number }>({ left: 0, width: 0 })
+  const activeIdx = cases.findIndex((c) => c.id === selectedCaseId)
+
+  useLayoutEffect(() => {
+    const elm = tabRefs.current[activeIdx]
+    if (elm) setInd({ left: elm.offsetLeft, width: elm.offsetWidth })
+  }, [activeIdx, cases.length])
+
+  return (
+    <div className="relative flex gap-4 px-5 pt-2.5 border-b overflow-x-auto items-center" style={{ borderColor: 'var(--cf-edge)' }}>
+      {cases.map((c, i) => {
+        const st = deriveCaseStatus(c)
+        const on = c.id === selectedCaseId
+        const led = STATUS_META[st].color
+        return (
+          <button
+            key={c.id}
+            ref={(el) => { tabRefs.current[i] = el }}
+            onClick={() => onSelect(c.id)}
+            className="cf-mono uppercase tracking-widest font-bold pb-2.5 cursor-pointer transition-colors flex items-center gap-1.5 flex-shrink-0"
+            style={{ color: on ? 'var(--cf-text)' : 'var(--cf-text-muted)', fontSize: '10px' }}
+          >
+            <span
+              className="cf-led"
+              style={{ width: 6, height: 6, background: led, boxShadow: on || st !== 'not_run' ? `0 0 6px ${led}` : 'none' }}
+            />
+            {c.title}
+            <span className="cf-mono px-1.5 rounded-sm" style={{ background: CHIP_BG, color: 'var(--cf-phosphor)', fontSize: '10px' }}>
+              {c.runs.length}
+            </span>
+          </button>
+        )
+      })}
+      {canWrite && (
+        <button onClick={onNew} disabled={busy} className="aero-btn aero-btn--cyan px-3 py-1 uppercase tracking-widest font-bold text-[10px] disabled:opacity-50 ml-auto mb-1.5 flex-shrink-0 inline-flex items-center gap-1.5">
+          <Icon icon={faPlus} /> New case
+        </button>
+      )}
+      <div
+        style={{
+          position: 'absolute', bottom: -1, left: ind.left, width: ind.width, height: 2,
+          backgroundColor: 'var(--cf-phosphor)', borderRadius: 1, boxShadow: '0 0 8px var(--cf-phosphor)',
+          transition: 'left 240ms cubic-bezier(0.34,1.56,0.64,1), width 240ms cubic-bezier(0.34,1.56,0.64,1)',
+        }}
+      />
+    </div>
+  )
+}
+
+// ── Selected case: builder (left) + execution (right) ─────────────────────────
 type RunPayload = {
   status: RunStatus
   environment?: string
   device?: string
   logs?: string
-  evidence?: { url: string; kind?: string }[]
+  evidence?: Evidence[]
+  items?: RunItem[]
 }
 
 function CaseDetail({
@@ -181,6 +328,8 @@ function CaseDetail({
   onDelete,
   onRun,
   onLinkBug,
+  onVerdict,
+  onCiToken,
 }: {
   testCase: TestCase
   boardId: number
@@ -192,22 +341,24 @@ function CaseDetail({
   onDelete: () => void
   onRun: (payload: RunPayload) => void
   onLinkBug: () => void
+  onVerdict: (v: Verdict | null) => void
+  onCiToken: () => void
 }) {
   const [draft, setDraft] = useState(testCase)
   useEffect(() => setDraft(testCase), [testCase])
   const set = (patch: Partial<TestCase>) => setDraft((d) => ({ ...d, ...patch }))
 
-  const label = (t: string) => (
-    <span className="cf-mono uppercase" style={{ fontSize: '10px', letterSpacing: '0.14em', color: 'var(--cf-text-dim)' }}>
-      {t}
-    </span>
-  )
+  const resolvedBlocks = (draft.step_refs ?? []).map((ref, i) => resolveBlock(ref, i, library.stepsById))
 
   return (
     <div className="grid md:grid-cols-2">
-      {/* Documentation */}
+      {/* ── LEFT: Test builder ───────────────────────────────────────────── */}
       <div className="flex flex-col gap-3 px-5 py-4 border-b md:border-b-0 md:border-r" style={{ borderColor: 'var(--cf-edge)' }}>
-        {label(`Documentation · v${testCase.version}${testCase.editor ? ` · ${testCase.editor.name}` : ''}`)}
+        <SectionHead icon={faScrewdriverWrench}>
+          Test builder
+          <span style={{ color: 'var(--cf-text-dim)', fontSize: '10px' }}>· v{testCase.version}{testCase.editor ? ` · ${testCase.editor.name}` : ''}</span>
+        </SectionHead>
+
         <input
           value={draft.title}
           disabled={!canWrite}
@@ -222,32 +373,41 @@ function CaseDetail({
           <input value={draft.target_env ?? ''} disabled={!canWrite} onChange={(e) => set({ target_env: e.target.value })} placeholder="Target env" className="glass-input cf-lcd text-xs flex-1" />
         </div>
 
-        {label('BDD · Gherkin')}
-        <textarea value={draft.gherkin ?? ''} disabled={!canWrite} onChange={(e) => set({ gherkin: e.target.value })} rows={4} placeholder="Dado / Quando / Então…" className="glass-input cf-mono text-xs resize-none" style={{ lineHeight: 1.6 }} />
+        {/* BDD block builder */}
+        {canWrite && (
+          <BddBuilder
+            library={library}
+            onAddBlock={(ref) => set({ step_refs: [...(draft.step_refs ?? []), ref] })}
+          />
+        )}
 
-        <div className="flex gap-2">
-          <div className="flex-1 flex flex-col gap-1">{label('Pré-condições')}
-            <textarea value={draft.preconditions ?? ''} disabled={!canWrite} onChange={(e) => set({ preconditions: e.target.value })} rows={2} className="glass-input cf-mono text-xs resize-none" /></div>
-          <div className="flex-1 flex flex-col gap-1">{label('Pós-condições')}
-            <textarea value={draft.postconditions ?? ''} disabled={!canWrite} onChange={(e) => set({ postconditions: e.target.value })} rows={2} className="glass-input cf-mono text-xs resize-none" /></div>
-        </div>
-
-        {label('Passos modulares')}
-        <StepComposer
+        {/* Timeline of blocks (drag & drop) */}
+        <MiniLabel icon={faCubes}>Timeline · drag to reorder</MiniLabel>
+        <Timeline
+          blocks={resolvedBlocks}
           refs={draft.step_refs ?? []}
           library={library}
+          boardId={boardId}
           canWrite={canWrite}
           onChange={(refs) => set({ step_refs: refs })}
         />
 
-        {label('Massa de dados · data-driven')}
+        {canWrite && (
+          <AddFromLibrary
+            library={library}
+            refs={draft.step_refs ?? []}
+            onChange={(refs) => set({ step_refs: refs })}
+          />
+        )}
+
+        <MiniLabel icon={faDice}>Test data · data-driven</MiniLabel>
         <DataMatrixEditor
           value={draft.data_matrix ?? { columns: [], rows: [] }}
           canWrite={canWrite}
           onChange={(m) => set({ data_matrix: m })}
         />
 
-        {label('Planos / suítes')}
+        <MiniLabel>Plans / suites</MiniLabel>
         <TestPlanLinks
           linked={draft.test_plan_ids ?? []}
           plans={plans}
@@ -260,9 +420,9 @@ function CaseDetail({
             <button
               onClick={() => onSave({ title: draft.title, type: draft.type, target_env: draft.target_env, gherkin: draft.gherkin, preconditions: draft.preconditions, postconditions: draft.postconditions, step_refs: draft.step_refs ?? [], data_matrix: draft.data_matrix ?? { columns: [], rows: [] }, test_plan_ids: draft.test_plan_ids ?? [] })}
               disabled={busy}
-              className="aero-btn aero-btn--cyan px-4 py-1.5 uppercase tracking-widest font-bold text-[10px] disabled:opacity-50"
+              className="aero-btn aero-btn--cyan px-4 py-1.5 uppercase tracking-widest font-bold text-[10px] disabled:opacity-50 inline-flex items-center gap-1.5"
             >
-              Save
+              <Icon icon={faFloppyDisk} /> Save case
             </button>
             <button onClick={onDelete} disabled={busy} className="aero-btn aero-btn--ghost px-3 py-1.5 uppercase tracking-widest font-bold text-[10px] disabled:opacity-50 ml-auto">
               Delete case
@@ -271,49 +431,35 @@ function CaseDetail({
         )}
       </div>
 
-      {/* Execution */}
+      {/* ── RIGHT: Execution & verdict ───────────────────────────────────── */}
       <div className="flex flex-col gap-3 px-5 py-4">
-        {label('Reports · append-only')}
-        {canWrite && <RunLauncher boardId={boardId} busy={busy} onRun={onRun} />}
+        <SectionHead icon={faRocket}>Execution &amp; verdict</SectionHead>
 
-        <div className="flex flex-col gap-2 mt-1">
+        {/* Quality Gate */}
+        <QualityGate current={testCase.verdict} canWrite={canWrite} busy={busy} onVerdict={onVerdict} />
+
+        {/* Controls + webhook */}
+        {canWrite && (
+          <ExecutionControls
+            testCase={testCase}
+            blocks={resolvedBlocks}
+            boardId={boardId}
+            busy={busy}
+            onRun={onRun}
+            onCiToken={onCiToken}
+          />
+        )}
+
+        {/* Run history */}
+        <MiniLabel icon={faClockRotateLeft}>Test run history · click to expand</MiniLabel>
+        <div className="flex flex-col gap-2">
           {testCase.runs.length === 0 && (
-            <p className="cf-mono" style={{ fontSize: '11px', color: 'var(--cf-text-dim)' }}>No runs yet — log the first one.</p>
+            <p className="cf-mono" style={{ fontSize: '11px', color: 'var(--cf-text-dim)' }}>No runs yet — start the first one.</p>
           )}
-          {testCase.runs.map((r) => (
-            <div key={r.id} className="rounded-lg px-3 py-2" style={{ background: 'var(--cf-screen)', border: `1px solid ${STATUS_META[r.status].color}55` }}>
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <StatusLed status={r.status} />
-                  <span className="cf-mono" style={{ fontSize: '12px', color: STATUS_META[r.status].color }}>{STATUS_META[r.status].label}</span>
-                </span>
-                {r.executor && (
-                  <span title={r.executor.name} className="rounded-full flex items-center justify-center text-white font-bold" style={{ width: 20, height: 20, fontSize: 9, background: '#1976D2', border: '1.5px solid rgba(255,255,255,0.8)' }}>
-                    {initials(r.executor.name)}
-                  </span>
-                )}
-              </div>
-              <div className="cf-mono mt-1" style={{ fontSize: '10px', color: 'var(--cf-text-dim)' }}>
-                {[r.environment, r.device, r.executed_at ? new Date(r.executed_at).toLocaleString() : null].filter(Boolean).join(' · ') || '—'}
-              </div>
-              {r.logs && (
-                <div className="cf-mono mt-1.5 px-2 py-1 rounded-sm" style={{ background: CHIP_BG, fontSize: '10px', color: 'var(--cf-red)', whiteSpace: 'pre-wrap' }}>{r.logs}</div>
-              )}
-              {r.evidence.length > 0 && (
-                <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                  {r.evidence.map((ev, i) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <a key={i} href={ev.url} target="_blank" rel="noreferrer" className="block rounded-sm overflow-hidden flex-shrink-0" style={{ width: 44, height: 32, border: '1px solid var(--cf-edge)' }}>
-                      <img src={ev.url} alt="evidence" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </a>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+          {testCase.runs.map((r) => <RunRow key={r.id} run={r} />)}
         </div>
 
-        {/* Linked bug (bidirectional coupling) */}
+        {/* Linked bug */}
         {testCase.bug_card_id ? (
           <div className="rounded-lg px-3 py-2 flex items-center justify-between" style={{ background: 'var(--cf-screen)', border: `1px solid ${testCase.awaiting_retest ? 'var(--cf-cyan)' : 'var(--cf-edge)'}` }}>
             <span className="flex items-center gap-2">
@@ -325,8 +471,8 @@ function CaseDetail({
             )}
           </div>
         ) : canWrite && deriveCaseStatus(testCase) === 'failed' ? (
-          <button onClick={onLinkBug} disabled={busy} className="aero-btn aero-btn--magenta px-4 py-1.5 uppercase tracking-widest font-bold text-[10px] disabled:opacity-50 self-start">
-            Create bug from failure
+          <button onClick={onLinkBug} disabled={busy} className="aero-btn aero-btn--magenta px-4 py-1.5 uppercase tracking-widest font-bold text-[10px] disabled:opacity-50 self-start inline-flex items-center gap-1.5">
+            <Icon icon={faBug} /> Create bug from failure
           </button>
         ) : null}
       </div>
@@ -334,8 +480,565 @@ function CaseDetail({
   )
 }
 
-// Data-driven matrix editor: variable columns × value rows. Lives in the case draft
-// (saved with the case), so edits are local until Save.
+// ── BDD block builder: structured Gherkin lines + destination toggle ──────────
+function BddBuilder({ library, onAddBlock }: { library: Library; onAddBlock: (ref: StepRef) => void }) {
+  const [title, setTitle] = useState('')
+  const [lines, setLines] = useState<GherkinLine[]>([
+    { keyword: 'DADO', text: '' },
+    { keyword: 'QUANDO', text: '' },
+    { keyword: 'ENTÃO', text: '' },
+  ])
+  const [scope, setScope] = useState<'local' | 'global'>('local')
+
+  const setLine = (i: number, patch: Partial<GherkinLine>) => setLines((ls) => ls.map((l, li) => (li === i ? { ...l, ...patch } : l)))
+  const addLine = () => setLines((ls) => [...ls, { keyword: 'E', text: '' }])
+  const removeLine = (i: number) => setLines((ls) => ls.filter((_, li) => li !== i))
+
+  const reset = () => {
+    setTitle('')
+    setLines([{ keyword: 'DADO', text: '' }, { keyword: 'QUANDO', text: '' }, { keyword: 'ENTÃO', text: '' }])
+    setScope('local')
+  }
+
+  const save = async () => {
+    const t = title.trim() || 'Untitled block'
+    const filled = lines.filter((l) => l.text.trim())
+    if (scope === 'global') {
+      // Persist to the board library and reference it — edits will propagate.
+      const step = await library.create(t, { gherkin_lines: filled })
+      onAddBlock({ step_id: step.id, scope: 'global' })
+    } else {
+      onAddBlock({ local_key: localKey(), scope: 'local', title: t, lines: filled })
+    }
+    reset()
+  }
+
+  return (
+    <div className="rounded-lg p-3 flex flex-col gap-2.5" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--cf-edge)' }}>
+      <MiniLabel icon={faPlus}>New block (BDD)</MiniLabel>
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title — e.g. Validate coupon" className="glass-input cf-lcd text-sm" />
+      <div className="flex flex-col gap-1.5">
+        {lines.map((l, i) => (
+          <div key={i} className="flex gap-2">
+            <select value={l.keyword} onChange={(e) => setLine(i, { keyword: e.target.value as GherkinKeyword })} className="glass-input cf-mono text-xs cursor-pointer" style={{ flex: '0 0 104px' }}>
+              {KEYWORDS.map((k) => <option key={k} value={k} className="text-black">{k}</option>)}
+            </select>
+            <input value={l.text} onChange={(e) => setLine(i, { text: e.target.value })} placeholder="describe the step…" className="glass-input cf-mono text-xs flex-1" />
+            {lines.length > 1 && (
+              <button onClick={() => removeLine(i)} aria-label="Remove line" className="cursor-pointer" style={{ color: 'var(--cf-text-dim)', fontSize: '11px' }}><Icon icon={faXmark} /></button>
+            )}
+          </div>
+        ))}
+      </div>
+      <button onClick={addLine} className="aero-btn aero-btn--ghost px-3 py-1 uppercase tracking-widest font-bold text-[10px] self-start inline-flex items-center gap-1.5">
+        <Icon icon={faPlus} /> Add And / Or
+      </button>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="cf-mono uppercase" style={{ fontSize: '10px', letterSpacing: '0.12em', color: 'var(--cf-text-dim)' }}>Destination</span>
+        {(['local', 'global'] as const).map((sc) => {
+          const on = scope === sc
+          return (
+            <button
+              key={sc}
+              onClick={() => setScope(sc)}
+              className="cf-mono flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] cursor-pointer"
+              style={{ border: `1px solid ${on ? 'var(--cf-cyan)' : 'var(--cf-edge)'}`, color: on ? 'var(--cf-cyan)' : 'var(--cf-text-muted)', background: 'var(--cf-screen)' }}
+            >
+              <span style={{ width: 10, height: 10, borderRadius: '50%', border: '1.5px solid currentColor', background: on ? 'currentColor' : 'transparent', boxShadow: on ? 'inset 0 0 0 2px var(--cf-screen)' : 'none' }} />
+              {sc === 'local' ? 'This test only' : 'Global library'}
+            </button>
+          )
+        })}
+      </div>
+      <button onClick={save} disabled={library.busy} className="aero-btn aero-btn--cyan px-4 py-1.5 uppercase tracking-widest font-bold text-[10px] disabled:opacity-50 self-start inline-flex items-center gap-1.5">
+        <Icon icon={faFloppyDisk} /> Save block to timeline
+      </button>
+    </div>
+  )
+}
+
+// ── Timeline: accordion blocks with native drag & drop reorder ────────────────
+function Timeline({
+  blocks,
+  refs,
+  library,
+  boardId,
+  canWrite,
+  onChange,
+}: {
+  blocks: ResolvedBlock[]
+  refs: StepRef[]
+  library: Library
+  boardId: number
+  canWrite: boolean
+  onChange: (refs: StepRef[]) => void
+}) {
+  const [open, setOpen] = useState<Record<string, boolean>>({})
+  const dragFrom = useRef<number | null>(null)
+  const [over, setOver] = useState<number | null>(null)
+
+  if (blocks.length === 0) {
+    return <p className="cf-mono" style={{ fontSize: '11px', color: 'var(--cf-text-dim)' }}>No blocks — create one above or search the library.</p>
+  }
+
+  const move = (from: number, to: number) => {
+    if (from === to) return
+    const next = [...refs]
+    const [m] = next.splice(from, 1)
+    next.splice(to, 0, m)
+    onChange(next)
+  }
+
+  const patchRef = (idx: number, patch: Partial<StepRef>) => onChange(refs.map((r, i) => (i === idx ? { ...r, ...patch } : r)))
+  const removeRef = (idx: number) => onChange(refs.filter((_, i) => i !== idx))
+
+  return (
+    <div className="flex flex-col gap-2">
+      {blocks.map((b, idx) => {
+        const isOpen = open[b.key] ?? false
+        return (
+          <div
+            key={b.key}
+            draggable={canWrite}
+            onDragStart={() => { dragFrom.current = idx }}
+            onDragOver={(e) => { e.preventDefault(); setOver(idx) }}
+            onDragLeave={() => setOver((o) => (o === idx ? null : o))}
+            onDrop={(e) => { e.preventDefault(); if (dragFrom.current != null) move(dragFrom.current, idx); dragFrom.current = null; setOver(null) }}
+            className="rounded-lg overflow-hidden"
+            style={{ background: 'var(--cf-screen)', border: `1px solid ${over === idx ? 'var(--cf-cyan)' : 'var(--cf-edge)'}`, boxShadow: over === idx ? '0 0 0 1px var(--cf-cyan)' : undefined }}
+          >
+            <div className="flex items-center gap-2.5 px-3 py-2 cursor-pointer" onClick={() => setOpen((o) => ({ ...o, [b.key]: !isOpen }))}>
+              {canWrite && <span className="cursor-grab select-none" style={{ color: 'var(--cf-text-dim)', fontSize: '11px' }} onClick={(e) => e.stopPropagation()}><Icon icon={faGripVertical} /></span>}
+              <Icon icon={b.scope === 'global' ? faCube : faBullseye} style={{ fontSize: '11px', color: b.scope === 'global' ? 'var(--cf-cyan)' : 'var(--cf-phosphor)' }} />
+              <span className="cf-mono truncate flex-1" style={{ fontSize: '12.5px', color: b.missing ? 'var(--cf-red)' : 'var(--cf-text)' }}>
+                {b.title}
+              </span>
+              <span className="cf-mono px-1.5 rounded-sm" style={{ background: CHIP_BG, color: b.scope === 'global' ? 'var(--cf-cyan)' : 'var(--cf-phosphor)', fontSize: '9px' }}>
+                {b.scope === 'global' ? 'LIB' : 'LOCAL'}
+              </span>
+              {b.evidence.length > 0 && (
+                <span className="cf-mono flex items-center gap-1" style={{ color: 'var(--cf-cyan)', fontSize: '10px' }}><Icon icon={faPaperclip} style={{ fontSize: '9px' }} />{b.evidence.length}</span>
+              )}
+              <Icon icon={faChevronDown} style={{ color: 'var(--cf-text-dim)', fontSize: '10px', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />
+            </div>
+
+            {isOpen && (
+              <div className="flex flex-col gap-2 px-3 pb-3" style={{ paddingLeft: canWrite ? 34 : 12 }}>
+                <BlockLines block={b} refIdx={idx} library={library} canWrite={canWrite} onPatchLocal={(lines) => patchRef(idx, { lines })} />
+                <BlockEvidence boardId={boardId} evidence={b.evidence} canWrite={canWrite} onChange={(evidence) => patchRef(idx, { evidence })} />
+                {canWrite && (
+                  <button onClick={() => removeRef(idx)} className="aero-btn aero-btn--ghost px-2.5 py-1 uppercase tracking-widest font-bold text-[9px] self-start inline-flex items-center gap-1.5">
+                    <Icon icon={faTrash} style={{ fontSize: '8px' }} /> Remove block
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// Gherkin lines of a block. Global blocks edit the library step (propagates); local
+// blocks edit the case draft.
+function BlockLines({
+  block,
+  library,
+  canWrite,
+  onPatchLocal,
+}: {
+  block: ResolvedBlock
+  refIdx: number
+  library: Library
+  canWrite: boolean
+  onPatchLocal: (lines: GherkinLine[]) => void
+}) {
+  if (block.missing) {
+    return <span className="cf-mono" style={{ fontSize: '11px', color: 'var(--cf-red)' }}>Global block removed from the library.</span>
+  }
+
+  const lines = block.lines
+  const setLine = (i: number, text: string) => {
+    const next = lines.map((l, li) => (li === i ? { ...l, text } : l))
+    if (block.scope === 'global' && block.stepId != null) library.update(block.stepId, { gherkin_lines: next })
+    else onPatchLocal(next)
+  }
+
+  if (lines.length === 0) {
+    return <span className="cf-mono" style={{ fontSize: '11px', color: 'var(--cf-text-dim)' }}>Block has no Gherkin lines.</span>
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      {lines.map((l, i) => (
+        <div key={i} className="flex gap-2 items-start">
+          <span className="cf-mono uppercase" style={{ color: 'var(--cf-amber)', fontSize: '10px', minWidth: 58, paddingTop: 3 }}>{l.keyword}</span>
+          {canWrite ? (
+            <input defaultValue={l.text} onBlur={(e) => { if (e.target.value !== l.text) setLine(i, e.target.value) }} className="cf-mono flex-1 bg-transparent focus:outline-none border-b" style={{ fontSize: '11.5px', color: 'var(--cf-cream)', borderColor: 'transparent' }} />
+          ) : (
+            <span className="cf-mono flex-1" style={{ fontSize: '11.5px', color: 'var(--cf-cream)' }}>{l.text}</span>
+          )}
+        </div>
+      ))}
+      {block.scope === 'global' && (
+        <span className="cf-mono" style={{ fontSize: '9px', color: 'var(--cf-text-dim)' }}>edits propagate to every case using this block</span>
+      )}
+    </div>
+  )
+}
+
+// Documental evidence attached to a block (persisted in the case's step_ref).
+function BlockEvidence({ boardId, evidence, canWrite, onChange }: { boardId: number; evidence: Evidence[]; canWrite: boolean; onChange: (e: Evidence[]) => void }) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+
+  const handle = async (files: FileList | null) => {
+    if (!files?.length) return
+    setUploading(true)
+    try {
+      const next = [...evidence]
+      for (const file of Array.from(files)) {
+        const { url } = await uploadInlineImage(boardId, file)
+        if (url) next.push({ url, kind: 'image' })
+      }
+      onChange(next)
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      {evidence.map((ev, i) => (
+        <a key={i} href={ev.url} target="_blank" rel="noreferrer" className="block rounded-sm overflow-hidden flex-shrink-0" style={{ width: 40, height: 30, border: '1px solid var(--cf-edge)' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={ev.url} alt="evidence" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </a>
+      ))}
+      {canWrite && (
+        <>
+          <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => handle(e.target.files)} />
+          <button onClick={() => fileRef.current?.click()} disabled={uploading} className="cf-mono uppercase tracking-widest font-bold px-2.5 py-1 rounded-sm text-[9px] cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5" style={{ color: 'var(--cf-cyan)', background: CHIP_BG }}>
+            <Icon icon={faPaperclip} style={{ fontSize: '9px' }} /> {uploading ? 'Uploading…' : 'Attach evidence'}
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
+function AddFromLibrary({ library, refs, onChange }: { library: Library; refs: StepRef[]; onChange: (refs: StepRef[]) => void }) {
+  const used = new Set(refs.filter((r) => r.step_id != null).map((r) => r.step_id))
+  const available = library.steps.filter((s) => !used.has(s.id))
+  if (available.length === 0) return null
+  return (
+    <select
+      value=""
+      onChange={(e) => { if (e.target.value) onChange([...refs, { step_id: Number(e.target.value), scope: 'global' }]) }}
+      className="glass-input cf-lcd text-xs cursor-pointer self-start"
+      style={{ width: 'auto' }}
+    >
+      <option value="" className="text-black">Search global library…</option>
+      {available.map((s) => <option key={s.id} value={s.id} className="text-black">{s.title}</option>)}
+    </select>
+  )
+}
+
+// ── Quality Gate: human verdict buttons ───────────────────────────────────────
+function QualityGate({ current, canWrite, busy, onVerdict }: { current: Verdict | null; canWrite: boolean; busy: boolean; onVerdict: (v: Verdict | null) => void }) {
+  return (
+    <div className="rounded-lg p-3 flex flex-col gap-2" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--cf-edge)' }}>
+      <MiniLabel>Final verdict · quality gate</MiniLabel>
+      <div className="grid grid-cols-2 gap-2">
+        {VERDICTS.map((v) => {
+          const meta = VERDICT_META[v]
+          const on = current === v
+          return (
+            <button
+              key={v}
+              onClick={() => canWrite && onVerdict(on ? null : v)}
+              disabled={!canWrite || busy}
+              className="cf-mono uppercase flex items-center justify-center gap-2 py-2.5 rounded-md text-[11px] cursor-pointer disabled:cursor-default"
+              style={{
+                letterSpacing: '0.08em',
+                border: `1.5px solid ${meta.color}`,
+                background: on ? meta.color : CHIP_BG,
+                color: on ? '#141810' : 'var(--cf-text-muted)',
+                fontWeight: on ? 700 : 400,
+                boxShadow: on ? `0 0 8px ${meta.color}66` : undefined,
+              }}
+            >
+              <Icon icon={meta.icon} /> {meta.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ── Execution controls: start interactive run + webhook CI ────────────────────
+function ExecutionControls({
+  testCase,
+  blocks,
+  boardId,
+  busy,
+  onRun,
+  onCiToken,
+}: {
+  testCase: TestCase
+  blocks: ResolvedBlock[]
+  boardId: number
+  busy: boolean
+  onRun: (payload: RunPayload) => void
+  onCiToken: () => void
+}) {
+  const [live, setLive] = useState(false)
+  const [showHook, setShowHook] = useState(false)
+
+  return (
+    <div className="rounded-lg p-3 flex flex-col gap-2" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--cf-edge)' }}>
+      <MiniLabel>Execution controls</MiniLabel>
+
+      {live ? (
+        <LiveRun
+          blocks={blocks}
+          boardId={boardId}
+          busy={busy}
+          onCancel={() => setLive(false)}
+          onFinalize={(payload) => { onRun(payload); setLive(false) }}
+        />
+      ) : (
+        <>
+          <button
+            onClick={() => setLive(true)}
+            disabled={busy || blocks.length === 0}
+            className="aero-btn aero-btn--cyan px-4 py-2 uppercase tracking-widest font-bold text-[10px] disabled:opacity-50 w-full justify-center inline-flex items-center gap-2"
+          >
+            <Icon icon={faPlay} /> Start new execution
+          </button>
+          {blocks.length === 0 && (
+            <span className="cf-mono" style={{ fontSize: '10px', color: 'var(--cf-text-dim)' }}>Add blocks to the timeline to run.</span>
+          )}
+          <button onClick={() => setShowHook((v) => !v)} className="aero-btn aero-btn--ghost px-4 py-1.5 uppercase tracking-widest font-bold text-[10px] w-full justify-center inline-flex items-center gap-2">
+            <Icon icon={faLink} /> Webhook CI
+          </button>
+          {showHook && <WebhookPanel testCase={testCase} busy={busy} onCiToken={onCiToken} />}
+        </>
+      )}
+    </div>
+  )
+}
+
+function WebhookPanel({ testCase, busy, onCiToken }: { testCase: TestCase; busy: boolean; onCiToken: () => void }) {
+  const base = (process.env.NEXT_PUBLIC_API ?? '').replace(/\/$/, '')
+  const url = testCase.ci_token ? `${base}/api/webhooks/qa-ci/${testCase.ci_token}` : null
+  const [copied, setCopied] = useState(false)
+
+  return (
+    <div className="rounded-md p-2.5 flex flex-col gap-2" style={{ background: 'var(--cf-screen)', border: '1px solid var(--cf-cyan)' }}>
+      <span className="cf-mono uppercase" style={{ fontSize: '9px', letterSpacing: '0.12em', color: 'var(--cf-cyan)' }}>POST · triggers an automatic run (source: ci)</span>
+      {url ? (
+        <>
+          <code className="cf-mono" style={{ fontSize: '10px', color: 'var(--cf-cyan)', wordBreak: 'break-all', background: CHIP_BG, padding: '5px 7px', borderRadius: 4 }}>{url}</code>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { if (url) { navigator.clipboard?.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1500) } }}
+              className="aero-btn aero-btn--ghost px-2.5 py-1 uppercase tracking-widest font-bold text-[9px] inline-flex items-center gap-1.5"
+            >
+              {copied ? <><Icon icon={faCheck} style={{ fontSize: '8px' }} /> Copied</> : 'Copy'}
+            </button>
+            <button onClick={onCiToken} disabled={busy} className="aero-btn aero-btn--ghost px-2.5 py-1 uppercase tracking-widest font-bold text-[9px] disabled:opacity-50">
+              Regenerate token
+            </button>
+          </div>
+        </>
+      ) : (
+        <button onClick={onCiToken} disabled={busy} className="aero-btn aero-btn--cyan px-3 py-1.5 uppercase tracking-widest font-bold text-[10px] disabled:opacity-50 self-start">
+          Generate CI token
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ── Interactive run: per-block checklist, pause (client), finalize (persist) ──
+type LiveItem = RunItem & { bugText: string }
+
+function LiveRun({
+  blocks,
+  boardId,
+  busy,
+  onCancel,
+  onFinalize,
+}: {
+  blocks: ResolvedBlock[]
+  boardId: number
+  busy: boolean
+  onCancel: () => void
+  onFinalize: (payload: RunPayload) => void
+}) {
+  const [items, setItems] = useState<LiveItem[]>(
+    blocks.map((b) => ({ block_key: b.key, block_title: b.title, ok: null, evidence: [], bug_card_id: null, bugText: '' })),
+  )
+  const [paused, setPaused] = useState(false)
+
+  const setItem = (i: number, patch: Partial<LiveItem>) => setItems((its) => its.map((it, ii) => (ii === i ? { ...it, ...patch } : it)))
+
+  const finalize = () => {
+    const anyFail = items.some((it) => it.ok === false)
+    const anyPass = items.some((it) => it.ok === true)
+    const status: RunStatus = anyFail ? 'failed' : anyPass ? 'passed' : 'blocked'
+    const payloadItems: RunItem[] = items.map((it) => ({
+      block_key: it.block_key,
+      block_title: it.block_title,
+      ok: it.ok,
+      evidence: it.evidence,
+      bug_card_id: it.bugText.trim() ? Number(it.bugText.trim().replace(/\D/g, '')) || null : null,
+    }))
+    onFinalize({ status, items: payloadItems })
+  }
+
+  return (
+    <div className="rounded-md p-2.5 flex flex-col gap-2" style={{ background: 'var(--cf-screen)', border: '1px solid var(--cf-cyan)' }}>
+      <div className="flex items-center gap-2">
+        <span className="cf-led" style={{ width: 8, height: 8, background: 'var(--cf-cyan)', boxShadow: '0 0 6px var(--cf-cyan)' }} />
+        <span className="cf-mono uppercase" style={{ fontSize: '10px', letterSpacing: '0.1em', color: 'var(--cf-cyan)' }}>{paused ? 'Execution paused' : 'Execution in progress'}</span>
+      </div>
+
+      {items.map((it, i) => (
+        <div key={it.block_key} className="flex flex-col gap-1.5 rounded-md px-2.5 py-2" style={{ background: 'rgba(0,0,0,0.25)' }}>
+          <div className="flex items-center gap-2">
+            <span className="cf-mono flex-1 truncate" style={{ fontSize: '11.5px', color: 'var(--cf-text)' }}>{it.block_title}</span>
+            <button
+              onClick={() => setItem(i, { ok: it.ok === true ? null : true })}
+              aria-label="Pass"
+              className="rounded-sm px-2 py-0.5 cursor-pointer text-[11px]"
+              style={{ background: it.ok === true ? 'var(--cf-phosphor)' : CHIP_BG, color: it.ok === true ? '#141810' : 'var(--cf-phosphor)' }}
+            ><Icon icon={faCheck} /></button>
+            <button
+              onClick={() => setItem(i, { ok: it.ok === false ? null : false })}
+              aria-label="Fail"
+              className="rounded-sm px-2 py-0.5 cursor-pointer text-[11px]"
+              style={{ background: it.ok === false ? 'var(--cf-red)' : CHIP_BG, color: it.ok === false ? '#141810' : 'var(--cf-red)' }}
+            ><Icon icon={faXmark} /></button>
+          </div>
+          {it.ok === false && (
+            <div className="flex flex-col gap-1.5 pl-1" style={{ borderLeft: '2px solid var(--cf-red)' }}>
+              <BlockEvidence boardId={boardId} evidence={it.evidence ?? []} canWrite onChange={(evidence) => setItem(i, { evidence })} />
+              <input
+                value={it.bugText}
+                onChange={(e) => setItem(i, { bugText: e.target.value })}
+                placeholder="Linked bug (card ID) — required"
+                className="glass-input cf-mono text-xs"
+                style={{ borderColor: it.bugText.trim() ? 'var(--cf-edge)' : 'var(--cf-red)' }}
+              />
+            </div>
+          )}
+        </div>
+      ))}
+
+      <div className="flex items-center gap-2 pt-1">
+        <button onClick={() => setPaused((p) => !p)} className="aero-btn aero-btn--ghost px-3 py-1.5 uppercase tracking-widest font-bold text-[10px] inline-flex items-center gap-1.5">
+          <Icon icon={paused ? faPlay : faPause} /> {paused ? 'Resume' : 'Pause test'}
+        </button>
+        <button onClick={finalize} disabled={busy} className="aero-btn aero-btn--cyan px-3 py-1.5 uppercase tracking-widest font-bold text-[10px] disabled:opacity-50 inline-flex items-center gap-1.5">
+          <Icon icon={faFloppyDisk} /> Finalize execution
+        </button>
+        <button onClick={onCancel} className="cf-mono uppercase cursor-pointer ml-auto" style={{ fontSize: '10px', color: 'var(--cf-text-dim)' }}>Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+// ── Run history row: checklist mirror (new) or single-status card (legacy) ────
+function RunRow({ run }: { run: TestCase['runs'][number] }) {
+  const [open, setOpen] = useState(false)
+  const hasChecklist = (run.items ?? []).length > 0
+
+  return (
+    <div className="rounded-lg overflow-hidden" style={{ background: 'var(--cf-screen)', border: `1px solid ${STATUS_META[run.status].color}55` }}>
+      <div className="flex items-center gap-2 px-3 py-2 cursor-pointer" onClick={() => setOpen((o) => !o)}>
+        <StatusLed status={run.status} />
+        <span className="cf-mono" style={{ fontSize: '12px', color: STATUS_META[run.status].color }}>{STATUS_META[run.status].label}</span>
+        {run.source === 'ci' && <span className="cf-mono px-1.5 rounded-sm" style={{ background: CHIP_BG, color: 'var(--cf-cyan)', fontSize: '9px' }}>CI</span>}
+        {run.executor && (
+          <span title={run.executor.name} className="rounded-full flex items-center justify-center text-white font-bold" style={{ width: 20, height: 20, fontSize: 9, background: '#1976D2', border: '1.5px solid rgba(255,255,255,0.8)' }}>
+            {initials(run.executor.name)}
+          </span>
+        )}
+        <span className="cf-mono ml-auto text-right" style={{ fontSize: '10px', color: 'var(--cf-text-dim)' }}>
+          {[run.environment, run.executed_at ? new Date(run.executed_at).toLocaleString() : null].filter(Boolean).join(' · ') || '—'}
+        </span>
+        <Icon icon={faChevronDown} style={{ color: 'var(--cf-text-dim)', fontSize: '10px', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />
+      </div>
+
+      {open && (
+        <div className="flex flex-col gap-2 px-3 pb-3">
+          {hasChecklist ? (
+            <>
+              <MiniLabel icon={faListCheck}>Execution checklist</MiniLabel>
+              {(run.items ?? []).map((it, i) => {
+                const mark = it.ok === true ? faCheck : it.ok === false ? faXmark : faEllipsis
+                const mc = it.ok === true ? 'var(--cf-phosphor)' : it.ok === false ? 'var(--cf-red)' : 'var(--cf-text-dim)'
+                return (
+                  <div key={i} className="flex flex-col gap-1.5 rounded-md px-2.5 py-2" style={{ background: 'rgba(0,0,0,0.25)' }}>
+                    <div className="flex items-center gap-2">
+                      <Icon icon={mark} style={{ color: mc, fontSize: '11px' }} />
+                      <span className="cf-mono flex-1" style={{ fontSize: '11.5px', color: 'var(--cf-text)' }}>{it.block_title}</span>
+                    </div>
+                    {it.ok === false && (
+                      <div className="flex items-center gap-2 flex-wrap pl-1" style={{ borderLeft: '2px solid var(--cf-red)' }}>
+                        {(it.evidence ?? []).map((ev, ei) => (
+                          <a key={ei} href={ev.url} target="_blank" rel="noreferrer" className="block rounded-sm overflow-hidden" style={{ width: 40, height: 30, border: '1px solid var(--cf-edge)' }}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={ev.url} alt="evidence" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          </a>
+                        ))}
+                        {it.bug_card_id ? (
+                          <span className="cf-mono px-2 py-0.5 rounded-sm inline-flex items-center gap-1.5" style={{ background: CHIP_BG, color: 'var(--cf-red)', fontSize: '10px', border: '1px solid rgba(255,90,77,0.3)' }}><Icon icon={faBug} style={{ fontSize: '9px' }} /> #{it.bug_card_id}</span>
+                        ) : (
+                          <span className="cf-mono" style={{ fontSize: '10px', color: 'var(--cf-text-dim)' }}>no linked bug</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </>
+          ) : (
+            <>
+              {[run.environment, run.device].filter(Boolean).length > 0 && (
+                <span className="cf-mono" style={{ fontSize: '10px', color: 'var(--cf-text-dim)' }}>{[run.environment, run.device].filter(Boolean).join(' · ')}</span>
+              )}
+              {run.logs && (
+                <div className="cf-mono px-2 py-1 rounded-sm" style={{ background: CHIP_BG, fontSize: '10px', color: 'var(--cf-red)', whiteSpace: 'pre-wrap' }}>{run.logs}</div>
+              )}
+              {run.evidence.length > 0 && (
+                <div className="flex gap-1.5 flex-wrap">
+                  {run.evidence.map((ev, i) => (
+                    <a key={i} href={ev.url} target="_blank" rel="noreferrer" className="block rounded-sm overflow-hidden" style={{ width: 44, height: 32, border: '1px solid var(--cf-edge)' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={ev.url} alt="evidence" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </a>
+                  ))}
+                </div>
+              )}
+              {!run.logs && run.evidence.length === 0 && (
+                <span className="cf-mono" style={{ fontSize: '10px', color: 'var(--cf-text-dim)' }}>Run without checklist (single status).</span>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Data-driven matrix editor: variable columns × value rows. Lives in the case draft.
 function DataMatrixEditor({ value, canWrite, onChange }: { value: DataMatrix; canWrite: boolean; onChange: (m: DataMatrix) => void }) {
   const columns = value.columns ?? []
   const rows = value.rows ?? []
@@ -353,9 +1056,9 @@ function DataMatrixEditor({ value, canWrite, onChange }: { value: DataMatrix; ca
 
   if (columns.length === 0) {
     return canWrite ? (
-      <button onClick={addCol} className="aero-btn aero-btn--ghost px-3 py-1.5 uppercase tracking-widest font-bold text-[10px] self-start">+ Add variable</button>
+      <button onClick={addCol} className="aero-btn aero-btn--ghost px-3 py-1.5 uppercase tracking-widest font-bold text-[10px] self-start inline-flex items-center gap-1.5"><Icon icon={faPlus} /> Add variable</button>
     ) : (
-      <p className="cf-mono" style={{ fontSize: '11px', color: 'var(--cf-text-dim)' }}>No data set.</p>
+      <p className="cf-mono" style={{ fontSize: '11px', color: 'var(--cf-text-dim)' }}>No test data.</p>
     )
   }
 
@@ -369,11 +1072,11 @@ function DataMatrixEditor({ value, canWrite, onChange }: { value: DataMatrix; ca
                 <th key={ci} style={th}>
                   <span className="flex items-center gap-1">
                     <input value={c} disabled={!canWrite} onChange={(e) => setCol(ci, e.target.value)} className={cellInput} style={{ color: 'var(--cf-cyan)', fontSize: '11px' }} />
-                    {canWrite && <button onClick={() => removeCol(ci)} className="cursor-pointer" style={{ color: 'var(--cf-text-dim)', fontSize: '10px' }}>✕</button>}
+                    {canWrite && <button onClick={() => removeCol(ci)} className="cursor-pointer" style={{ color: 'var(--cf-text-dim)', fontSize: '10px' }}><Icon icon={faXmark} /></button>}
                   </span>
                 </th>
               ))}
-              {canWrite && <th style={th}><button onClick={addCol} className="cursor-pointer" style={{ color: 'var(--cf-phosphor)', fontSize: '12px' }}>+</button></th>}
+              {canWrite && <th style={th}><button onClick={addCol} className="cursor-pointer" style={{ color: 'var(--cf-phosphor)', fontSize: '11px' }}><Icon icon={faPlus} /></button></th>}
             </tr>
           </thead>
           <tbody>
@@ -384,117 +1087,14 @@ function DataMatrixEditor({ value, canWrite, onChange }: { value: DataMatrix; ca
                     <input value={r[ci] ?? ''} disabled={!canWrite} onChange={(e) => setCell(ri, ci, e.target.value)} className={cellInput} style={{ color: 'var(--cf-cream)', fontSize: '11px', padding: '3px 0' }} />
                   </td>
                 ))}
-                {canWrite && <td style={td}><button onClick={() => removeRow(ri)} className="cursor-pointer" style={{ color: 'var(--cf-text-dim)', fontSize: '10px' }}>✕</button></td>}
+                {canWrite && <td style={td}><button onClick={() => removeRow(ri)} className="cursor-pointer" style={{ color: 'var(--cf-text-dim)', fontSize: '10px' }}><Icon icon={faXmark} /></button></td>}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
       {canWrite && (
-        <button onClick={addRow} className="aero-btn aero-btn--ghost px-3 py-1 uppercase tracking-widest font-bold text-[10px] self-start">+ Row</button>
-      )}
-    </div>
-  )
-}
-
-// Modular steps: references into the board's step library. Each ref resolves live
-// from stepsById, so editing a step here reflects in every case that uses it.
-function StepComposer({
-  refs,
-  library,
-  canWrite,
-  onChange,
-}: {
-  refs: StepRef[]
-  library: Library
-  canWrite: boolean
-  onChange: (refs: StepRef[]) => void
-}) {
-  const { stepsById, steps, create, update, busy } = library
-  const [newTitle, setNewTitle] = useState('')
-
-  const addRef = (stepId: number) => {
-    if (!refs.some((r) => r.step_id === stepId)) onChange([...refs, { step_id: stepId }])
-  }
-  const removeRef = (stepId: number) => onChange(refs.filter((r) => r.step_id !== stepId))
-  const createAndAdd = async () => {
-    const t = newTitle.trim()
-    if (!t) return
-    const step = await create(t)
-    setNewTitle('')
-    onChange([...refs, { step_id: step.id }])
-  }
-  const available = steps.filter((s) => !refs.some((r) => r.step_id === s.id))
-
-  return (
-    <div className="flex flex-col gap-2">
-      {refs.length === 0 && (
-        <p className="cf-mono" style={{ fontSize: '11px', color: 'var(--cf-text-dim)' }}>
-          No steps referenced — add from the library or create one.
-        </p>
-      )}
-      {refs.map((ref, idx) => {
-        const step = stepsById[ref.step_id]
-        return (
-          <div key={ref.step_id} className="rounded-lg px-3 py-2 flex flex-col gap-1.5" style={{ background: 'var(--cf-screen)', border: '1px solid var(--cf-edge)' }}>
-            {step ? (
-              <>
-                <div className="flex items-center gap-2">
-                  <span className="cf-mono" style={{ fontSize: '11px', color: 'var(--cf-text-dim)' }}>{idx + 1}</span>
-                  <input
-                    defaultValue={step.title}
-                    disabled={!canWrite}
-                    onBlur={(e) => { if (e.target.value.trim() && e.target.value !== step.title) update(step.id, { title: e.target.value.trim() }) }}
-                    className="cf-mono flex-1 bg-transparent focus:outline-none border-b"
-                    style={{ fontSize: '12px', color: 'var(--cf-text)', borderColor: 'transparent' }}
-                  />
-                  <span className="cf-mono px-1.5 rounded-sm" style={{ background: CHIP_BG, color: 'var(--cf-cyan)', fontSize: '9px' }}>◈ LIB</span>
-                  {canWrite && <button onClick={() => removeRef(step.id)} aria-label="Remove step" className="cursor-pointer" style={{ color: 'var(--cf-text-dim)', fontSize: '11px' }}>✕</button>}
-                </div>
-                <textarea
-                  defaultValue={step.content ?? ''}
-                  disabled={!canWrite}
-                  onBlur={(e) => { if ((e.target.value || null) !== (step.content ?? null)) update(step.id, { content: e.target.value || null }) }}
-                  rows={2}
-                  placeholder="Step content (edits propagate to every case using this step)"
-                  className="glass-input cf-mono text-xs resize-none"
-                />
-              </>
-            ) : (
-              <div className="flex items-center justify-between">
-                <span className="cf-mono" style={{ fontSize: '11px', color: 'var(--cf-red)' }}>Step #{ref.step_id} was deleted</span>
-                {canWrite && <button onClick={() => removeRef(ref.step_id)} className="cursor-pointer" style={{ color: 'var(--cf-text-dim)', fontSize: '11px' }}>✕</button>}
-              </div>
-            )}
-          </div>
-        )
-      })}
-
-      {canWrite && (
-        <div className="flex gap-2 flex-wrap items-center">
-          {available.length > 0 && (
-            <select
-              value=""
-              onChange={(e) => { if (e.target.value) addRef(Number(e.target.value)) }}
-              className="glass-input cf-lcd text-xs cursor-pointer"
-              style={{ width: 'auto' }}
-            >
-              <option value="" className="text-black">+ From library…</option>
-              {available.map((s) => <option key={s.id} value={s.id} className="text-black">{s.title}</option>)}
-            </select>
-          )}
-          <input
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') createAndAdd() }}
-            placeholder="New step title"
-            className="glass-input cf-lcd text-xs flex-1"
-            style={{ minWidth: 120 }}
-          />
-          <button onClick={createAndAdd} disabled={busy || !newTitle.trim()} className="aero-btn aero-btn--ghost px-3 py-1.5 uppercase tracking-widest font-bold text-[10px] disabled:opacity-50">
-            Create
-          </button>
-        </div>
+        <button onClick={addRow} className="aero-btn aero-btn--ghost px-3 py-1 uppercase tracking-widest font-bold text-[10px] self-start inline-flex items-center gap-1.5"><Icon icon={faPlus} /> Row</button>
       )}
     </div>
   )
@@ -527,7 +1127,7 @@ function TestPlanLinks({ linked, plans, canWrite, onChange }: { linked: number[]
           return (
             <span key={id} className="cf-mono inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm" style={{ background: CHIP_BG, color: 'var(--cf-cyan)', fontSize: '11px' }}>
               ◈ {p?.name ?? `Plan #${id}`}
-              {canWrite && <button onClick={() => remove(id)} className="cursor-pointer" style={{ color: 'var(--cf-text-dim)', fontSize: '10px' }}>✕</button>}
+              {canWrite && <button onClick={() => remove(id)} className="cursor-pointer" style={{ color: 'var(--cf-text-dim)', fontSize: '10px' }}><Icon icon={faXmark} /></button>}
             </span>
           )
         })}
@@ -536,116 +1136,14 @@ function TestPlanLinks({ linked, plans, canWrite, onChange }: { linked: number[]
         <div className="flex gap-2 flex-wrap items-center">
           {available.length > 0 && (
             <select value="" onChange={(e) => { if (e.target.value) add(Number(e.target.value)) }} className="glass-input cf-lcd text-xs cursor-pointer" style={{ width: 'auto' }}>
-              <option value="" className="text-black">+ Link plan…</option>
+              <option value="" className="text-black">Link plan…</option>
               {available.map((p) => <option key={p.id} value={p.id} className="text-black">{p.name}</option>)}
             </select>
           )}
-          <input value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') createAndAdd() }} placeholder="New plan — e.g. Regressão v2.0" className="glass-input cf-lcd text-xs flex-1" style={{ minWidth: 140 }} />
+          <input value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') createAndAdd() }} placeholder="New plan — e.g. Regression v2.0" className="glass-input cf-lcd text-xs flex-1" style={{ minWidth: 140 }} />
           <button onClick={createAndAdd} disabled={busy || !newName.trim()} className="aero-btn aero-btn--ghost px-3 py-1.5 uppercase tracking-widest font-bold text-[10px] disabled:opacity-50">Create</button>
         </div>
       )}
-    </div>
-  )
-}
-
-function RunLauncher({ boardId, busy, onRun }: { boardId: number; busy: boolean; onRun: (p: RunPayload) => void }) {
-  const [status, setStatus] = useState<RunStatus | null>(null)
-  const [environment, setEnvironment] = useState('')
-  const [device, setDevice] = useState('')
-  const [logs, setLogs] = useState('')
-  const [evidence, setEvidence] = useState<{ url: string; kind?: string }[]>([])
-  const [uploading, setUploading] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
-
-  const handleFiles = async (files: FileList | null) => {
-    if (!files?.length) return
-    setUploading(true)
-    try {
-      for (const file of Array.from(files)) {
-        const { url } = await uploadInlineImage(boardId, file)
-        if (url) setEvidence((prev) => [...prev, { url, kind: 'image' }])
-      }
-    } finally {
-      setUploading(false)
-      if (fileRef.current) fileRef.current.value = ''
-    }
-  }
-
-  const reset = () => {
-    setStatus(null); setEnvironment(''); setDevice(''); setLogs(''); setEvidence([])
-  }
-
-  return (
-    <div className="rounded-lg p-3 flex flex-col gap-2" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--cf-edge)' }}>
-      <div className="flex gap-2">
-        {RUN_STATUSES.map((st) => {
-          const on = status === st
-          return (
-            <button
-              key={st}
-              onClick={() => setStatus(st)}
-              className="cf-mono uppercase tracking-widest font-bold px-2.5 py-1 rounded-sm text-[10px] cursor-pointer flex items-center gap-1.5"
-              style={{
-                color: on ? '#0d1410' : STATUS_META[st].color,
-                background: on ? STATUS_META[st].color : CHIP_BG,
-                boxShadow: on ? `0 0 8px ${STATUS_META[st].color}55` : undefined,
-              }}
-            >
-              {STATUS_META[st].label}
-            </button>
-          )
-        })}
-      </div>
-      <div className="flex gap-2">
-        <input value={environment} onChange={(e) => setEnvironment(e.target.value)} placeholder="Environment" className="glass-input cf-lcd text-xs flex-1" />
-        <input value={device} onChange={(e) => setDevice(e.target.value)} placeholder="Device / platform" className="glass-input cf-lcd text-xs flex-1" />
-      </div>
-      <textarea value={logs} onChange={(e) => setLogs(e.target.value)} rows={2} placeholder="Logs (optional)" className="glass-input cf-mono text-xs resize-none" />
-
-      {/* Evidence (prints) */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => handleFiles(e.target.files)} />
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          className="cf-mono uppercase tracking-widest font-bold px-2.5 py-1 rounded-sm text-[10px] cursor-pointer disabled:opacity-50"
-          style={{ color: 'var(--cf-cyan)', background: CHIP_BG }}
-        >
-          {uploading ? 'Uploading…' : '▦ Add evidence'}
-        </button>
-        {evidence.map((ev, i) => (
-          <span key={i} className="relative rounded-sm overflow-hidden flex-shrink-0" style={{ width: 40, height: 30, border: '1px solid var(--cf-edge)' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={ev.url} alt="evidence" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            <button
-              onClick={() => setEvidence((prev) => prev.filter((_, j) => j !== i))}
-              className="absolute top-0 right-0 flex items-center justify-center cursor-pointer"
-              style={{ width: 14, height: 14, background: 'rgba(0,0,0,0.7)', color: 'var(--cf-red)', fontSize: 10, lineHeight: 1 }}
-              aria-label="Remove evidence"
-            >
-              ✕
-            </button>
-          </span>
-        ))}
-      </div>
-
-      <button
-        onClick={() => {
-          if (!status) return
-          onRun({
-            status,
-            environment: environment || undefined,
-            device: device || undefined,
-            logs: logs || undefined,
-            evidence: evidence.length ? evidence : undefined,
-          })
-          reset()
-        }}
-        disabled={busy || !status}
-        className="aero-btn aero-btn--cyan px-4 py-1.5 uppercase tracking-widest font-bold text-[10px] disabled:opacity-40 self-start"
-      >
-        ▶ Log run
-      </button>
     </div>
   )
 }

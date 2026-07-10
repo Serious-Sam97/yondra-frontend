@@ -45,6 +45,11 @@ export interface BoardInterface {
   github_repo?: string | null;
   github_connected?: boolean;
   github_webhook_secret?: string | null;
+  whatsapp_provider?: "meta" | "bsp" | null;
+  whatsapp_phone_number_id?: string | null;
+  whatsapp_waba_id?: string | null;
+  whatsapp_connected?: boolean;
+  whatsapp_verify_token?: string | null;
   owner?: SharedUser;
   shared_with?: SharedUser[];
   // Server-computed capabilities for the current user (project-aware).

@@ -3,12 +3,15 @@
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
 import {
   faArrowRightToBracket,
+  faCheck,
   faLayerGroup,
+  faLink,
   faPlus,
   faRotate,
   faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 import { useEffect, useRef, useState } from "react";
+import { getEcho } from "@/lib/echo";
 import Icon from "@/components/ui/Icon";
 import RichTextContent from "@/components/ui/RichTextContent";
 import RichTextEditor from "@/components/ui/RichTextEditor";
@@ -31,7 +34,9 @@ import {
   getComments,
   getSubtasks,
   getTemplates,
+  getWhatsappThread,
   refreshCardLink,
+  sendWhatsappReply,
   updateChecklistItem,
   updateSubtask,
   uploadInlineImage,
@@ -73,6 +78,24 @@ interface Subtask {
   id: number;
   name: string;
   is_done: boolean;
+}
+
+interface WaMessage {
+  id: number;
+  direction: "in" | "out";
+  body: string | null;
+  status: string | null;
+  type: string;
+  created_at: string;
+  sent_by?: { id: number; name: string } | null;
+}
+
+interface WaConversation {
+  id: number;
+  wa_phone: string;
+  contact_name: string | null;
+  window_open: boolean;
+  messages: WaMessage[];
 }
 
 export interface Template {
@@ -248,8 +271,12 @@ const CardEdit: React.FC<CardEditProps> = ({
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [templateNameInput, setTemplateNameInput] = useState("");
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [waThread, setWaThread] = useState<WaConversation | null>(null);
+  const [newWaReply, setNewWaReply] = useState("");
+  const [waSending, setWaSending] = useState(false);
+  const [waError, setWaError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
-    "details" | "checklist" | "comments" | "subtasks"
+    "details" | "checklist" | "comments" | "subtasks" | "whatsapp"
   >("details");
   // Top-level switch between the card, Planning Poker, and Sentinel (QA).
   const [topTab, setTopTab] = useState<"card" | "planning" | "qa">("card");
@@ -288,8 +315,27 @@ const CardEdit: React.FC<CardEditProps> = ({
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [tabIndicator, setTabIndicator] = useState({ left: 0, width: 0 });
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const isNew = card === null;
+
+  // Per-card share link. The board page reads `?card=<id>` on load and opens exactly
+  // this card (see Board.tsx deep-link effect), so this URL drops the recipient straight
+  // onto the card. Only offered for saved, non-demo cards; sharing the link doesn't grant
+  // board access — the recipient still needs it, same as a board link.
+  const canShareLink = !isNew && !isDemo && !!boardId && !!id;
+
+  const handleCopyLink = () => {
+    if (!canShareLink) return;
+    const url = `${window.location.origin}/boards/${boardId}?card=${id}`;
+    navigator.clipboard
+      ?.writeText(url)
+      .then(() => {
+        setLinkCopied(true);
+        setTimeout(() => setLinkCopied(false), 1500);
+      })
+      .catch(() => {});
+  };
 
   useEffect(() => {
     if (card !== null) {
@@ -326,6 +372,59 @@ const CardEdit: React.FC<CardEditProps> = ({
         .catch(() => {})
         .finally(() => setLoadingComments(false));
     }
+  }, []);
+
+  // WhatsApp thread (card #54/#55): load the conversation on open, then subscribe
+  // to the board channel so inbound messages + delivery-status ticks stream in live.
+  useEffect(() => {
+    if (isNew || isDemo || !boardId || !card?.id) return;
+
+    getWhatsappThread(boardId, card.id)
+      .then((data) => {
+        const conv = data?.conversation;
+        if (conv) {
+          setWaThread({ ...conv, window_open: !!data.window_open });
+        }
+      })
+      .catch(() => {});
+
+    let echo: ReturnType<typeof getEcho> | null = null;
+    const channel = `board.${boardId}`;
+    try {
+      echo = getEcho();
+      echo.private(channel).listen(".board.event", (e: {
+        type?: string;
+        payload?: { card_id?: number; message?: WaMessage };
+      }) => {
+        if (e?.payload?.card_id !== card.id || !e.payload.message) return;
+        const msg = e.payload.message;
+        if (e.type === "whatsapp.message.created") {
+          setWaThread((prev) =>
+            prev
+              ? prev.messages.some((m) => m.id === msg.id)
+                ? prev
+                : { ...prev, messages: [...prev.messages, msg] }
+              : prev,
+          );
+        } else if (e.type === "whatsapp.message.updated") {
+          setWaThread((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  messages: prev.messages.map((m) =>
+                    m.id === msg.id ? { ...m, status: msg.status } : m,
+                  ),
+                }
+              : prev,
+          );
+        }
+      });
+    } catch {
+      // Echo/Reverb not configured here — the initial fetch still shows history.
+    }
+    return () => {
+      echo?.leave(channel);
+    };
   }, []);
 
   useEffect(() => {
@@ -595,6 +694,31 @@ const CardEdit: React.FC<CardEditProps> = ({
     setComments((prev) => prev.filter((c) => c.id !== commentId));
   };
 
+  // --- WhatsApp ---
+
+  const handleSendWaReply = async () => {
+    const body = newWaReply.trim();
+    if (!body || !boardId || !id || waSending) return;
+    setWaSending(true);
+    setWaError(null);
+    try {
+      const msg = await sendWhatsappReply(boardId, id, body);
+      // The live board event also appends this; guard against a duplicate.
+      setWaThread((prev) =>
+        prev && !prev.messages.some((m) => m.id === msg.id)
+          ? { ...prev, messages: [...prev.messages, msg] }
+          : prev,
+      );
+      setNewWaReply("");
+    } catch (e) {
+      setWaError(
+        e instanceof Error ? e.message : "Could not send — try again",
+      );
+    } finally {
+      setWaSending(false);
+    }
+  };
+
   // --- Subtasks ---
 
   const handleAddSubtask = async () => {
@@ -646,9 +770,13 @@ const CardEdit: React.FC<CardEditProps> = ({
   const doneCount = checklistItems.filter((i) => i.is_done).length;
   const doneSubtasks = subtasks.filter((s) => s.is_done).length;
 
-  const tabs: Array<"details" | "checklist" | "subtasks" | "comments"> = isNew
+  const tabs: Array<
+    "details" | "checklist" | "subtasks" | "comments" | "whatsapp"
+  > = isNew
     ? []
-    : ["details", "checklist", "subtasks", "comments"];
+    : waThread
+      ? ["details", "checklist", "subtasks", "comments", "whatsapp"]
+      : ["details", "checklist", "subtasks", "comments"];
 
   // Measure tab button positions for sliding indicator
   useEffect(() => {
@@ -1540,6 +1668,144 @@ const CardEdit: React.FC<CardEditProps> = ({
     </div>
   );
 
+  const waStatusMark = (status: string | null) => {
+    switch (status) {
+      case "read":
+        return { mark: "✓✓", color: "var(--cf-cyan, #38bdf8)" };
+      case "delivered":
+        return { mark: "✓✓", color: "var(--cf-text-muted)" };
+      case "sent":
+        return { mark: "✓", color: "var(--cf-text-muted)" };
+      case "failed":
+        return { mark: "⚠", color: "var(--cf-red)" };
+      default:
+        return { mark: "·", color: "var(--cf-text-muted)" };
+    }
+  };
+
+  const renderWhatsapp = () => {
+    if (!waThread) return null;
+    const windowClosed = !waThread.window_open;
+    return (
+      <div className="flex flex-col gap-3">
+        <div
+          className="flex items-center gap-2 rounded-lg px-3 py-2"
+          style={{ border: "1px solid var(--cf-edge)", background: "rgba(0,0,0,0.14)" }}
+        >
+          <span style={{ fontSize: "12px", fontWeight: "bold", color: "var(--cf-text)" }}>
+            {waThread.contact_name || waThread.wa_phone}
+          </span>
+          <span style={{ fontSize: "10px", color: "var(--cf-text-muted)" }} className="cf-mono">
+            {waThread.wa_phone}
+          </span>
+          <span
+            className="cf-mono ml-auto uppercase tracking-widest"
+            style={{
+              fontSize: "9px",
+              color: windowClosed ? "var(--cf-text-muted)" : "var(--cf-phosphor)",
+            }}
+          >
+            {windowClosed ? "window closed" : "window open"}
+          </span>
+        </div>
+
+        {/* Thread */}
+        <div className="flex flex-col gap-2">
+          {waThread.messages.map((m) => {
+            const out = m.direction === "out";
+            const s = waStatusMark(m.status);
+            return (
+              <div
+                key={m.id}
+                className="flex flex-col max-w-[85%]"
+                style={{ alignSelf: out ? "flex-end" : "flex-start" }}
+              >
+                <div
+                  className="rounded-lg px-3 py-1.5"
+                  style={{
+                    background: out ? "rgba(37,211,102,0.12)" : "rgba(255,255,255,0.05)",
+                    border: `1px solid ${out ? "rgba(37,211,102,0.35)" : "var(--cf-edge)"}`,
+                    color: "var(--cf-text)",
+                    fontSize: "12px",
+                  }}
+                >
+                  {m.body || <span style={{ color: "var(--cf-text-muted)" }}>[{m.type}]</span>}
+                </div>
+                <div
+                  className="flex items-center gap-1 mt-0.5"
+                  style={{ alignSelf: out ? "flex-end" : "flex-start" }}
+                >
+                  <span style={{ fontSize: "9px", color: "var(--cf-text-muted)" }} className="cf-mono">
+                    {new Date(m.created_at).toLocaleTimeString("en-US", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                  {out && (
+                    <span style={{ fontSize: "10px", color: s.color }} title={m.status ?? ""}>
+                      {s.mark}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {waThread.messages.length === 0 && (
+            <p
+              style={{ fontSize: "12px", color: "var(--cf-text-muted)" }}
+              className="cf-mono text-center py-2"
+            >
+              No messages yet.
+            </p>
+          )}
+        </div>
+
+        {/* Reply composer */}
+        {windowClosed ? (
+          <p
+            style={{ fontSize: "11px", color: "var(--cf-text-muted)" }}
+            className="cf-mono py-2"
+          >
+            The 24-hour reply window has closed. An approved template is required to
+            message this contact again.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <textarea
+              value={newWaReply}
+              onChange={(e) => setNewWaReply(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSendWaReply();
+              }}
+              placeholder="Reply on WhatsApp… (⌘/Ctrl+Enter to send)"
+              rows={2}
+              className="rounded-lg px-3 py-2 resize-none"
+              style={{
+                border: "1px solid var(--cf-edge)",
+                background: "rgba(0,0,0,0.14)",
+                color: "var(--cf-text)",
+                fontSize: "12px",
+              }}
+            />
+            {waError && (
+              <p style={{ fontSize: "11px", color: "var(--cf-red)" }} className="cf-mono">
+                {waError}
+              </p>
+            )}
+            <button
+              onClick={handleSendWaReply}
+              disabled={!newWaReply.trim() || waSending}
+              style={{ fontSize: "11px" }}
+              className="aero-btn aero-btn--cyan self-end px-4 py-1.5 font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {waSending ? "Sending…" : "Send"}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Right pane on desktop: unified WORKLOG console (checklist + subtasks + comments stacked).
   // Clean section header used inside the main column (checklist / subtasks / comments)
   const workHeader = (label: string, chip: string | null) => (
@@ -1596,6 +1862,12 @@ const CardEdit: React.FC<CardEditProps> = ({
         )}
         {renderComments()}
       </div>
+      {waThread && (
+        <div className="border-t pt-6" style={{ borderColor: "var(--cf-edge)" }}>
+          {workHeader("WhatsApp", String(waThread.messages.length))}
+          {renderWhatsapp()}
+        </div>
+      )}
     </div>
   );
 
@@ -1717,6 +1989,17 @@ const CardEdit: React.FC<CardEditProps> = ({
               <Icon icon={faLayerGroup} /> Send to Backlog
             </button>
           )}
+          {canShareLink && (
+            <button
+              onClick={handleCopyLink}
+              className="aero-btn aero-btn--ghost cf-mono text-[9px] uppercase tracking-widest font-bold px-2.5 py-1 cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap"
+              title="Copy a direct link to this card"
+              style={linkCopied ? { color: "var(--cf-phosphor)" } : undefined}
+            >
+              <Icon icon={linkCopied ? faCheck : faLink} />
+              {linkCopied ? "Copied" : "Copy Link"}
+            </button>
+          )}
           {!isNew && !isReadOnly && onDelete && (
             <button
               onClick={onDelete}
@@ -1829,7 +2112,9 @@ const CardEdit: React.FC<CardEditProps> = ({
                     ? `comments ${comments.length}`
                     : tab === "subtasks" && subtasks.length > 0
                       ? `subtasks ${doneSubtasks}/${subtasks.length}`
-                      : tab}
+                      : tab === "whatsapp" && waThread
+                        ? `whatsapp ${waThread.messages.length}`
+                        : tab}
               </button>
             );
           })}
@@ -1910,6 +2195,7 @@ const CardEdit: React.FC<CardEditProps> = ({
           {!isNew && activeTab === "checklist" && renderChecklist()}
           {!isNew && activeTab === "subtasks" && renderSubtasks()}
           {!isNew && activeTab === "comments" && renderComments()}
+          {!isNew && activeTab === "whatsapp" && renderWhatsapp()}
         </div>
       )}
         </>
