@@ -528,6 +528,58 @@ export async function deleteCardImage(
   );
 }
 
+// --- Card documents (file attachments) ---
+
+export async function uploadCardDocument(
+  boardId: number,
+  cardId: number | string,
+  file: File,
+) {
+  const form = new FormData();
+  form.append("file", file);
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/documents`, {
+    method: "POST",
+    body: form,
+  });
+}
+
+export async function deleteCardDocument(
+  boardId: number,
+  cardId: number | string,
+  documentId: number,
+) {
+  return apiFetch(
+    `/api/boards/${boardId}/cards/${cardId}/documents/${documentId}`,
+    { method: "DELETE" },
+  );
+}
+
+// Documents live on the private disk behind an auth-gated route, so a plain
+// <a href> can't reach them (the Bearer token wouldn't be sent). Pull the blob
+// with the auth header, then trigger a client-side "Save as".
+export async function downloadCardDocument(
+  boardId: number,
+  cardId: number | string,
+  documentId: number,
+  filename: string,
+) {
+  const token = localStorage.getItem("token");
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API}/api/boards/${boardId}/cards/${cardId}/documents/${documentId}/download`,
+    { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+  );
+  if (!res.ok) throw new ApiError(res.status, await res.text().catch(() => ""));
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename || "document";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 // --- Card GitHub links ---
 
 // Returns the reloaded card (with its `links` array) so the caller can merge it.
@@ -578,6 +630,21 @@ export async function createComment(
     method: "POST",
     body: JSON.stringify({ body }),
   });
+}
+
+export async function updateComment(
+  boardId: number,
+  cardId: number | string,
+  commentId: number,
+  body: string,
+) {
+  return apiFetch(
+    `/api/boards/${boardId}/cards/${cardId}/comments/${commentId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ body }),
+    },
+  );
 }
 
 export async function deleteComment(

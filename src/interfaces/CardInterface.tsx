@@ -17,6 +17,16 @@ export interface CardImage {
   uploader?: { id: number; name: string } | null;
 }
 
+export interface CardDocument {
+  id: number;
+  original_name?: string | null;
+  mime_type?: string | null;
+  size?: number | null;
+  position: number;
+  created_at?: string | null;
+  uploader?: { id: number; name: string } | null;
+}
+
 export interface CardLink {
   id: number;
   provider: string; // 'github'
@@ -57,6 +67,7 @@ export interface CardInterface {
   checklist_items?: ChecklistItem[];
   images?: CardImage[];
   links?: CardLink[];
+  documents?: CardDocument[];
   created_at?: string | null;
   updated_at?: string | null;
   archived_at?: string | null;

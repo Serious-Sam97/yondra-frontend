@@ -4,8 +4,10 @@ import { faGithub } from "@fortawesome/free-brands-svg-icons";
 import {
   faArrowRightToBracket,
   faCheck,
+  faDownload,
   faLayerGroup,
   faLink,
+  faPaperclip,
   faPlus,
   faRotate,
   faTrash,
@@ -16,21 +18,25 @@ import Icon from "@/components/ui/Icon";
 import RichTextContent from "@/components/ui/RichTextContent";
 import RichTextEditor from "@/components/ui/RichTextEditor";
 import type {
+  CardDocument,
   CardInterface,
   CardLink,
   ChecklistItem,
 } from "@/interfaces/CardInterface";
 import type { TagInterface } from "@/interfaces/TagInterface";
 import {
+  ApiError,
   addCardLink,
   createChecklistItem,
   createComment,
   createSubtask,
   createTemplate,
+  deleteCardDocument,
   deleteCardLink,
   deleteChecklistItem,
   deleteComment,
   deleteTemplate,
+  downloadCardDocument,
   getComments,
   getSubtasks,
   getTemplates,
@@ -38,7 +44,9 @@ import {
   refreshCardLink,
   sendWhatsappReply,
   updateChecklistItem,
+  updateComment,
   updateSubtask,
+  uploadCardDocument,
   uploadInlineImage,
 } from "@/lib/api";
 import {
@@ -124,6 +132,9 @@ export interface CardEditProps {
   goBack: () => void;
   submit: (card: CardFormData, isNew: boolean) => void;
   onDelete?: () => void;
+  // Sync document-attachment changes back to the board's card state so they
+  // survive a modal close/reopen without relying on the realtime echo.
+  onDocumentsChange?: (documents: CardDocument[]) => void;
   card: CardInterface | null;
   sections: { id: number; name: string }[];
   users?: BoardUser[];
@@ -212,10 +223,20 @@ function initials(name: string): string {
     .toUpperCase();
 }
 
+// Human-friendly file size for the document list (e.g. 2.4 MB, 812 KB).
+function formatBytes(bytes?: number | null): string {
+  if (bytes == null) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${Math.round(kb)} KB`;
+  return `${(kb / 1024).toFixed(1)} MB`;
+}
+
 const CardEdit: React.FC<CardEditProps> = ({
   goBack,
   submit,
   onDelete,
+  onDocumentsChange,
   card,
   sections,
   users = [],
@@ -261,9 +282,18 @@ const CardEdit: React.FC<CardEditProps> = ({
   const [newLinkUrl, setNewLinkUrl] = useState("");
   const [linkBusy, setLinkBusy] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
+  // Card document attachments (files on the private disk, downloaded via an auth-gated route).
+  const [documents, setDocuments] = useState<CardDocument[]>([]);
+  const [docBusy, setDocBusy] = useState(false);
+  const [docError, setDocError] = useState<string | null>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [loadingComments, setLoadingComments] = useState(false);
+  // Inline comment editing: id of the comment being edited + its draft body.
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [editingCommentBody, setEditingCommentBody] = useState("");
+  const [savingComment, setSavingComment] = useState(false);
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [newSubtaskName, setNewSubtaskName] = useState("");
   const [loadingSubtasks, setLoadingSubtasks] = useState(false);
@@ -349,6 +379,7 @@ const CardEdit: React.FC<CardEditProps> = ({
       setPriority(card.priority ?? null);
       setChecklistItems(card.checklist_items ?? []);
       setLinks(card.links ?? []);
+      setDocuments(card.documents ?? []);
       setValue(formatMoneyInput(card.value));
       setStoryPoints(card.story_points != null ? String(card.story_points) : "");
       setSprintId(card.sprint_id ?? null);
@@ -363,6 +394,11 @@ const CardEdit: React.FC<CardEditProps> = ({
   useEffect(() => {
     if (card?.links) setLinks(card.links);
   }, [JSON.stringify(card?.links ?? [])]);
+
+  // Same live-sync for document attachments arriving on the card prop.
+  useEffect(() => {
+    if (card?.documents) setDocuments(card.documents);
+  }, [JSON.stringify(card?.documents ?? [])]);
 
   useEffect(() => {
     if (!isNew && !isDemo && boardId && card?.id) {
@@ -526,6 +562,62 @@ const CardEdit: React.FC<CardEditProps> = ({
     }
   };
 
+  // --- Document attachments ---
+
+  const canUseDocs = !isNew && !isDemo && !!boardId && !!card?.id;
+
+  const handleUploadDoc = async (file: File) => {
+    if (!canUseDocs) return;
+    setDocBusy(true);
+    setDocError(null);
+    try {
+      const created = await uploadCardDocument(boardId!, card!.id, file);
+      setDocuments((prev) => {
+        const next = [...prev, created];
+        onDocumentsChange?.(next);
+        return next;
+      });
+    } catch (e) {
+      setDocError(
+        e instanceof ApiError && e.status === 422
+          ? "Unsupported file type or file too large (max 20MB)."
+          : "Upload failed — try again.",
+      );
+    } finally {
+      setDocBusy(false);
+      if (docInputRef.current) docInputRef.current.value = "";
+    }
+  };
+
+  const handleDeleteDoc = async (documentId: number) => {
+    if (!canUseDocs) return;
+    const prev = documents;
+    const next = documents.filter((d) => d.id !== documentId);
+    setDocuments(next); // optimistic
+    onDocumentsChange?.(next);
+    try {
+      await deleteCardDocument(boardId!, card!.id, documentId);
+    } catch {
+      setDocuments(prev); // restore on failure
+      onDocumentsChange?.(prev);
+      setDocError("Could not remove that file.");
+    }
+  };
+
+  const handleDownloadDoc = async (doc: CardDocument) => {
+    if (!canUseDocs) return;
+    try {
+      await downloadCardDocument(
+        boardId!,
+        card!.id,
+        doc.id,
+        doc.original_name ?? `document-${doc.id}`,
+      );
+    } catch {
+      setDocError("Download failed — try again.");
+    }
+  };
+
   // --- Templates ---
 
   const handleSaveTemplate = async () => {
@@ -681,6 +773,33 @@ const CardEdit: React.FC<CardEditProps> = ({
     }
     setComments((prev) => [comment, ...prev]);
     setNewComment("");
+  };
+
+  const startEditComment = (comment: Comment) => {
+    setEditingCommentId(comment.id);
+    setEditingCommentBody(comment.body);
+  };
+
+  const cancelEditComment = () => {
+    setEditingCommentId(null);
+    setEditingCommentBody("");
+  };
+
+  const handleUpdateComment = async (commentId: number) => {
+    const body = editingCommentBody;
+    if (isHtmlEmpty(body) || !boardId || !id || savingComment) return;
+    setSavingComment(true);
+    let updated;
+    try {
+      updated = await updateComment(boardId, id, commentId, body);
+    } catch {
+      reportActionError("Comment not updated — try again");
+      setSavingComment(false);
+      return;
+    }
+    setComments((prev) => prev.map((c) => (c.id === commentId ? updated : c)));
+    setSavingComment(false);
+    cancelEditComment();
   };
 
   const handleDeleteComment = async (commentId: number) => {
@@ -1184,6 +1303,124 @@ const CardEdit: React.FC<CardEditProps> = ({
         </div>
       )}
 
+      {/* Docs */}
+      {canUseDocs && (
+        <div
+          className="flex flex-col gap-2 py-4 border-t"
+          style={{ borderColor: "var(--cf-edge)" }}
+        >
+          <div className="flex items-center gap-1.5">
+            <Icon
+              icon={faPaperclip}
+              style={{ fontSize: "11px", color: "var(--cf-text-dim)" }}
+            />
+            {propLabel("Docs")}
+          </div>
+
+          {documents.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              {documents.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5"
+                  style={{ background: "#211f1b", border: "1px solid #38352e" }}
+                >
+                  <Icon
+                    icon={faPaperclip}
+                    style={{ fontSize: "11px", color: "var(--cf-text-muted)" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadDoc(doc)}
+                    className="flex-1 min-w-0 truncate text-left cf-mono hover:underline cursor-pointer"
+                    style={{ fontSize: "11px", color: "var(--cf-text)" }}
+                    title={`Download ${doc.original_name ?? "file"}`}
+                  >
+                    {doc.original_name ?? `document-${doc.id}`}
+                    {doc.size != null && (
+                      <span style={{ color: "var(--cf-text-dim)" }}>
+                        {" "}
+                        · {formatBytes(doc.size)}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadDoc(doc)}
+                    aria-label="Download file"
+                    title="Download"
+                    className="w-5 h-5 rounded flex items-center justify-center cursor-pointer flex-shrink-0"
+                    style={{ color: "var(--cf-text-dim)" }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.color = "var(--cf-cyan)")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.color = "var(--cf-text-dim)")
+                    }
+                  >
+                    <Icon icon={faDownload} style={{ fontSize: "9px" }} />
+                  </button>
+                  {!isReadOnly && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteDoc(doc.id)}
+                      aria-label="Remove file"
+                      title="Remove"
+                      className="w-5 h-5 rounded flex items-center justify-center cursor-pointer flex-shrink-0"
+                      style={{ color: "var(--cf-text-dim)" }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.color = "var(--cf-red)")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.color = "var(--cf-text-dim)")
+                      }
+                    >
+                      <Icon icon={faTrash} style={{ fontSize: "9px" }} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!isReadOnly && (
+            <div className="flex items-center gap-1.5">
+              <input
+                ref={docInputRef}
+                type="file"
+                className="hidden"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.md,.rtf,.odt,.ods,.odp,.zip"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleUploadDoc(file);
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => docInputRef.current?.click()}
+                disabled={docBusy}
+                className="aero-btn aero-btn--cyan px-2.5 py-1.5 flex items-center gap-1.5 disabled:opacity-50"
+                style={{ fontSize: "11px" }}
+              >
+                <Icon
+                  icon={docBusy ? faRotate : faPlus}
+                  style={{ fontSize: "9px" }}
+                />
+                {docBusy ? "Uploading…" : "Attach a file"}
+              </button>
+            </div>
+          )}
+          {docError && (
+            <p
+              className="cf-mono"
+              style={{ fontSize: "9px", color: "var(--cf-red)" }}
+            >
+              {docError}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Assignee */}
       {users.length > 0 && (
         <div
@@ -1642,15 +1879,64 @@ const CardEdit: React.FC<CardEditProps> = ({
                 minute: "2-digit",
               })}
             </span>
-            <button
-              onClick={() => handleDeleteComment(comment.id)}
-              style={{ fontSize: "10px", color: "var(--cf-text-muted)" }}
-              className="ml-auto opacity-0 group-hover:opacity-100 hover:text-[var(--cf-red)] cursor-pointer transition-all"
-            >
-              ✕
-            </button>
+            {editingCommentId !== comment.id && (
+              <div className="ml-auto flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                <button
+                  onClick={() => startEditComment(comment)}
+                  style={{ fontSize: "10px", color: "var(--cf-text-muted)" }}
+                  className="hover:text-[var(--cf-cyan)] cursor-pointer transition-all"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDeleteComment(comment.id)}
+                  style={{ fontSize: "10px", color: "var(--cf-text-muted)" }}
+                  className="hover:text-[var(--cf-red)] cursor-pointer transition-all"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
           </div>
-          <RichTextContent html={comment.body} className="text-[12px]" />
+          {editingCommentId === comment.id ? (
+            <div className="flex flex-col gap-2">
+              <div
+                className="rounded-lg px-3 py-2"
+                style={{
+                  border: "1px solid var(--cf-edge)",
+                  background: "rgba(0,0,0,0.14)",
+                }}
+              >
+                <RichTextEditor
+                  compact
+                  value={editingCommentBody}
+                  onChange={setEditingCommentBody}
+                  placeholder="Edit your comment…"
+                  mentionUsers={users}
+                  onUploadImage={uploadImage}
+                />
+              </div>
+              <div className="flex items-center gap-2 self-end">
+                <button
+                  onClick={cancelEditComment}
+                  style={{ fontSize: "11px" }}
+                  className="aero-btn px-4 py-1.5 font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleUpdateComment(comment.id)}
+                  disabled={isHtmlEmpty(editingCommentBody) || savingComment}
+                  style={{ fontSize: "11px" }}
+                  className="aero-btn aero-btn--cyan px-4 py-1.5 font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          ) : (
+            <RichTextContent html={comment.body} className="text-[12px]" />
+          )}
           <div
             style={{ borderColor: "var(--cf-edge)" }}
             className="border-b mt-1"

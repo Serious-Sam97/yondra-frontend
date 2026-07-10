@@ -1672,6 +1672,11 @@ export function Board({ id, name, type = 'kanban', currency = 'BRL', description
                             onSendToBacklog={selectedCard ? () => handleSendToBacklog(selectedCard) : undefined}
                             goBack={closeCard}
                             submit={handleSubmit}
+                            onDocumentsChange={selectedCard ? (documents) => {
+                                const cardId = selectedCard.id;
+                                setCards(prev => prev.map(c => c.id === cardId ? { ...c, documents } : c));
+                                setSelectedCard(prev => prev && prev.id === cardId ? { ...prev, documents } : prev);
+                            } : undefined}
                             onDelete={selectedCard && !isReadOnly ? () => { setCardToDelete(selectedCard); closeCard(); } : undefined}
                         />
                     </div>
