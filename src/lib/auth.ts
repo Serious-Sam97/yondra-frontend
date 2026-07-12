@@ -2,7 +2,43 @@
 
 import type { BoardSummaryInterface } from "@/interfaces/BoardInterface";
 import type { UserInterface } from "@/interfaces/UserInterface";
-import { apiFetch, clearAuth } from "./api";
+import { ApiError, apiFetch, clearAuth } from "./api";
+
+// Flattened Laravel validation errors, keyed by field ("email", "password", …).
+export type FieldErrors = Record<string, string>;
+
+// Turn a thrown auth error into a human message plus per-field messages. Laravel
+// answers a 422 with `{ message, errors: { field: [msg, …] } }`; we surface the
+// first message per field so the register/login forms can highlight the exact
+// input at fault instead of dumping a raw "API ERROR: 422 {…}" string.
+export function parseAuthError(e: unknown): {
+  message: string;
+  fields: FieldErrors;
+} {
+  if (e instanceof ApiError) {
+    try {
+      const parsed = JSON.parse(e.body) as {
+        message?: string;
+        errors?: Record<string, string[]>;
+      };
+      const fields: FieldErrors = {};
+      for (const [key, msgs] of Object.entries(parsed.errors ?? {})) {
+        if (Array.isArray(msgs) && msgs[0]) fields[key] = msgs[0];
+      }
+      // Prefer the first field message as the headline — it's more specific than
+      // Laravel's generic "The given data was invalid." envelope message.
+      const headline =
+        Object.values(fields)[0] ?? parsed.message ?? "Registration failed";
+      return { message: headline, fields };
+    } catch {
+      // Body wasn't JSON (network error, HTML error page) — fall through.
+    }
+  }
+  return {
+    message: (e as Error)?.message ?? "Something went wrong",
+    fields: {},
+  };
+}
 
 // Payload of POST /api/register and /api/login (AuthController).
 interface AuthResponse {

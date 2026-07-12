@@ -762,12 +762,16 @@ input[type="number"]:focus {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex: 1 1 300px;
+  /* Size to content instead of growing — otherwise the left zone (and the search
+     inside it) eats all free space on wide screens. bh-right's margin-left:auto
+     pushes the shortcut hints to the far edge. */
+  flex: 0 1 auto;
 }
 .bh-search {
   position: relative;
-  flex: 1;
+  flex: 1 1 300px;
   min-width: 150px;
+  max-width: 360px;
 }
 .bh-search .bh-mag {
   position: absolute;
@@ -2847,5 +2851,425 @@ emoji-picker.cm-emoji-picker {
   }
   .cm-actions {
     transition: opacity 0.01ms;
+  }
+}
+
+/* ── Registration console (register/page.tsx) ─────────────────────────────────
+   "Operator provisioning" wizard styled as a piece of console hardware:
+   a provisioning rail, phosphor strength meter, requirement LEDs, hardware
+   toggle switch, and a boot-sequence readout. Reuses .glass-*, .aero-btn and
+   the --cf-* cassette tokens. */
+
+/* Provisioning rail — numbered nodes joined by fillable segments */
+.reg-rail {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 22px;
+}
+.reg-rail__node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  width: 62px;
+}
+.reg-rail__dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid var(--cf-edge);
+  background: linear-gradient(to bottom, #3a3832, #26241f);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--cf-mono);
+  font-size: 12px;
+  color: var(--cf-text-dim);
+  box-shadow: inset 0 1px 0 var(--cf-edge-lit);
+  transition:
+    background 220ms ease,
+    color 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease;
+}
+.reg-rail__dot--active {
+  border-color: #8f835f;
+  color: #2a2418;
+  background: linear-gradient(to bottom, #d8cfaa, #c2b78c 52%, #aa9e72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 0 12px rgba(154, 166, 126, 0.5);
+}
+.reg-rail__dot--done {
+  border-color: #6f7a52;
+  color: var(--cf-phosphor);
+  background: #20241a;
+  box-shadow:
+    inset 0 1px 0 var(--cf-edge-lit),
+    0 0 8px rgba(154, 166, 126, 0.35);
+}
+.reg-rail__label {
+  font-family: var(--cf-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cf-text-dim);
+  transition: color 220ms ease;
+}
+.reg-rail__label--active {
+  color: var(--cf-phosphor);
+}
+.reg-rail__bar {
+  width: 30px;
+  height: 2px;
+  margin: 13px 2px 0;
+  background: var(--cf-edge);
+  border-radius: 2px;
+  transition: background 300ms ease;
+}
+.reg-rail__bar--done {
+  background: var(--cf-phosphor);
+  box-shadow: 0 0 6px rgba(154, 166, 126, 0.5);
+}
+
+/* Step wrapper — slide the incoming panel in */
+.reg-step {
+  animation: reg-slide 260ms ease;
+}
+@keyframes reg-slide {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.reg-step__title {
+  font-family: var(--cf-lcd);
+  font-size: 22px;
+  letter-spacing: 0.06em;
+  color: var(--cf-text);
+}
+.reg-step__sub {
+  font-family: var(--cf-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--cf-text-dim);
+  margin-top: 2px;
+}
+
+/* Field-level error line */
+.reg-field-error {
+  font-family: var(--cf-mono);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: var(--cf-red);
+  margin-top: 5px;
+}
+
+/* Password strength — 5-segment phosphor LCD bar */
+.reg-meter {
+  display: flex;
+  gap: 5px;
+  margin-top: 12px;
+}
+.reg-meter__seg {
+  flex: 1;
+  height: 8px;
+  border-radius: 2px;
+  background: #1a1e15;
+  border: 1px solid #0d0f0a;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+  transition:
+    background 200ms ease,
+    box-shadow 200ms ease;
+}
+.reg-meter__seg--weak {
+  background: var(--cf-red);
+  box-shadow: 0 0 6px rgba(255, 90, 77, 0.6);
+}
+.reg-meter__seg--fair {
+  background: var(--cf-amber);
+  box-shadow: 0 0 6px rgba(255, 176, 0, 0.55);
+}
+.reg-meter__seg--good {
+  background: var(--cf-phosphor);
+  box-shadow: 0 0 6px rgba(154, 166, 126, 0.6);
+}
+.reg-meter__label {
+  font-family: var(--cf-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-top: 7px;
+}
+
+/* Requirement chips with status LEDs */
+.reg-reqs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px 14px;
+  margin-top: 14px;
+}
+.reg-req {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--cf-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--cf-text-dim);
+  transition: color 180ms ease;
+}
+.reg-req__led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #20241a;
+  box-shadow: inset 0 0 0 1px #0d0f0a;
+  transition:
+    background 180ms ease,
+    box-shadow 180ms ease;
+  flex: none;
+}
+.reg-req--met {
+  color: var(--cf-text);
+}
+.reg-req--met .reg-req__led {
+  background: var(--cf-phosphor);
+  box-shadow: 0 0 6px rgba(154, 166, 126, 0.7);
+}
+
+/* Inline field tools (reveal toggle + caps warning) */
+.reg-field-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 18px;
+  margin-top: 7px;
+}
+.reg-mini-btn {
+  font-family: var(--cf-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cf-text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 2px;
+}
+.reg-mini-btn:hover {
+  color: var(--cf-phosphor);
+}
+.reg-caps {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--cf-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cf-amber);
+}
+.reg-caps__led {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cf-amber);
+  box-shadow: 0 0 6px rgba(255, 176, 0, 0.75);
+  animation: reg-blink 1.1s steps(1) infinite;
+}
+
+/* Match indicator */
+.reg-match {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--cf-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 8px;
+}
+.reg-match--ok {
+  color: var(--cf-phosphor);
+}
+.reg-match--no {
+  color: var(--cf-red);
+}
+.reg-match__led {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+.reg-match--ok .reg-match__led {
+  background: var(--cf-phosphor);
+  box-shadow: 0 0 6px rgba(154, 166, 126, 0.7);
+}
+.reg-match--no .reg-match__led {
+  background: var(--cf-red);
+  box-shadow: 0 0 6px rgba(255, 90, 77, 0.7);
+}
+
+/* Launch-step readout — recessed LCD panel */
+.reg-readout {
+  border: 1px solid var(--cf-edge);
+  border-radius: 6px;
+  background: #0d1410;
+  padding: 6px 14px;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.55);
+}
+.reg-readout__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: 1px dashed rgba(154, 166, 126, 0.18);
+}
+.reg-readout__row:last-child {
+  border-bottom: none;
+}
+.reg-readout__k {
+  font-family: var(--cf-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cf-text-dim);
+  flex: none;
+}
+.reg-readout__v {
+  font-family: var(--cf-lcd);
+  font-size: 18px;
+  color: var(--cf-phosphor);
+  text-shadow: 0 0 6px rgba(154, 166, 126, 0.35);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Avatar sigil derived from the operator's initials */
+.reg-sigil {
+  width: 46px;
+  height: 46px;
+  border-radius: 8px;
+  border: 1.5px solid #8f835f;
+  background: linear-gradient(to bottom, #d8cfaa, #aa9e72);
+  color: #2a2418;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--cf-lcd);
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 0 14px rgba(154, 166, 126, 0.4);
+  flex: none;
+}
+
+/* Hardware toggle switch (terms consent) */
+.reg-switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  user-select: none;
+  margin-top: 16px;
+}
+.reg-switch__btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  flex: none;
+  line-height: 0;
+}
+.reg-switch__track {
+  width: 40px;
+  height: 22px;
+  border-radius: 12px;
+  background: #16150f;
+  border: 1px solid #0d0c0a;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.65);
+  position: relative;
+  transition: background 220ms ease;
+  flex: none;
+}
+.reg-switch__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(to bottom, #c9c1a4, #9a9077);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  transition:
+    left 220ms ease,
+    background 220ms ease,
+    box-shadow 220ms ease;
+}
+.reg-switch--on .reg-switch__track {
+  background: #3a4a2e;
+}
+.reg-switch--on .reg-switch__knob {
+  left: 20px;
+  background: linear-gradient(to bottom, #d8cfaa, #aa9e72);
+  box-shadow: 0 0 8px rgba(154, 166, 126, 0.65);
+}
+.reg-switch__text {
+  font-family: var(--cf-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--cf-text-muted);
+}
+.reg-switch__text a {
+  color: var(--cf-phosphor);
+}
+
+/* Boot sequence shown while the account is being provisioned */
+.reg-boot {
+  font-family: var(--cf-mono);
+  font-size: 12px;
+  color: var(--cf-phosphor);
+  line-height: 1.9;
+  min-height: 132px;
+}
+.reg-boot__line {
+  opacity: 0;
+  animation: reg-boot-in 260ms ease forwards;
+}
+@keyframes reg-boot-in {
+  to {
+    opacity: 1;
+  }
+}
+.reg-cursor::after {
+  content: "▊";
+  margin-left: 3px;
+  color: var(--cf-phosphor);
+  animation: reg-blink 1s steps(1) infinite;
+}
+@keyframes reg-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reg-step,
+  .reg-boot__line,
+  .reg-caps__led,
+  .reg-cursor::after {
+    animation: none;
+  }
+  .reg-boot__line {
+    opacity: 1;
   }
 }
