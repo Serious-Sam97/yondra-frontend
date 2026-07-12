@@ -16,6 +16,7 @@ import {
   useEditor,
 } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { GifPicker } from "@/components/ui/GifPicker";
 import {
   forwardRef,
   useEffect,
@@ -37,6 +38,9 @@ interface RichTextEditorProps {
   onUploadImage?: (file: File) => Promise<string>;
   mentionUsers?: MentionUser[];
   compact?: boolean;
+  // Show the GIF toolbar button (Tenor search popover; a GIF is inserted as a
+  // plain image node). Only enabled when the backend has a Tenor key.
+  enableGifs?: boolean;
 }
 
 const mentionHandle = (u: MentionUser) => u.name.replace(/\s+/g, "");
@@ -211,11 +215,13 @@ const Sep = () => (
 function Toolbar({
   editor,
   onPickImage,
+  onPickGif,
   uploading,
   compact,
 }: {
   editor: Editor;
   onPickImage: () => void;
+  onPickGif?: () => void;
   uploading: boolean;
   compact?: boolean;
 }) {
@@ -371,6 +377,13 @@ function Toolbar({
       >
         {uploading ? "…" : "🖼"}
       </ToolbarButton>
+      {onPickGif && (
+        <ToolbarButton title="Insert GIF" onClick={onPickGif}>
+          <span className="cf-mono" style={{ fontSize: "10px" }}>
+            GIF
+          </span>
+        </ToolbarButton>
+      )}
     </div>
   );
 }
@@ -384,10 +397,12 @@ export default function RichTextEditor({
   onUploadImage,
   mentionUsers,
   compact,
+  enableGifs = false,
 }: RichTextEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const uploadingRef = useRef(false);
+  const [gifOpen, setGifOpen] = useState(false);
 
   const extensions = [
     StarterKit.configure({
@@ -476,13 +491,23 @@ export default function RichTextEditor({
   if (!editor) return null;
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col relative">
       {editable && (
         <Toolbar
           editor={editor}
           uploading={uploading}
           compact={compact}
           onPickImage={() => fileInputRef.current?.click()}
+          onPickGif={enableGifs ? () => setGifOpen((o) => !o) : undefined}
+        />
+      )}
+      {gifOpen && (
+        <GifPicker
+          onClose={() => setGifOpen(false)}
+          onPick={(url, alt) => {
+            editorRef.current?.chain().focus().setImage({ src: url, alt }).run();
+            setGifOpen(false);
+          }}
         />
       )}
       <input

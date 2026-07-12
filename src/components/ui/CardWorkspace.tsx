@@ -21,17 +21,23 @@ export function CardWorkspace(
   const qaActive = qaEnabled && savedCard;
 
   // Hooks run unconditionally; the `enabled` flag gates their effects/subscriptions.
-  const planning = usePlanningSession(boardId, card?.id, planningActive);
+  const planning = usePlanningSession(
+    boardId,
+    card?.id,
+    planningActive,
+    currentUserId,
+  );
   const qa = useSentinelCard(boardId, card?.id, qaActive);
   const qaRollup = rollupStatus(qa.cases);
 
   return (
     <CardEdit
       {...cardProps}
+      currentUserId={currentUserId}
       {...(planningActive
         ? {
             planningCount: planning.snapshot?.participants?.length ?? 0,
-            planningAppliedValue: planning.snapshot?.applied_value ?? null,
+            planningApplied: planning.applied,
             planningTab: (
               <PlanningPoker
                 session={planning}

@@ -44,15 +44,31 @@ export interface CardLink {
   last_synced_at?: string | null;
 }
 
-// A comment on a card (CardCommentController), author eager-loaded.
+// One emoji's aggregate on a comment; `mine` is derived client-side from
+// user_ids so HTTP responses and broadcasts share the same shape.
+export interface CommentReactionAgg {
+  emoji: string;
+  count: number;
+  user_ids: number[];
+  names: string[];
+}
+
+// A comment on a card (CardCommentController), author eager-loaded. Top-level
+// comments (parent_id null) carry thread summaries; replies never nest further.
 export interface CardComment {
   id: number;
   card_id: number;
-  user_id: number;
+  parent_id: number | null;
   body: string;
   user: { id: number; name: string };
   created_at: string;
   updated_at?: string;
+  edited?: boolean;
+  replies_count: number;
+  last_reply_at: string | null;
+  // Up to 3 recent distinct repliers — the collapsed thread's face stack.
+  reply_avatars?: { id: number; name: string }[];
+  reactions: CommentReactionAgg[];
 }
 
 // A subtask is a bare card row under parent_card_id (CardController::subtasks) —

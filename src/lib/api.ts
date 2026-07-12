@@ -802,15 +802,43 @@ export async function getComments(
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}/comments?page=${page}`);
 }
 
+// With parentId the comment lands in that top-level comment's thread (the server
+// re-parents replies-to-replies onto the thread root).
 export async function createComment(
   boardId: number,
   cardId: number | string,
   body: string,
+  parentId?: number,
 ): Promise<CardComment> {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}/comments`, {
     method: "POST",
-    body: JSON.stringify({ body }),
+    body: JSON.stringify({ body, ...(parentId ? { parent_id: parentId } : {}) }),
   });
+}
+
+// A thread in conversation order (oldest first), 50 per page.
+export async function getCommentReplies(
+  boardId: number,
+  cardId: number | string,
+  commentId: number,
+  page = 1,
+): Promise<SimplePaginated<CardComment>> {
+  return apiFetch(
+    `/api/boards/${boardId}/cards/${cardId}/comments/${commentId}/replies?page=${page}`,
+  );
+}
+
+// Toggles the caller's reaction; answers with the comment's fresh aggregate.
+export async function reactToComment(
+  boardId: number,
+  cardId: number | string,
+  commentId: number,
+  emoji: string,
+): Promise<CardComment> {
+  return apiFetch(
+    `/api/boards/${boardId}/cards/${cardId}/comments/${commentId}/reactions`,
+    { method: "POST", body: JSON.stringify({ emoji }) },
+  );
 }
 
 export async function updateComment(
@@ -836,6 +864,27 @@ export async function deleteComment(
   return apiFetch(
     `/api/boards/${boardId}/cards/${cardId}/comments/${commentId}`,
     { method: "DELETE" },
+  );
+}
+
+// --- GIFs (Tenor proxy) ---
+
+export interface GifResult {
+  id: string;
+  description: string;
+  preview_url: string;
+  gif_url: string;
+}
+
+// Whether the backend has a Tenor key — no key, no GIF button.
+export async function getGifAvailability(): Promise<{ enabled: boolean }> {
+  return apiFetch("/api/gifs/availability");
+}
+
+// Empty query returns Tenor's featured feed (the picker's opening state).
+export async function searchGifs(q: string, limit = 24): Promise<GifResult[]> {
+  return apiFetch(
+    `/api/gifs/search?q=${encodeURIComponent(q)}&limit=${limit}`,
   );
 }
 
@@ -1201,11 +1250,17 @@ export async function getPlanning(
   return apiFetch(planningBase(boardId, cardId), { method: "GET", signal });
 }
 
+// `deck` only takes effect when the join creates the session; `spectator` seats
+// the caller without a hand (switchable until they cast a vote).
 export async function joinPlanning(
   boardId: number,
   cardId: number | string,
+  opts: { deck?: string; spectator?: boolean } = {},
 ): Promise<PlanningSnapshot> {
-  return apiFetch(`${planningBase(boardId, cardId)}/join`, { method: "POST" });
+  return apiFetch(`${planningBase(boardId, cardId)}/join`, {
+    method: "POST",
+    body: JSON.stringify(opts),
+  });
 }
 
 // 204 (→ null) when the last participant leaves and the room closes.
@@ -1241,6 +1296,26 @@ export async function resetPlanning(
   cardId: number | string,
 ): Promise<PlanningSnapshot> {
   return apiFetch(`${planningBase(boardId, cardId)}/reset`, { method: "POST" });
+}
+
+// Set (seconds > 0) or clear (0) the round's soft voting deadline.
+export async function timerPlanning(
+  boardId: number,
+  cardId: number | string,
+  seconds: number,
+): Promise<PlanningSnapshot> {
+  return apiFetch(`${planningBase(boardId, cardId)}/timer`, {
+    method: "POST",
+    body: JSON.stringify({ seconds }),
+  });
+}
+
+// Presence heartbeat — 204 (→ null) when the session has closed.
+export async function pingPlanning(
+  boardId: number,
+  cardId: number | string,
+): Promise<PlanningSnapshot | null> {
+  return apiFetch(`${planningBase(boardId, cardId)}/ping`, { method: "POST" });
 }
 
 // Answers with the snapshot; falls back to the bare card when no session exists.

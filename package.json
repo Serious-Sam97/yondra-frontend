@@ -36,6 +36,7 @@
     "@tiptap/react": "^3.27.3",
     "@tiptap/starter-kit": "^3.27.3",
     "dompurify": "^3.4.11",
+    "emoji-picker-element": "^1.29.1",
     "laravel-echo": "^2.3.4",
     "next": "15.5.7",
     "pusher-js": "^8.5.0",

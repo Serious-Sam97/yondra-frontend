@@ -86,11 +86,15 @@ export interface CardEditProps {
   // appears and this node replaces the card body on the Planning tab.
   planningTab?: React.ReactNode;
   planningCount?: number;
-  // Story-point value the team applied in Planning Poker; syncs the points field.
-  planningAppliedValue?: number | null;
+  // An apply *event* from Planning Poker (a new object per apply) — mirrors the
+  // committed estimate into the points field without stomping manual edits.
+  planningApplied?: { value: number | null; at: string } | null;
   // Sentinel (QA) tab — a node replacing the card body, plus the rollup status LED colour.
   qaTab?: React.ReactNode;
   qaStatusColor?: string | null;
+  // Who is looking — drives "mine" state on comment reactions and own-comment
+  // actions. 0 (default) disables those affordances (e.g. demo mode).
+  currentUserId?: number;
 }
 
 const CardEdit: React.FC<CardEditProps> = ({
@@ -117,9 +121,10 @@ const CardEdit: React.FC<CardEditProps> = ({
   sprints = [],
   planningTab,
   planningCount = 0,
-  planningAppliedValue = null,
+  planningApplied = null,
   qaTab,
   qaStatusColor,
+  currentUserId = 0,
 }) => {
   const [id, setId] = useState<number | string>(0);
   const [name, setName] = useState("");
@@ -155,13 +160,14 @@ const CardEdit: React.FC<CardEditProps> = ({
     };
   }
 
-  // When Planning Poker applies an estimate, mirror it into the points field.
+  // When Planning Poker applies an estimate (an actual apply action, not just any
+  // snapshot refresh), mirror it into the points field.
   useEffect(() => {
-    if (planningAppliedValue != null) {
-      setStoryPoints(String(planningAppliedValue));
+    if (planningApplied && planningApplied.value != null) {
+      setStoryPoints(String(planningApplied.value));
       setDirty(true);
     }
-  }, [planningAppliedValue]);
+  }, [planningApplied]);
   // Action failure feedback — shown when a checklist/comment mutation fails.
   const [actionError, setActionError] = useState<string | null>(null);
   const actionErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -249,12 +255,22 @@ const CardEdit: React.FC<CardEditProps> = ({
     cancelEditComment,
     handleUpdateComment,
     handleDeleteComment,
+    threads,
+    toggleThread,
+    loadMoreReplies,
+    addReply,
+    toggleReaction,
+    flashIds,
+    gifsEnabled,
   } = useCardComments({
     isNew: card === null,
     isDemo,
     boardId,
     card,
     id,
+    currentUserId,
+    currentUserName:
+      users.find((u) => u.id === currentUserId)?.name ?? "You",
     reportActionError,
   });
 
@@ -597,6 +613,14 @@ const CardEdit: React.FC<CardEditProps> = ({
       handleUpdateComment={handleUpdateComment}
       handleDeleteComment={handleDeleteComment}
       uploadImage={uploadImage}
+      currentUserId={currentUserId}
+      threads={threads}
+      toggleThread={toggleThread}
+      loadMoreReplies={loadMoreReplies}
+      addReply={addReply}
+      toggleReaction={toggleReaction}
+      flashIds={flashIds}
+      gifsEnabled={gifsEnabled}
     />
   );
 
