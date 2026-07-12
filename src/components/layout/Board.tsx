@@ -451,6 +451,8 @@ export function Board({
     boardId: id,
     isDemo,
     demoId,
+    isScrum: type === "scrum",
+    activeSprintId: activeSprint?.id ?? null,
     cards: cardsProp,
     setCards,
     setSections,
@@ -1306,8 +1308,10 @@ export function Board({
               initialTemplates={boardTemplates}
               defaultSectionId={newCardSectionId ?? undefined}
               isBacklogCard={
-                !!backlogSection &&
-                liveSelectedCard?.section_id === backlogSection.id
+                type === "scrum"
+                  ? (liveSelectedCard?.sprint_id ?? null) === null
+                  : !!backlogSection &&
+                    liveSelectedCard?.section_id === backlogSection.id
               }
               onAddToBoard={
                 liveSelectedCard

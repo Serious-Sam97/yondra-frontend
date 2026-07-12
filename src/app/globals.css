@@ -715,6 +715,233 @@ input[type="number"]:focus {
   font-family: var(--cf-mono);
 }
 
+/* ── Board header "faceplate" (BoardTopBar.tsx) ────────────────────────────── */
+.bh-deck {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1.5px solid var(--cf-edge);
+  background: linear-gradient(to bottom, #312f29, #262420);
+  box-shadow:
+    inset 0 1px 0 var(--cf-edge-lit),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.45),
+    0 8px 22px rgba(0, 0, 0, 0.5);
+}
+.bh-screw {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 32%, #615c52, #1a1813);
+  box-shadow:
+    inset 0 0 0 1px #0d0c0a,
+    0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.bh-screw.tl {
+  top: 8px;
+  left: 8px;
+}
+.bh-screw.tr {
+  top: 8px;
+  right: 8px;
+}
+.bh-screw.bl {
+  bottom: 8px;
+  left: 8px;
+}
+.bh-screw.br {
+  bottom: 8px;
+  right: 8px;
+}
+
+.bh-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 300px;
+}
+.bh-search {
+  position: relative;
+  flex: 1;
+  min-width: 150px;
+}
+.bh-search .bh-mag {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #3e4636;
+  pointer-events: none;
+  font-size: 12px;
+}
+
+/* progress / CRM value as a segmented LCD counter */
+.bh-meter {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 0 0 auto;
+  padding: 6px 11px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--cf-screen);
+  border: 1.5px solid #11140f;
+  box-shadow: inset 0 2px 7px rgba(0, 0, 0, 0.85);
+}
+.bh-meter::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 2px,
+    rgba(0, 0, 0, 0.28) 2px 3px
+  );
+}
+.bh-cap {
+  font-family: var(--cf-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #5f6a4a;
+}
+.bh-read {
+  font-family: var(--cf-lcd);
+  font-size: 20px;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--cf-phosphor);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 7px rgba(154, 166, 126, 0.5);
+}
+.bh-read .bh-tot {
+  color: #5f6a4a;
+  text-shadow: none;
+}
+.bh-segs {
+  display: flex;
+  gap: 2px;
+}
+.bh-segs i {
+  width: 4px;
+  height: 13px;
+  border-radius: 1px;
+  background: #1d241a;
+}
+.bh-segs i.on {
+  background: var(--cf-phosphor);
+  box-shadow: 0 0 5px rgba(154, 166, 126, 0.6);
+}
+
+/* view keys grouped in a recessed selector housing */
+.bh-selector {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--cf-graphite-3);
+  border: 1.5px solid #0e0d09;
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.7),
+    0 1px 0 var(--cf-edge-lit);
+}
+.bh-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--cf-text-muted);
+  font-family: var(--cf-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+.bh-key .bh-led {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #33372c;
+  flex: 0 0 auto;
+}
+.bh-key:hover {
+  background: rgba(154, 166, 126, 0.06);
+  color: var(--cf-text);
+}
+.bh-key.on {
+  color: var(--cf-text);
+  background: linear-gradient(to bottom, #403c33, #302d26);
+  border-color: rgba(154, 166, 126, 0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 10px rgba(154, 166, 126, 0.28);
+}
+.bh-key.on .bh-led {
+  background: var(--cf-phosphor);
+  box-shadow: 0 0 6px var(--cf-phosphor);
+}
+
+/* right zone: keycap shortcut hints */
+.bh-right {
+  align-items: center;
+  gap: 9px;
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--cf-text-dim);
+}
+.bh-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--cf-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cf-text-dim);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.bh-kbd {
+  font-family: var(--cf-mono);
+  font-size: 11px;
+  color: #1c2016;
+  background: linear-gradient(to bottom, #b3bca6, #98a289);
+  border: 1px solid #6d7562;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 3px 7px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.bh-div {
+  width: 1px;
+  height: 16px;
+  background: var(--cf-edge);
+}
+@media (max-width: 720px) {
+  .bh-left {
+    flex: 1 1 100%;
+  }
+  .bh-selector {
+    flex-wrap: wrap;
+  }
+}
+
 /* ── Board card "rack module" (BoardCard.tsx) ──────────────────────────────── */
 .bc-mod {
   --bc-ac: var(--cf-phosphor);

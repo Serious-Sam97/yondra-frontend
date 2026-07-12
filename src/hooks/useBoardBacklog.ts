@@ -19,6 +19,11 @@ interface UseBoardBacklogParams {
   boardId: number;
   isDemo: boolean;
   demoId: string;
+  // On scrum boards the "backlog" is the null-sprint pool (shown by SprintBacklog),
+  // NOT the reserved "Backlog" section — so send/add/quick-create route through
+  // sprint assignment instead, keeping a single shared backlog with the planning view.
+  isScrum: boolean;
+  activeSprintId: number | null;
   cards: CardInterface[];
   setCards: Dispatch<SetStateAction<CardInterface[]>>;
   setSections: Dispatch<SetStateAction<SectionData[]>>;
@@ -38,6 +43,8 @@ export function useBoardBacklog({
   boardId,
   isDemo,
   demoId,
+  isScrum,
+  activeSprintId,
   cards,
   setCards,
   setSections,
@@ -111,17 +118,58 @@ export function useBoardBacklog({
     });
   };
 
-  // Promote a backlog ticket onto the board: move it into the first/leftmost column (their "To Do").
+  // Optimistically set a card's sprint (null = product backlog); roll back on error.
+  const assignSprint = (cardId: number | string, sprintId: number | null) => {
+    const prevCard = cards.find((c) => c.id === cardId);
+    setCards((prev) =>
+      prev.map((c) => (c.id === cardId ? { ...c, sprint_id: sprintId } : c)),
+    );
+    if (isDemo) {
+      demoUpdateCard(demoId, cardId as number, { sprint_id: sprintId });
+      return;
+    }
+    updateCard(boardId, cardId, { sprint_id: sprintId }).catch(() => {
+      setCards((prev) =>
+        prev.map((c) =>
+          c.id === cardId
+            ? { ...c, sprint_id: prevCard?.sprint_id ?? null }
+            : c,
+        ),
+      );
+      reportSyncError("Could not move ticket — change reverted");
+    });
+  };
+
+  // Promote a backlog ticket onto the board.
+  // Scrum: pull it into the active sprint (sprint_id), keeping its column.
+  // Other: move it into the first/leftmost column (their "To Do").
   const handleAddToBoard = (card: CardInterface) => {
+    if (!card) return;
+    if (isScrum) {
+      if (activeSprintId == null) {
+        reportSyncError("Start a sprint first, then add tickets to it");
+        return;
+      }
+      assignSprint(card.id, activeSprintId);
+      closeCard();
+      return;
+    }
     const target = boardSections[0];
-    if (!card || !target) return;
+    if (!target) return;
     moveCard(card.id, target.id);
     closeCard();
   };
 
   // Send a board card back to the backlog.
+  // Scrum: remove it from its sprint (sprint_id = null) so it lands in the shared
+  // sprint backlog. Other: park it in the reserved "Backlog" section.
   const handleSendToBacklog = async (card: CardInterface) => {
     if (!card) return;
+    if (isScrum) {
+      assignSprint(card.id, null);
+      closeCard();
+      return;
+    }
     let bl;
     try {
       bl = await ensureBacklogSection();
@@ -159,26 +207,8 @@ export function useBoardBacklog({
   // --- Scrum planning (Backlog view) ---
 
   // Assign a ticket to a sprint (or back to the product backlog: sprintId = null).
-  const handleAssignSprint = (cardId: number, sprintId: number | null) => {
-    const prevCard = cards.find((c) => c.id === cardId);
-    setCards((prev) =>
-      prev.map((c) => (c.id === cardId ? { ...c, sprint_id: sprintId } : c)),
-    );
-    if (isDemo) {
-      demoUpdateCard(demoId, cardId, { sprint_id: sprintId });
-      return;
-    }
-    updateCard(boardId, cardId, { sprint_id: sprintId }).catch(() => {
-      setCards((prev) =>
-        prev.map((c) =>
-          c.id === cardId
-            ? { ...c, sprint_id: prevCard?.sprint_id ?? null }
-            : c,
-        ),
-      );
-      reportSyncError("Could not move ticket — change reverted");
-    });
-  };
+  const handleAssignSprint = (cardId: number, sprintId: number | null) =>
+    assignSprint(cardId, sprintId);
 
   // Quick-create a ticket in the planning backlog, into the given sprint (or backlog).
   const handleScrumQuickCreate = async (

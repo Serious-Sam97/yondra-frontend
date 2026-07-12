@@ -12,6 +12,9 @@ import {
 import Icon from "@/components/ui/Icon";
 import { formatMoney } from "@/lib/currency";
 
+// Stable keys for the fixed 12-segment progress meter (positional, never reordered).
+const METER_SEGMENTS = Array.from({ length: 12 }, (_, i) => `seg-${i}`);
+
 export type BoardViewMode =
   | "kanban"
   | "list"
@@ -49,55 +52,68 @@ export function BoardTopBar({
   onSelectView,
   onOpenCommand,
 }: BoardTopBarProps) {
+  // Task-board progress rendered as a 12-segment LCD tape meter.
+  const litSegs =
+    totalCards > 0 ? Math.round((doneCards / totalCards) * 12) : 0;
+
   return (
-    <div className="glass-panel flex items-center gap-3 mb-4 flex-wrap px-3 py-2.5 rounded-2xl">
-      <div className="relative flex-1 min-w-[160px] max-w-xs">
-        <input
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search cards..."
-          className="glass-input w-full text-xs"
-          style={{ paddingLeft: "2rem" }}
-        />
-        <span
-          className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none"
-          style={{ color: "var(--cf-phosphor)" }}
-        >
-          <Icon icon={faMagnifyingGlass} />
-        </span>
+    <div className="bh-deck mb-4">
+      <span className="bh-screw tl" />
+      <span className="bh-screw tr" />
+      <span className="bh-screw bl" />
+      <span className="bh-screw br" />
+
+      {/* left zone: search grows, LCD meter fixed */}
+      <div className="bh-left">
+        <div className="bh-search">
+          <span className="bh-mag">
+            <Icon icon={faMagnifyingGlass} />
+          </span>
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search cards..."
+            className="glass-input w-full text-xs"
+            style={{ paddingLeft: "1.9rem" }}
+          />
+        </div>
+
+        {/* CRM total — headline funnel value */}
+        {isCrm && (
+          <div
+            className="bh-meter"
+            title="Total value of all deals on the board"
+          >
+            <span className="bh-cap">Pipeline</span>
+            <span className="bh-read">{formatMoney(crmTotal, currency)}</span>
+            <span className="bh-cap">
+              {totalCards} deal{totalCards !== 1 ? "s" : ""}
+            </span>
+          </div>
+        )}
+
+        {/* Progress counter — segmented LCD tape (task boards only) */}
+        {!isCrm && totalCards > 0 && (
+          <div
+            className="bh-meter"
+            title={`${doneCards} of ${totalCards} cards done`}
+          >
+            <span className="bh-cap">Done</span>
+            <span className="bh-read">
+              {doneCards}
+              <span className="bh-tot">/{totalCards}</span>
+            </span>
+            <span className="bh-segs" aria-hidden="true">
+              {METER_SEGMENTS.map((id, i) => (
+                <i key={id} className={i < litSegs ? "on" : undefined} />
+              ))}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* CRM total — headline funnel value (LCD strip) */}
-      {isCrm && (
-        <span
-          className="cf-screen cf-mono text-xs flex-shrink-0 px-2.5 py-1 font-bold inline-flex items-center gap-1.5"
-          style={{ color: "var(--cf-phosphor)" }}
-          title="Total value of all deals on the board"
-        >
-          <span
-            className="cf-led"
-            style={{
-              background: "var(--cf-phosphor)",
-              boxShadow: "0 0 6px var(--cf-phosphor)",
-            }}
-          />
-          {formatMoney(crmTotal, currency)} · {totalCards} deal
-          {totalCards !== 1 ? "s" : ""}
-        </span>
-      )}
-
-      {/* Progress counter — LCD strip (task boards only) */}
-      {!isCrm && totalCards > 0 && (
-        <span
-          className="cf-screen cf-mono text-xs flex-shrink-0 px-2.5 py-1"
-          style={{ color: "var(--cf-phosphor)" }}
-        >
-          {doneCards}/{totalCards} done
-        </span>
-      )}
-
-      {/* View toggle — hardware toggle keys with status LEDs */}
-      <div className="flex items-center gap-1 flex-shrink-0">
+      {/* view switcher — recessed selector housing with lit keys */}
+      <div className="bh-selector" role="tablist" aria-label="Board view">
         {(
           [
             { key: "kanban", icon: faTableCells, label: "Board" },
@@ -116,63 +132,30 @@ export function BoardTopBar({
         ).map(({ key, icon, label }) => (
           <button
             key={key}
+            type="button"
+            role="tab"
+            aria-selected={viewMode === key}
             onClick={() => onSelectView(key)}
-            style={
-              viewMode === key
-                ? {
-                    background: "var(--cf-edge)",
-                    borderColor: "var(--cf-phosphor)",
-                    color: "var(--cf-text)",
-                    boxShadow:
-                      "inset 0 1px 0 rgba(255,255,255,0.08), 0 0 8px rgba(154,166,126,0.35)",
-                  }
-                : { color: "var(--cf-text-muted)" }
-            }
-            className="aero-pill cf-mono text-[10px] uppercase tracking-widest px-2.5 py-1 font-bold cursor-pointer transition-colors inline-flex items-center gap-1.5"
+            className={`bh-key${viewMode === key ? " on" : ""}`}
           >
-            <span
-              className="cf-led"
-              style={{
-                background:
-                  viewMode === key ? "var(--cf-phosphor)" : "var(--cf-edge)",
-                boxShadow:
-                  viewMode === key ? "0 0 6px var(--cf-phosphor)" : "none",
-              }}
-            />
+            <span className="bh-led" />
             <Icon icon={icon} />
             {label}
           </button>
         ))}
       </div>
 
-      <div
-        className="hidden md:flex items-center gap-3 flex-shrink-0 ml-auto"
-        style={{ color: "var(--cf-text-muted)" }}
-      >
-        <button
-          onClick={onOpenCommand}
-          className="flex items-center gap-1.5 cursor-pointer transition-colors"
-          style={{ color: "var(--cf-text-muted)" }}
-        >
-          <kbd
-            className="cf-mono text-xs glass-input px-2 py-1"
-            style={{ color: "#1c2016" }}
-          >
-            ⌘K
-          </kbd>
-          <span className="cf-mono text-xs uppercase tracking-widest">
-            Search
-          </span>
+      {/* right zone: keycap shortcut hints (desktop only) */}
+      <div className="bh-right hidden md:flex">
+        <span className="bh-div" />
+        <button type="button" onClick={onOpenCommand} className="bh-hint">
+          <kbd className="bh-kbd">⌘K</kbd>
+          Search
         </button>
-        <span style={{ color: "var(--cf-edge)" }}>·</span>
-        <p className="cf-mono text-xs uppercase tracking-widest">Press</p>
-        <kbd
-          className="cf-mono text-xs glass-input px-2 py-1"
-          style={{ color: "#1c2016" }}
-        >
-          C
-        </kbd>
-        <p className="cf-mono text-xs uppercase tracking-widest">to add</p>
+        <span className="bh-hint">
+          <kbd className="bh-kbd">C</kbd>
+          Add
+        </span>
       </div>
     </div>
   );
