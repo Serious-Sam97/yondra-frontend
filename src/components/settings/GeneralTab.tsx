@@ -118,23 +118,45 @@ export default function GeneralTab({ board, onSaved }: Props) {
           type="button"
           onClick={() => setQaEnabled((v) => !v)}
           className="flex items-center justify-between gap-3 rounded-lg px-3.5 py-3 cursor-pointer text-left"
-          style={{ border: `1px solid ${qaEnabled ? "var(--cf-phosphor)" : "var(--cf-edge)"}`, background: qaEnabled ? "rgba(154,166,126,0.06)" : "transparent" }}
+          style={{
+            border: `1px solid ${qaEnabled ? "var(--cf-phosphor)" : "var(--cf-edge)"}`,
+            background: qaEnabled ? "rgba(154,166,126,0.06)" : "transparent",
+          }}
         >
           <span className="flex flex-col gap-0.5">
-            <span className="cf-mono uppercase font-bold" style={{ fontSize: "12px", letterSpacing: "0.08em", color: qaEnabled ? "var(--cf-text)" : "var(--cf-text-muted)" }}>
+            <span
+              className="cf-mono uppercase font-bold"
+              style={{
+                fontSize: "12px",
+                letterSpacing: "0.08em",
+                color: qaEnabled ? "var(--cf-text)" : "var(--cf-text-muted)",
+              }}
+            >
               Sentinel · QA
             </span>
-            <span className="cf-mono" style={{ fontSize: "10px", color: "var(--cf-text-muted)" }}>
+            <span
+              className="cf-mono"
+              style={{ fontSize: "10px", color: "var(--cf-text-muted)" }}
+            >
               Test cases + execution reports inside each card
             </span>
           </span>
           <span
             className="rounded-full flex-shrink-0 relative transition-colors"
-            style={{ width: 38, height: 20, background: qaEnabled ? "var(--cf-phosphor)" : "var(--cf-edge)" }}
+            style={{
+              width: 38,
+              height: 20,
+              background: qaEnabled ? "var(--cf-phosphor)" : "var(--cf-edge)",
+            }}
           >
             <span
               className="rounded-full absolute top-0.5 transition-all"
-              style={{ width: 16, height: 16, background: "#0d1410", left: qaEnabled ? 20 : 2 }}
+              style={{
+                width: 16,
+                height: 16,
+                background: "#0d1410",
+                left: qaEnabled ? 20 : 2,
+              }}
             />
           </span>
         </button>

@@ -44,6 +44,32 @@ export interface CardLink {
   last_synced_at?: string | null;
 }
 
+// A comment on a card (CardCommentController), author eager-loaded.
+export interface CardComment {
+  id: number;
+  card_id: number;
+  user_id: number;
+  body: string;
+  user: { id: number; name: string };
+  created_at: string;
+  updated_at?: string;
+}
+
+// A subtask is a bare card row under parent_card_id (CardController::subtasks) —
+// no relations are loaded on it.
+export interface SubtaskCard {
+  id: number;
+  board_id: number;
+  section_id: number;
+  parent_card_id: number | null;
+  name: string;
+  description: string;
+  is_done: boolean;
+  position: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
 export interface CardInterface {
   id: number | string;
   section_id: number;

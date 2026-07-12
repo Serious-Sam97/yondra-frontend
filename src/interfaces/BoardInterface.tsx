@@ -5,6 +5,9 @@ import type { TagInterface } from "./TagInterface";
 export interface SectionData {
   id: number;
   name: string;
+  board_id?: number;
+  // Column position on the board (0-based).
+  order?: number;
   // CRM SLA aging threshold (hours); null = no aging for this stage.
   aging_hours?: number | null;
 }
@@ -20,7 +23,10 @@ export interface SharedUser {
   permission?: BoardPermission;
 }
 
-export interface BoardInterface {
+// Board shape returned by the list/update/archive/copy endpoints
+// (BoardModelRepository::index/update/setArchived/duplicate): every board
+// attribute plus owner/shared_with and cards_count, but no sections/cards/tags.
+export interface BoardSummaryInterface {
   id: number;
   name: string;
   type?: BoardType;
@@ -31,10 +37,6 @@ export interface BoardInterface {
   // Sentinel (QA) module toggle for this board.
   qa_enabled?: boolean;
   description: string;
-  sections: SectionData[];
-  sprints?: SprintInterface[];
-  cards: CardInterface[];
-  tags?: TagInterface[];
   user_id?: number;
   project_id?: number | null;
   ticket_prefix?: string | null;
@@ -52,6 +54,18 @@ export interface BoardInterface {
   whatsapp_verify_token?: string | null;
   owner?: SharedUser;
   shared_with?: SharedUser[];
+  cards_count?: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+// Full board as returned by GET /api/boards/{id} (BoardModelRepository::show),
+// with relations loaded and the current user's server-computed capabilities.
+export interface BoardInterface extends BoardSummaryInterface {
+  sections: SectionData[];
+  sprints?: SprintInterface[];
+  cards: CardInterface[];
+  tags?: TagInterface[];
   // Server-computed capabilities for the current user (project-aware).
   can_write?: boolean;
   can_manage?: boolean;

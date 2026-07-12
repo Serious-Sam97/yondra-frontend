@@ -1,10 +1,15 @@
-'use client'
+"use client";
 
-import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { searchWorkspace } from "@/lib/api";
 
-type SBoard = { id: number; name: string; project_id: number | null; type: string };
+type SBoard = {
+  id: number;
+  name: string;
+  project_id: number | null;
+  type: string;
+};
 type SCard = {
   id: number;
   name: string;
@@ -28,6 +33,19 @@ export default function OmniSearch() {
   const [cards, setCards] = useState<SCard[]>([]);
   const [active, setActive] = useState(0);
   const boxRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // ⌘K / Ctrl+K focuses the search — same shortcut the board page advertises.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
 
   // Debounced fetch as you type.
   useEffect(() => {
@@ -58,7 +76,8 @@ export default function OmniSearch() {
   // Close on outside click.
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
-      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+      if (boxRef.current && !boxRef.current.contains(e.target as Node))
+        setOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
@@ -66,7 +85,11 @@ export default function OmniSearch() {
 
   const flat: Flat[] = [
     ...boards.map((b) => ({ kind: "board" as const, id: b.id })),
-    ...cards.map((c) => ({ kind: "card" as const, id: c.id, board_id: c.board_id })),
+    ...cards.map((c) => ({
+      kind: "card" as const,
+      id: c.id,
+      board_id: c.board_id,
+    })),
   ];
 
   const go = (item: Flat) => {
@@ -77,11 +100,22 @@ export default function OmniSearch() {
   };
 
   const onKey = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") { setOpen(false); return; }
+    if (e.key === "Escape") {
+      setOpen(false);
+      return;
+    }
     if (!open || flat.length === 0) return;
-    if (e.key === "ArrowDown") { e.preventDefault(); setActive((a) => Math.min(a + 1, flat.length - 1)); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); setActive((a) => Math.max(a - 1, 0)); }
-    else if (e.key === "Enter") { e.preventDefault(); const it = flat[active]; if (it) go(it); }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActive((a) => Math.min(a + 1, flat.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((a) => Math.max(a - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const it = flat[active];
+      if (it) go(it);
+    }
   };
 
   const hasResults = boards.length > 0 || cards.length > 0;
@@ -89,16 +123,24 @@ export default function OmniSearch() {
   return (
     <div className="yd-omni" ref={boxRef}>
       <input
+        ref={inputRef}
         className="yd-screen yd-search"
         placeholder="⌕  Search cards, boards, deals…"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        onFocus={() => { if (hasResults) setOpen(true); }}
+        onFocus={() => {
+          if (hasResults) setOpen(true);
+        }}
         onKeyDown={onKey}
       />
+      <span className="yd-omni-kbd" aria-hidden>
+        ⌘K
+      </span>
       {open && (
         <div className="yd-omni-pop">
-          {!hasResults && !loading && <div className="yd-omni-empty">No matches for “{q.trim()}”</div>}
+          {!hasResults && !loading && (
+            <div className="yd-omni-empty">No matches for “{q.trim()}”</div>
+          )}
           {boards.length > 0 && <div className="yd-omni-grp">Boards</div>}
           {boards.map((b, i) => (
             <button
@@ -122,11 +164,22 @@ export default function OmniSearch() {
                 type="button"
                 className={`yd-omni-row ${active === idx ? "on" : ""}`}
                 onMouseEnter={() => setActive(idx)}
-                onClick={() => go({ kind: "card", id: c.id, board_id: c.board_id })}
+                onClick={() =>
+                  go({ kind: "card", id: c.id, board_id: c.board_id })
+                }
               >
-                <span className="yd-omni-ic" style={c.is_deal ? { color: "var(--yd-gold)" } : undefined}>{c.is_deal ? "$" : "•"}</span>
+                <span
+                  className="yd-omni-ic"
+                  style={c.is_deal ? { color: "var(--yd-gold)" } : undefined}
+                >
+                  {c.is_deal ? "$" : "•"}
+                </span>
                 <span className="yd-omni-nm">{c.name}</span>
-                <span className="yd-omni-sub">{c.ticket_key ? `${c.ticket_key} · ` : ""}{c.board_name}{c.section ? ` · ${c.section}` : ""}</span>
+                <span className="yd-omni-sub">
+                  {c.ticket_key ? `${c.ticket_key} · ` : ""}
+                  {c.board_name}
+                  {c.section ? ` · ${c.section}` : ""}
+                </span>
               </button>
             );
           })}

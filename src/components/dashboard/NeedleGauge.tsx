@@ -16,12 +16,29 @@ export default function NeedleGauge({
   const clamped = Math.max(0, Math.min(value, max));
   const angle = -68 + (clamped / (max || 1)) * 136; // sweep -68°..+68°
   const overshoot = Math.min(angle + 8, 74);
-  const needleStyle = { "--a": `${angle}deg`, "--o": `${overshoot}deg` } as CSSProperties;
+  const needleStyle = {
+    "--a": `${angle}deg`,
+    "--o": `${overshoot}deg`,
+  } as CSSProperties;
 
   return (
     <svg viewBox="0 0 120 74" width="100%" height={52} aria-hidden>
-      <path d="M16,58 A44,44 0 0 1 104,58" fill="none" stroke="#241f18" strokeWidth={6} strokeLinecap="round" />
-      {danger && <path d="M91,27 A44,44 0 0 1 104,58" fill="none" stroke="#5c211c" strokeWidth={6} strokeLinecap="round" />}
+      <path
+        d="M16,58 A44,44 0 0 1 104,58"
+        fill="none"
+        stroke="#241f18"
+        strokeWidth={6}
+        strokeLinecap="round"
+      />
+      {danger && (
+        <path
+          d="M91,27 A44,44 0 0 1 104,58"
+          fill="none"
+          stroke="#5c211c"
+          strokeWidth={6}
+          strokeLinecap="round"
+        />
+      )}
       <g className="yd-jit">
         <g className="yd-ndl" style={needleStyle}>
           <polygon points="58,58 62,58 60,18" fill={color} />

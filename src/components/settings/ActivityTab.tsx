@@ -10,7 +10,7 @@ interface ActivityItem {
   type: string;
   description: string;
   created_at: string;
-  user?: { id: number; name: string };
+  user?: { id: number; name: string } | null;
 }
 
 function timeAgo(iso: string): string {

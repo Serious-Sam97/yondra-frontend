@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import { useEffect, useRef } from "react";
 
@@ -25,7 +25,8 @@ export default function BurndownLCD({
     const ctx = cv.getContext("2d");
     if (!ctx) return;
 
-    const rm = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    const rm =
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
     const dpr = window.devicePixelRatio || 1;
     const H = 104;
     const W = cv.clientWidth || cv.parentElement?.clientWidth || 320;
@@ -36,10 +37,19 @@ export default function BurndownLCD({
     const cap = Math.max(committed, 1);
     const COLS = 20;
     const ROWS = 10;
-    const curFrac = daysTotal && daysTotal > 0 ? Math.min(1, (daysElapsed ?? 0) / daysTotal) : 1;
+    const curFrac =
+      daysTotal && daysTotal > 0
+        ? Math.min(1, (daysElapsed ?? 0) / daysTotal)
+        : 1;
     const curCol = Math.max(1, Math.round((COLS - 1) * curFrac));
 
-    const cell = (cx: number, cy: number, cw: number, ch: number, a: number) => {
+    const cell = (
+      cx: number,
+      cy: number,
+      cw: number,
+      ch: number,
+      a: number,
+    ) => {
       ctx.fillStyle = `rgba(38,46,24,${a})`;
       const r = Math.min(2, cw / 3);
       ctx.beginPath();
@@ -54,14 +64,16 @@ export default function BurndownLCD({
     let raf = 0;
     const draw = (prog: number) => {
       ctx.clearRect(0, 0, W, H);
-      const m = 6, gap = 2;
+      const m = 6,
+        gap = 2;
       const cw = (W - 2 * m - (COLS - 1) * gap) / COLS;
       const ch = (H - 2 * m - (ROWS - 1) * gap) / ROWS;
       const at = (c: number, r: number, a: number) =>
         cell(m + c * (cw + gap), m + (ROWS - 1 - r) * (ch + gap), cw, ch, a);
 
       // ghost grid
-      for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) at(c, r, 0.1);
+      for (let c = 0; c < COLS; c++)
+        for (let r = 0; r < ROWS; r++) at(c, r, 0.1);
       // ideal diagonal (dim)
       for (let c = 0; c < COLS; c++) {
         const iv = cap * (1 - c / (COLS - 1));
@@ -73,7 +85,19 @@ export default function BurndownLCD({
         const v = cap + (remaining - cap) * (c / curCol);
         at(c, Math.round((v / cap) * (ROWS - 1)), 0.92);
       }
-      if (prog < 1 && !rm) raf = requestAnimationFrame(() => draw(Math.min(1, prog + 0.05)));
+      // TODAY marker — dashed vertical at the elapsed-days position.
+      const tx = m + curCol * (cw + gap) + cw / 2;
+      ctx.save();
+      ctx.strokeStyle = "rgba(112,74,14,0.7)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 3]);
+      ctx.beginPath();
+      ctx.moveTo(tx, m - 2);
+      ctx.lineTo(tx, H - m + 2);
+      ctx.stroke();
+      ctx.restore();
+      if (prog < 1 && !rm)
+        raf = requestAnimationFrame(() => draw(Math.min(1, prog + 0.05)));
     };
 
     if (rm) draw(1);

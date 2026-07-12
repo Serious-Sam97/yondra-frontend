@@ -1,3 +1,69 @@
+import type {
+  BoardInterface,
+  BoardPermission,
+  BoardSummaryInterface,
+  BoardType,
+  SectionData,
+} from "@/interfaces/BoardInterface";
+import type {
+  CardComment,
+  CardDocument,
+  CardImage,
+  CardInterface,
+  ChecklistItem,
+  SubtaskCard,
+} from "@/interfaces/CardInterface";
+import type { DashboardPayload } from "@/interfaces/DashboardInterface";
+import type { PlanningSnapshot } from "@/interfaces/PlanningInterface";
+import type { ProjectInterface } from "@/interfaces/ProjectInterface";
+import type {
+  GherkinLine,
+  ReusableStep,
+  RunItem,
+  TestCase,
+  TestPlan,
+  TestPlanOverview,
+  Verdict,
+} from "@/interfaces/QAInterface";
+import type {
+  SprintInterface,
+  SprintReportData,
+} from "@/interfaces/SprintInterface";
+import type { TagInterface } from "@/interfaces/TagInterface";
+
+// Laravel simplePaginate payload, returned bare from a controller (comments).
+export interface SimplePaginated<T> {
+  current_page: number;
+  data: T[];
+  first_page_url: string;
+  from: number | null;
+  next_page_url: string | null;
+  path: string;
+  per_page: number;
+  prev_page_url: string | null;
+  to: number | null;
+}
+
+// A simplePaginate()d API Resource collection (archived cards). Even with
+// JsonResource::withoutWrapping(), paginated resource collections keep the
+// data/links/meta envelope — `links.next` is null on the last page.
+export interface PaginatedResource<T> {
+  data: T[];
+  links: {
+    first: string | null;
+    last: string | null;
+    prev: string | null;
+    next: string | null;
+  };
+  meta: {
+    current_page: number;
+    from: number | null;
+    path: string;
+    per_page: number;
+    to: number | null;
+  };
+}
+
 export class ApiError extends Error {
   status: number;
   body: string;
@@ -15,6 +81,12 @@ export function clearAuth() {
   localStorage.setItem("isLogged", "false");
 }
 
+// Latch so only the FIRST 401 of a burst navigates to /login. A page typically
+// fires several requests in parallel; with an expired token every one of them
+// 401s, and each would otherwise kick off its own full-page navigation.
+// A full navigation reloads the module, so the flag never needs resetting.
+let redirectingToLogin = false;
+
 // Endpoints where a 401 means "bad credentials", not "session expired" —
 // they must not trigger the global logout redirect.
 const PUBLIC_AUTH_PATHS = [
@@ -24,7 +96,10 @@ const PUBLIC_AUTH_PATHS = [
   "/api/reset-password",
 ];
 
-export async function apiFetch(path: string, options: RequestInit = {}) {
+export async function apiFetch<T = unknown>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
   const url = `${process.env.NEXT_PUBLIC_API}${path}`;
 
   // For FormData (file uploads) the browser must set Content-Type itself so the
@@ -41,41 +116,74 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
 
   const res = await fetch(url, { ...options, headers, signal: options.signal });
 
-  if (res.status === 204) return null;
+  // 204 has no body. The cast is the one loose spot of the whole boundary — it is
+  // only sound because void-ish endpoints are declared Promise<void> (or `| null`
+  // for the few endpoints that legitimately answer 204, e.g. planning).
+  if (res.status === 204) return null as unknown as T;
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     if (res.status === 401 && !PUBLIC_AUTH_PATHS.includes(path)) {
-      // Session expired or token revoked — clear auth state and send the user to login.
+      // Session expired or token revoked — clear auth state and send the user to
+      // login, carrying the current location so a fresh sign-in returns them here.
       clearAuth();
       if (
         typeof window !== "undefined" &&
+        !redirectingToLogin &&
         !window.location.pathname.startsWith("/login")
       ) {
-        window.location.href = "/login";
+        redirectingToLogin = true;
+        const returnTo = `${window.location.pathname}${window.location.search}`;
+        window.location.href = `/login?next=${encodeURIComponent(returnTo)}`;
       }
     }
     throw new ApiError(res.status, body);
   }
-  return res.json().catch(() => ({}));
+  return res.json().catch(() => ({})) as Promise<T>;
 }
 
 // --- Projects ---
 
-export async function fetchProjects() {
+// GET /api/projects — "owned" includes co-owned (owner pivot role) projects.
+export async function fetchProjects(): Promise<{
+  owned: ProjectInterface[];
+  member: ProjectInterface[];
+}> {
   return apiFetch("/api/projects");
 }
 
 // --- Dashboard ---
 
-export async function fetchDashboard() {
+export async function fetchDashboard(): Promise<DashboardPayload> {
   return apiFetch("/api/dashboard");
 }
 
-export async function searchWorkspace(q: string) {
+// Workspace omnisearch hits (SearchController) — boards + cards across every
+// board the current user can see.
+export interface SearchBoardResult {
+  id: number;
+  name: string;
+  project_id: number | null;
+  type: BoardType;
+}
+
+export interface SearchCardResult {
+  id: number;
+  name: string;
+  board_id: number;
+  board_name: string | null;
+  section: string | null;
+  is_deal: boolean;
+  ticket_key: string;
+}
+
+export async function searchWorkspace(q: string): Promise<{
+  boards: SearchBoardResult[];
+  cards: SearchCardResult[];
+}> {
   return apiFetch(`/api/search?q=${encodeURIComponent(q)}`);
 }
 
-export async function fetchProject(id: number) {
+export async function fetchProject(id: number): Promise<ProjectInterface> {
   return apiFetch(`/api/projects/${id}`);
 }
 
@@ -83,7 +191,7 @@ export async function createProject(data: {
   name: string;
   description?: string | null;
   color?: string;
-}) {
+}): Promise<ProjectInterface> {
   return apiFetch("/api/projects", {
     method: "POST",
     body: JSON.stringify(data),
@@ -98,22 +206,22 @@ export async function updateProject(
     color?: string;
     default_permission?: "read" | "write" | "owner";
   },
-) {
+): Promise<ProjectInterface> {
   return apiFetch(`/api/projects/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteProject(id: number) {
+export async function deleteProject(id: number): Promise<void> {
   return apiFetch(`/api/projects/${id}`, { method: "DELETE" });
 }
 
-export async function archiveProject(id: number) {
+export async function archiveProject(id: number): Promise<ProjectInterface> {
   return apiFetch(`/api/projects/${id}/archive`, { method: "POST" });
 }
 
-export async function unarchiveProject(id: number) {
+export async function unarchiveProject(id: number): Promise<ProjectInterface> {
   return apiFetch(`/api/projects/${id}/unarchive`, { method: "POST" });
 }
 
@@ -124,25 +232,36 @@ export async function copyProject(
     include_boards?: boolean;
     include_cards?: boolean;
   } = {},
-) {
+): Promise<ProjectInterface> {
   return apiFetch(`/api/projects/${id}/copy`, {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
-export async function getProjectMemberCandidates(projectId: number, q = "") {
+// Users not yet in the project, matched by name/email.
+export interface ProjectMemberCandidate {
+  id: number;
+  name: string;
+  email: string;
+}
+
+export async function getProjectMemberCandidates(
+  projectId: number,
+  q = "",
+): Promise<ProjectMemberCandidate[]> {
   const query = q ? `?q=${encodeURIComponent(q)}` : "";
   return apiFetch(`/api/projects/${projectId}/members/candidates${query}`, {
     method: "GET",
   });
 }
 
+// Member endpoints answer with the refreshed project (ProjectModelRepository::show).
 export async function addProjectMember(
   projectId: number,
   email: string,
   role: "owner" | "member" | "viewer" = "member",
-) {
+): Promise<ProjectInterface> {
   return apiFetch(`/api/projects/${projectId}/members`, {
     method: "POST",
     body: JSON.stringify({ email, role }),
@@ -153,14 +272,17 @@ export async function updateProjectMember(
   projectId: number,
   userId: number,
   role: "owner" | "member" | "viewer",
-) {
+): Promise<ProjectInterface> {
   return apiFetch(`/api/projects/${projectId}/members/${userId}`, {
     method: "PUT",
     body: JSON.stringify({ role }),
   });
 }
 
-export async function removeProjectMember(projectId: number, userId: number) {
+export async function removeProjectMember(
+  projectId: number,
+  userId: number,
+): Promise<void> {
   return apiFetch(`/api/projects/${projectId}/members/${userId}`, {
     method: "DELETE",
   });
@@ -168,7 +290,7 @@ export async function removeProjectMember(projectId: number, userId: number) {
 
 // --- Boards ---
 
-export async function deleteBoard(id: number) {
+export async function deleteBoard(id: number): Promise<void> {
   return apiFetch(`/api/boards/${id}`, { method: "DELETE" });
 }
 
@@ -195,57 +317,69 @@ export async function updateBoard(
     whatsapp_app_secret?: string | null;
     whatsapp_verify_token?: string | null;
   },
-) {
+): Promise<BoardSummaryInterface> {
   return apiFetch(`/api/boards/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
   });
 }
 
-export async function archiveBoard(id: number) {
+export async function archiveBoard(id: number): Promise<BoardSummaryInterface> {
   return apiFetch(`/api/boards/${id}/archive`, { method: "POST" });
 }
 
-export async function unarchiveBoard(id: number) {
+export async function unarchiveBoard(
+  id: number,
+): Promise<BoardSummaryInterface> {
   return apiFetch(`/api/boards/${id}/unarchive`, { method: "POST" });
 }
 
 export async function copyBoard(
   id: number,
   data: { name?: string; include_cards?: boolean } = {},
-) {
+): Promise<BoardSummaryInterface> {
   return apiFetch(`/api/boards/${id}/copy`, {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
+// The freshly created board comes back with its seeded sections loaded.
 export async function createBoard(data: {
   name: string;
   description: string;
   project_id?: number | null;
   type?: "kanban" | "scrum" | "crm";
   currency?: string;
-}) {
+}): Promise<BoardSummaryInterface & { sections: SectionData[] }> {
   return apiFetch("/api/boards", {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
-export async function fetchBoard(id: number, signal?: AbortSignal) {
+export async function fetchBoard(
+  id: number,
+  signal?: AbortSignal,
+): Promise<BoardInterface> {
   return apiFetch(`/api/boards/${id}`, { method: "GET", signal });
 }
 
 // --- Sections ---
 
-export async function deleteSection(boardId: number, sectionId: number) {
+export async function deleteSection(
+  boardId: number,
+  sectionId: number,
+): Promise<void> {
   return apiFetch(`/api/boards/${boardId}/sections/${sectionId}`, {
     method: "DELETE",
   });
 }
 
-export async function createSection(boardId: number, name: string) {
+export async function createSection(
+  boardId: number,
+  name: string,
+): Promise<SectionData> {
   return apiFetch(`/api/boards/${boardId}/sections`, {
     method: "POST",
     body: JSON.stringify({ name }),
@@ -256,14 +390,17 @@ export async function updateSection(
   boardId: number,
   sectionId: number,
   data: { name?: string; aging_hours?: number | null },
-) {
+): Promise<SectionData> {
   return apiFetch(`/api/boards/${boardId}/sections/${sectionId}`, {
     method: "PUT",
     body: JSON.stringify(data),
   });
 }
 
-export async function reorderSections(boardId: number, sectionIds: number[]) {
+export async function reorderSections(
+  boardId: number,
+  sectionIds: number[],
+): Promise<void> {
   return apiFetch(`/api/boards/${boardId}/sections/reorder`, {
     method: "POST",
     body: JSON.stringify({ section_ids: sectionIds }),
@@ -275,7 +412,7 @@ export async function reorderSections(boardId: number, sectionIds: number[]) {
 export async function createTag(
   boardId: number,
   data: { name: string; color: string },
-) {
+): Promise<TagInterface> {
   return apiFetch(`/api/boards/${boardId}/tags`, {
     method: "POST",
     body: JSON.stringify(data),
@@ -286,19 +423,21 @@ export async function updateTag(
   boardId: number,
   tagId: number,
   data: { name?: string; color?: string },
-) {
+): Promise<TagInterface> {
   return apiFetch(`/api/boards/${boardId}/tags/${tagId}`, {
     method: "PUT",
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteTag(boardId: number, tagId: number) {
+export async function deleteTag(boardId: number, tagId: number): Promise<void> {
   return apiFetch(`/api/boards/${boardId}/tags/${tagId}`, { method: "DELETE" });
 }
 
 // --- Cards ---
 
+// Create/update answer with the full reloaded card (relations + ticket_key),
+// see CardModelRepository::save/update.
 export async function createCard(
   boardId: number,
   data: {
@@ -313,7 +452,7 @@ export async function createCard(
     story_points?: number | null;
     sprint_id?: number | null;
   },
-) {
+): Promise<CardInterface> {
   return apiFetch(`/api/boards/${boardId}/cards`, {
     method: "POST",
     body: JSON.stringify(data),
@@ -336,7 +475,7 @@ export async function updateCard(
     story_points?: number | null;
     sprint_id?: number | null;
   },
-) {
+): Promise<CardInterface> {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}`, {
     method: "PUT",
     body: JSON.stringify(data),
@@ -345,7 +484,9 @@ export async function updateCard(
 
 // --- Sprints (scrum) ---
 
-export async function fetchSprints(boardId: number) {
+export async function fetchSprints(
+  boardId: number,
+): Promise<SprintInterface[]> {
   return apiFetch(`/api/boards/${boardId}/sprints`, { method: "GET" });
 }
 
@@ -357,13 +498,15 @@ export async function createSprint(
     end_date?: string | null;
     is_active?: boolean;
   },
-) {
+): Promise<SprintInterface> {
   return apiFetch(`/api/boards/${boardId}/sprints`, {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
+// Returns the FULL ordered sprint list, not just the edited sprint — a date
+// change can cascade-shift later sprints (SprintController::update).
 export async function updateSprint(
   boardId: number,
   sprintId: number,
@@ -373,7 +516,7 @@ export async function updateSprint(
     end_date?: string | null;
     is_active?: boolean;
   },
-) {
+): Promise<SprintInterface[]> {
   return apiFetch(`/api/boards/${boardId}/sprints/${sprintId}`, {
     method: "PUT",
     body: JSON.stringify(data),
@@ -383,32 +526,51 @@ export async function updateSprint(
 export async function startSprint(
   boardId: number,
   sprintId: number,
-  data: { goal?: string | null; start_date?: string | null; end_date?: string | null } = {},
-) {
+  data: {
+    goal?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+  } = {},
+): Promise<SprintInterface> {
   return apiFetch(`/api/boards/${boardId}/sprints/${sprintId}/start`, {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
+export interface CompleteSprintResponse {
+  sprint: SprintInterface;
+  // Present when move_to === "new".
+  new_sprint: SprintInterface | null;
+  // Where incomplete tickets went; null = backlog.
+  target_sprint_id: number | null;
+  moved_ids: number[];
+}
+
 export async function completeSprint(
   boardId: number,
   sprintId: number,
   data: { move_to: string; new_sprint_name?: string },
-) {
+): Promise<CompleteSprintResponse> {
   return apiFetch(`/api/boards/${boardId}/sprints/${sprintId}/complete`, {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
-export async function getSprintReport(boardId: number, sprintId: number) {
+export async function getSprintReport(
+  boardId: number,
+  sprintId: number,
+): Promise<SprintReportData> {
   return apiFetch(`/api/boards/${boardId}/sprints/${sprintId}/report`, {
     method: "GET",
   });
 }
 
-export async function deleteSprint(boardId: number, sprintId: number) {
+export async function deleteSprint(
+  boardId: number,
+  sprintId: number,
+): Promise<void> {
   return apiFetch(`/api/boards/${boardId}/sprints/${sprintId}`, {
     method: "DELETE",
   });
@@ -420,27 +582,38 @@ export async function reorderCards(
   boardId: number,
   sectionId: number,
   orderedIds: (number | string)[],
-) {
+): Promise<{ ok: true }> {
   return apiFetch(`/api/boards/${boardId}/cards/reorder`, {
     method: "PUT",
     body: JSON.stringify({ section_id: sectionId, ordered_ids: orderedIds }),
   });
 }
 
-export async function deleteCard(boardId: number, cardId: number | string) {
+export async function deleteCard(
+  boardId: number,
+  cardId: number | string,
+): Promise<void> {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}`, {
     method: "DELETE",
   });
 }
 
-export async function restoreCard(boardId: number, cardId: number | string) {
+// 204 no body — the restored card is pushed over the board channel instead.
+export async function restoreCard(
+  boardId: number,
+  cardId: number | string,
+): Promise<void> {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}/restore`, {
     method: "PUT",
   });
 }
 
-export async function getArchivedCards(boardId: number) {
-  return apiFetch(`/api/boards/${boardId}/cards/archived`);
+// 25 per page, most recently archived first.
+export async function getArchivedCards(
+  boardId: number,
+  page = 1,
+): Promise<PaginatedResource<CardInterface>> {
+  return apiFetch(`/api/boards/${boardId}/cards/archived?page=${page}`);
 }
 
 // --- Checklist ---
@@ -449,7 +622,7 @@ export async function createChecklistItem(
   boardId: number,
   cardId: number | string,
   text: string,
-) {
+): Promise<ChecklistItem> {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}/checklist`, {
     method: "POST",
     body: JSON.stringify({ text }),
@@ -461,7 +634,7 @@ export async function updateChecklistItem(
   cardId: number | string,
   itemId: number,
   data: { text?: string; is_done?: boolean },
-) {
+): Promise<ChecklistItem> {
   return apiFetch(
     `/api/boards/${boardId}/cards/${cardId}/checklist/${itemId}`,
     {
@@ -475,7 +648,7 @@ export async function deleteChecklistItem(
   boardId: number,
   cardId: number | string,
   itemId: number,
-) {
+): Promise<void> {
   return apiFetch(
     `/api/boards/${boardId}/cards/${cardId}/checklist/${itemId}`,
     { method: "DELETE" },
@@ -488,7 +661,7 @@ export async function uploadCardImage(
   boardId: number,
   cardId: number | string,
   file: File,
-) {
+): Promise<CardImage> {
   const form = new FormData();
   form.append("image", file);
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}/attachments`, {
@@ -506,10 +679,13 @@ export async function uploadInlineImage(
 ): Promise<{ url: string }> {
   const form = new FormData();
   form.append("image", file);
-  const data = await apiFetch(`/api/boards/${boardId}/uploads`, {
-    method: "POST",
-    body: form,
-  });
+  const data = await apiFetch<{ url?: string }>(
+    `/api/boards/${boardId}/uploads`,
+    {
+      method: "POST",
+      body: form,
+    },
+  );
   const path: string = data?.url ?? "";
   const url = /^https?:\/\//.test(path)
     ? path
@@ -521,7 +697,7 @@ export async function deleteCardImage(
   boardId: number,
   cardId: number | string,
   imageId: number,
-) {
+): Promise<void> {
   return apiFetch(
     `/api/boards/${boardId}/cards/${cardId}/attachments/${imageId}`,
     { method: "DELETE" },
@@ -534,7 +710,7 @@ export async function uploadCardDocument(
   boardId: number,
   cardId: number | string,
   file: File,
-) {
+): Promise<CardDocument> {
   const form = new FormData();
   form.append("file", file);
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}/documents`, {
@@ -547,7 +723,7 @@ export async function deleteCardDocument(
   boardId: number,
   cardId: number | string,
   documentId: number,
-) {
+): Promise<void> {
   return apiFetch(
     `/api/boards/${boardId}/cards/${cardId}/documents/${documentId}`,
     { method: "DELETE" },
@@ -562,7 +738,7 @@ export async function downloadCardDocument(
   cardId: number | string,
   documentId: number,
   filename: string,
-) {
+): Promise<void> {
   const token = localStorage.getItem("token");
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_API}/api/boards/${boardId}/cards/${cardId}/documents/${documentId}/download`,
@@ -587,7 +763,7 @@ export async function addCardLink(
   boardId: number,
   cardId: number | string,
   url: string,
-) {
+): Promise<CardInterface> {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}/links`, {
     method: "POST",
     body: JSON.stringify({ url }),
@@ -598,7 +774,7 @@ export async function refreshCardLink(
   boardId: number,
   cardId: number | string,
   linkId: number,
-) {
+): Promise<CardInterface> {
   return apiFetch(
     `/api/boards/${boardId}/cards/${cardId}/links/${linkId}/refresh`,
     { method: "POST" },
@@ -609,7 +785,7 @@ export async function deleteCardLink(
   boardId: number,
   cardId: number | string,
   linkId: number,
-) {
+): Promise<void> {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}/links/${linkId}`, {
     method: "DELETE",
   });
@@ -617,15 +793,20 @@ export async function deleteCardLink(
 
 // --- Comments ---
 
-export async function getComments(boardId: number, cardId: number | string) {
-  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/comments`);
+// 30 per page, newest first — page N+1 holds the next-older window.
+export async function getComments(
+  boardId: number,
+  cardId: number | string,
+  page = 1,
+): Promise<SimplePaginated<CardComment>> {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/comments?page=${page}`);
 }
 
 export async function createComment(
   boardId: number,
   cardId: number | string,
   body: string,
-) {
+): Promise<CardComment> {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}/comments`, {
     method: "POST",
     body: JSON.stringify({ body }),
@@ -637,7 +818,7 @@ export async function updateComment(
   cardId: number | string,
   commentId: number,
   body: string,
-) {
+): Promise<CardComment> {
   return apiFetch(
     `/api/boards/${boardId}/cards/${cardId}/comments/${commentId}`,
     {
@@ -651,7 +832,7 @@ export async function deleteComment(
   boardId: number,
   cardId: number | string,
   commentId: number,
-) {
+): Promise<void> {
   return apiFetch(
     `/api/boards/${boardId}/cards/${cardId}/comments/${commentId}`,
     { method: "DELETE" },
@@ -660,7 +841,41 @@ export async function deleteComment(
 
 // --- WhatsApp ---
 
-export async function getWhatsappThread(boardId: number, cardId: number | string) {
+export interface WhatsappMessage {
+  id: number;
+  conversation_id?: number;
+  direction: "in" | "out";
+  type: string;
+  body: string | null;
+  status: string | null;
+  template_name?: string | null;
+  error?: string | null;
+  sent_by?: { id: number; name: string } | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface WhatsappConversation {
+  id: number;
+  board_id: number;
+  card_id: number;
+  wa_phone: string;
+  contact_name: string | null;
+  last_inbound_at: string | null;
+  service_window_expires_at: string | null;
+  quality_state?: string | null;
+  messages: WhatsappMessage[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export async function getWhatsappThread(
+  boardId: number,
+  cardId: number | string,
+): Promise<{
+  conversation: WhatsappConversation | null;
+  window_open: boolean;
+}> {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}/whatsapp`);
 }
 
@@ -668,14 +883,34 @@ export async function sendWhatsappReply(
   boardId: number,
   cardId: number | string,
   body: string,
-) {
+): Promise<WhatsappMessage> {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}/whatsapp`, {
     method: "POST",
     body: JSON.stringify({ body }),
   });
 }
 
-export async function getWhatsappAutomations(boardId: number) {
+// Per-board stage→template automation config (owner-level).
+export interface WhatsappStageAutomation {
+  id: number;
+  board_id: number;
+  section_id: number;
+  template_name: string;
+  language: string;
+  enabled: boolean;
+  // Set when Meta reports a quality drop; cleared by an explicit resume.
+  paused_at: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export async function getWhatsappAutomations(boardId: number): Promise<
+  {
+    section_id: number;
+    section_name: string;
+    automation: WhatsappStageAutomation | null;
+  }[]
+> {
   return apiFetch(`/api/boards/${boardId}/whatsapp/automations`);
 }
 
@@ -688,7 +923,7 @@ export async function upsertWhatsappAutomation(
     enabled?: boolean;
     resume?: boolean;
   },
-) {
+): Promise<WhatsappStageAutomation> {
   return apiFetch(`/api/boards/${boardId}/whatsapp/automations/${sectionId}`, {
     method: "PUT",
     body: JSON.stringify(data),
@@ -698,7 +933,7 @@ export async function upsertWhatsappAutomation(
 export async function deleteWhatsappAutomation(
   boardId: number,
   sectionId: number,
-) {
+): Promise<void> {
   return apiFetch(`/api/boards/${boardId}/whatsapp/automations/${sectionId}`, {
     method: "DELETE",
   });
@@ -706,28 +941,58 @@ export async function deleteWhatsappAutomation(
 
 // --- Activity ---
 
-export async function getActivity(boardId: number) {
+export interface BoardActivityEntry {
+  id: number;
+  board_id: number;
+  user_id: number | null;
+  type: string;
+  description: string;
+  user?: { id: number; name: string } | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export async function getActivity(
+  boardId: number,
+): Promise<BoardActivityEntry[]> {
   return apiFetch(`/api/boards/${boardId}/activity`);
 }
 
 // --- Notifications ---
 
-export async function getNotifications() {
+// One bell entry (NotificationController flattens Laravel's data envelope).
+export interface AppNotification {
+  id: string;
+  type?: string | null;
+  message: string;
+  board_id?: number | null;
+  card_id?: number | null;
+  deep_link?: string | null;
+  read_at?: string | null;
+  created_at: string;
+}
+
+export async function getNotifications(): Promise<AppNotification[]> {
   return apiFetch("/api/notifications");
 }
 
-export async function markNotificationRead(id: string | number) {
+export async function markNotificationRead(id: string | number): Promise<void> {
   return apiFetch(`/api/notifications/${id}/read`, { method: "PUT" });
 }
 
-export async function markAllNotificationsRead() {
+export async function markAllNotificationsRead(): Promise<void> {
   return apiFetch("/api/notifications/read-all", { method: "PUT" });
 }
 
 export type NotificationMatrix = Record<string, Record<string, boolean>>;
 
 export type NotificationPreferenceCatalog = {
-  event_types: { key: string; label: string; description: string; active: boolean }[];
+  event_types: {
+    key: string;
+    label: string;
+    description: string;
+    active: boolean;
+  }[];
   channels: { key: string; label: string }[];
   preferences: NotificationMatrix;
 };
@@ -736,7 +1001,9 @@ export async function getNotificationPreferences(): Promise<NotificationPreferen
   return apiFetch("/api/notifications/preferences");
 }
 
-export async function updateNotificationPreferences(preferences: NotificationMatrix): Promise<NotificationPreferenceCatalog> {
+export async function updateNotificationPreferences(
+  preferences: NotificationMatrix,
+): Promise<NotificationPreferenceCatalog> {
   return apiFetch("/api/notifications/preferences", {
     method: "PUT",
     body: JSON.stringify({ preferences }),
@@ -745,11 +1012,21 @@ export async function updateNotificationPreferences(preferences: NotificationMat
 
 // --- Sharing ---
 
+export interface ShareBoardResponse {
+  message: string;
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    permission: BoardPermission;
+  };
+}
+
 export async function shareBoard(
   boardId: number,
   email: string,
   permission: "read" | "write" | "owner" = "write",
-) {
+): Promise<ShareBoardResponse> {
   return apiFetch(`/api/boards/${boardId}/share`, {
     method: "POST",
     body: JSON.stringify({ email, permission }),
@@ -760,14 +1037,27 @@ export async function shareBoardWithUser(
   boardId: number,
   userId: number,
   permission: "read" | "write" | "owner" = "write",
-) {
+): Promise<ShareBoardResponse> {
   return apiFetch(`/api/boards/${boardId}/share`, {
     method: "POST",
     body: JSON.stringify({ user_id: userId, permission }),
   });
 }
 
-export async function getShareCandidates(boardId: number) {
+// A parent-project member the board can be shared with, annotated with whether
+// the board is already shared to them (BoardShareController::candidates).
+export interface BoardShareCandidate {
+  id: number;
+  name: string;
+  email: string;
+  role: "owner" | "member" | "viewer";
+  shared: boolean;
+  permission: BoardPermission | null;
+}
+
+export async function getShareCandidates(
+  boardId: number,
+): Promise<BoardShareCandidate[]> {
   return apiFetch(`/api/boards/${boardId}/share/candidates`, { method: "GET" });
 }
 
@@ -775,14 +1065,17 @@ export async function updateSharePermission(
   boardId: number,
   userId: number,
   permission: "read" | "write" | "owner",
-) {
+): Promise<{ permission: BoardPermission }> {
   return apiFetch(`/api/boards/${boardId}/share/${userId}`, {
     method: "PUT",
     body: JSON.stringify({ permission }),
   });
 }
 
-export async function unshareBoard(boardId: number, userId: number) {
+export async function unshareBoard(
+  boardId: number,
+  userId: number,
+): Promise<void> {
   return apiFetch(`/api/boards/${boardId}/share/${userId}`, {
     method: "DELETE",
   });
@@ -790,21 +1083,36 @@ export async function unshareBoard(boardId: number, userId: number) {
 
 // --- Templates ---
 
-export async function getTemplates(boardId: number) {
+export interface CardTemplateInterface {
+  id: number;
+  board_id: number;
+  user_id: number;
+  name: string;
+  template_data: Record<string, unknown>;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export async function getTemplates(
+  boardId: number,
+): Promise<CardTemplateInterface[]> {
   return apiFetch(`/api/boards/${boardId}/templates`);
 }
 
 export async function createTemplate(
   boardId: number,
   data: { name: string; template_data: object },
-) {
+): Promise<CardTemplateInterface> {
   return apiFetch(`/api/boards/${boardId}/templates`, {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteTemplate(boardId: number, templateId: number) {
+export async function deleteTemplate(
+  boardId: number,
+  templateId: number,
+): Promise<void> {
   return apiFetch(`/api/boards/${boardId}/templates/${templateId}`, {
     method: "DELETE",
   });
@@ -812,18 +1120,36 @@ export async function deleteTemplate(boardId: number, templateId: number) {
 
 // --- Board Chat ---
 
-export async function getBoardMessages(boardId: number) {
+export interface BoardChatMessage {
+  id: number;
+  board_id: number;
+  user_id: number;
+  body: string;
+  user: { id: number; name: string };
+  created_at: string;
+  updated_at?: string;
+}
+
+export async function getBoardMessages(
+  boardId: number,
+): Promise<BoardChatMessage[]> {
   return apiFetch(`/api/boards/${boardId}/messages`);
 }
 
-export async function createBoardMessage(boardId: number, body: string) {
+export async function createBoardMessage(
+  boardId: number,
+  body: string,
+): Promise<BoardChatMessage> {
   return apiFetch(`/api/boards/${boardId}/messages`, {
     method: "POST",
     body: JSON.stringify({ body }),
   });
 }
 
-export async function deleteBoardMessage(boardId: number, messageId: number) {
+export async function deleteBoardMessage(
+  boardId: number,
+  messageId: number,
+): Promise<void> {
   return apiFetch(`/api/boards/${boardId}/messages/${messageId}`, {
     method: "DELETE",
   });
@@ -831,7 +1157,10 @@ export async function deleteBoardMessage(boardId: number, messageId: number) {
 
 // --- Subtasks ---
 
-export async function getSubtasks(boardId: number, cardId: number | string) {
+export async function getSubtasks(
+  boardId: number,
+  cardId: number | string,
+): Promise<SubtaskCard[]> {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}/subtasks`);
 }
 
@@ -839,7 +1168,7 @@ export async function createSubtask(
   boardId: number,
   cardId: number | string,
   data: { name: string; description?: string },
-) {
+): Promise<SubtaskCard> {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}/subtasks`, {
     method: "POST",
     body: JSON.stringify(data),
@@ -851,7 +1180,7 @@ export async function updateSubtask(
   cardId: number | string,
   subtaskId: number,
   data: { is_done?: boolean; name?: string },
-) {
+): Promise<SubtaskCard> {
   return apiFetch(
     `/api/boards/${boardId}/cards/${cardId}/subtasks/${subtaskId}`,
     { method: "PUT", body: JSON.stringify(data) },
@@ -863,19 +1192,27 @@ export async function updateSubtask(
 const planningBase = (boardId: number, cardId: number | string) =>
   `/api/boards/${boardId}/cards/${cardId}/planning`;
 
+// 204 (→ null) when the board isn't scrum or no session is running.
 export async function getPlanning(
   boardId: number,
   cardId: number | string,
   signal?: AbortSignal,
-) {
+): Promise<PlanningSnapshot | null> {
   return apiFetch(planningBase(boardId, cardId), { method: "GET", signal });
 }
 
-export async function joinPlanning(boardId: number, cardId: number | string) {
+export async function joinPlanning(
+  boardId: number,
+  cardId: number | string,
+): Promise<PlanningSnapshot> {
   return apiFetch(`${planningBase(boardId, cardId)}/join`, { method: "POST" });
 }
 
-export async function leavePlanning(boardId: number, cardId: number | string) {
+// 204 (→ null) when the last participant leaves and the room closes.
+export async function leavePlanning(
+  boardId: number,
+  cardId: number | string,
+): Promise<PlanningSnapshot | null> {
   return apiFetch(`${planningBase(boardId, cardId)}/leave`, { method: "POST" });
 }
 
@@ -883,26 +1220,35 @@ export async function votePlanning(
   boardId: number,
   cardId: number | string,
   value: string,
-) {
+): Promise<PlanningSnapshot> {
   return apiFetch(`${planningBase(boardId, cardId)}/vote`, {
     method: "POST",
     body: JSON.stringify({ value }),
   });
 }
 
-export async function revealPlanning(boardId: number, cardId: number | string) {
-  return apiFetch(`${planningBase(boardId, cardId)}/reveal`, { method: "POST" });
+export async function revealPlanning(
+  boardId: number,
+  cardId: number | string,
+): Promise<PlanningSnapshot> {
+  return apiFetch(`${planningBase(boardId, cardId)}/reveal`, {
+    method: "POST",
+  });
 }
 
-export async function resetPlanning(boardId: number, cardId: number | string) {
+export async function resetPlanning(
+  boardId: number,
+  cardId: number | string,
+): Promise<PlanningSnapshot> {
   return apiFetch(`${planningBase(boardId, cardId)}/reset`, { method: "POST" });
 }
 
+// Answers with the snapshot; falls back to the bare card when no session exists.
 export async function applyPlanning(
   boardId: number,
   cardId: number | string,
   value: number,
-) {
+): Promise<PlanningSnapshot | CardInterface> {
   return apiFetch(`${planningBase(boardId, cardId)}/apply`, {
     method: "POST",
     body: JSON.stringify({ value }),
@@ -918,7 +1264,7 @@ export async function getQa(
   boardId: number,
   cardId: number | string,
   signal?: AbortSignal,
-) {
+): Promise<{ cases: TestCase[] }> {
   return apiFetch(qaBase(boardId, cardId), { method: "GET", signal });
 }
 
@@ -926,7 +1272,7 @@ export async function createTestCase(
   boardId: number,
   cardId: number | string,
   data: { title: string; type?: string },
-) {
+): Promise<TestCase> {
   return apiFetch(`${qaBase(boardId, cardId)}/cases`, {
     method: "POST",
     body: JSON.stringify(data),
@@ -938,7 +1284,7 @@ export async function updateTestCase(
   cardId: number | string,
   caseId: number,
   data: Record<string, unknown>,
-) {
+): Promise<TestCase> {
   return apiFetch(`${qaBase(boardId, cardId)}/cases/${caseId}`, {
     method: "PUT",
     body: JSON.stringify(data),
@@ -949,12 +1295,13 @@ export async function deleteTestCase(
   boardId: number,
   cardId: number | string,
   caseId: number,
-) {
+): Promise<void> {
   return apiFetch(`${qaBase(boardId, cardId)}/cases/${caseId}`, {
     method: "DELETE",
   });
 }
 
+// Appends a run and answers with the refreshed parent case snapshot.
 export async function createTestRun(
   boardId: number,
   cardId: number | string,
@@ -965,9 +1312,9 @@ export async function createTestRun(
     device?: string | null;
     logs?: string | null;
     evidence?: { url: string; kind?: string }[];
-    items?: import("@/interfaces/QAInterface").RunItem[];
+    items?: RunItem[];
   },
-) {
+): Promise<TestCase> {
   return apiFetch(`${qaBase(boardId, cardId)}/cases/${caseId}/runs`, {
     method: "POST",
     body: JSON.stringify(data),
@@ -978,7 +1325,7 @@ export async function linkBug(
   boardId: number,
   cardId: number | string,
   caseId: number,
-) {
+): Promise<TestCase> {
   return apiFetch(`${qaBase(boardId, cardId)}/cases/${caseId}/bug`, {
     method: "POST",
   });
@@ -989,8 +1336,8 @@ export async function setCaseVerdict(
   boardId: number,
   cardId: number | string,
   caseId: number,
-  verdict: import("@/interfaces/QAInterface").Verdict | null,
-) {
+  verdict: Verdict | null,
+): Promise<TestCase> {
   return apiFetch(`${qaBase(boardId, cardId)}/cases/${caseId}/verdict`, {
     method: "POST",
     body: JSON.stringify({ verdict }),
@@ -1002,7 +1349,7 @@ export async function generateCiToken(
   boardId: number,
   cardId: number | string,
   caseId: number,
-) {
+): Promise<TestCase> {
   return apiFetch(`${qaBase(boardId, cardId)}/cases/${caseId}/ci-token`, {
     method: "POST",
   });
@@ -1011,61 +1358,93 @@ export async function generateCiToken(
 // Reusable step library (per board).
 const stepBase = (boardId: number) => `/api/boards/${boardId}/qa/steps`;
 
-export async function getSteps(boardId: number, signal?: AbortSignal) {
+export async function getSteps(
+  boardId: number,
+  signal?: AbortSignal,
+): Promise<{ steps: ReusableStep[] }> {
   return apiFetch(stepBase(boardId), { method: "GET", signal });
 }
 
 export async function createStep(
   boardId: number,
-  data: { title: string; content?: string; gherkin_lines?: import("@/interfaces/QAInterface").GherkinLine[] },
-) {
-  return apiFetch(stepBase(boardId), { method: "POST", body: JSON.stringify(data) });
+  data: {
+    title: string;
+    content?: string;
+    gherkin_lines?: GherkinLine[];
+  },
+): Promise<ReusableStep> {
+  return apiFetch(stepBase(boardId), {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 }
 
 export async function updateStep(
   boardId: number,
   stepId: number,
-  data: { title?: string; content?: string | null; gherkin_lines?: import("@/interfaces/QAInterface").GherkinLine[] },
-) {
+  data: {
+    title?: string;
+    content?: string | null;
+    gherkin_lines?: GherkinLine[];
+  },
+): Promise<ReusableStep> {
   return apiFetch(`${stepBase(boardId)}/${stepId}`, {
     method: "PUT",
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteStep(boardId: number, stepId: number) {
+export async function deleteStep(
+  boardId: number,
+  stepId: number,
+): Promise<void> {
   return apiFetch(`${stepBase(boardId)}/${stepId}`, { method: "DELETE" });
 }
 
 // Test plans / suites (per board).
 const planBase = (boardId: number) => `/api/boards/${boardId}/qa/plans`;
 
-export async function getTestPlans(boardId: number, signal?: AbortSignal) {
+export async function getTestPlans(
+  boardId: number,
+  signal?: AbortSignal,
+): Promise<{ plans: TestPlan[] }> {
   return apiFetch(planBase(boardId), { method: "GET", signal });
 }
 
-export async function getQaOverview(boardId: number, signal?: AbortSignal) {
-  return apiFetch(`/api/boards/${boardId}/qa/overview`, { method: "GET", signal });
+export async function getQaOverview(
+  boardId: number,
+  signal?: AbortSignal,
+): Promise<{ plans: TestPlanOverview[] }> {
+  return apiFetch(`/api/boards/${boardId}/qa/overview`, {
+    method: "GET",
+    signal,
+  });
 }
 
 export async function createTestPlan(
   boardId: number,
   data: { name: string; description?: string },
-) {
-  return apiFetch(planBase(boardId), { method: "POST", body: JSON.stringify(data) });
+): Promise<TestPlan> {
+  return apiFetch(planBase(boardId), {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 }
 
 export async function updateTestPlan(
   boardId: number,
   planId: number,
   data: { name?: string; description?: string | null },
-) {
+): Promise<TestPlan> {
   return apiFetch(`${planBase(boardId)}/${planId}`, {
     method: "PUT",
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteTestPlan(boardId: number, planId: number) {
+export async function deleteTestPlan(
+  boardId: number,
+  planId: number,
+): Promise<void> {
   return apiFetch(`${planBase(boardId)}/${planId}`, { method: "DELETE" });
 }

@@ -73,7 +73,10 @@ export default function WhatsAppTab({ board, onSaved }: Props) {
       setAppSecret("");
       setFeedback({ type: "success", message: "WhatsApp settings saved." });
     } catch {
-      setFeedback({ type: "error", message: "Failed to save WhatsApp settings." });
+      setFeedback({
+        type: "error",
+        message: "Failed to save WhatsApp settings.",
+      });
     } finally {
       setSaving(false);
     }
@@ -128,7 +131,10 @@ export default function WhatsAppTab({ board, onSaved }: Props) {
         enabled: row.enabled,
         resume,
       });
-      patchRow(row.section_id, { exists: true, paused_at: saved.paused_at ?? null });
+      patchRow(row.section_id, {
+        exists: true,
+        paused_at: saved.paused_at ?? null,
+      });
     } catch {
       setRowError("Could not save automation.");
     }
@@ -155,7 +161,10 @@ export default function WhatsAppTab({ board, onSaved }: Props) {
       {/* Connection */}
       <div className="glass-panel p-6 flex flex-col gap-5">
         <div className="flex items-center gap-2">
-          <Icon icon={faWhatsapp} style={{ fontSize: "15px", color: "var(--cf-text)" }} />
+          <Icon
+            icon={faWhatsapp}
+            style={{ fontSize: "15px", color: "var(--cf-text)" }}
+          />
           <PanelHeading>WhatsApp</PanelHeading>
           {connected && (
             <span
@@ -176,9 +185,12 @@ export default function WhatsAppTab({ board, onSaved }: Props) {
 
         <FeedbackBanner feedback={feedback} />
 
-        <p className="text-sm cf-mono" style={{ color: "var(--cf-text-muted)" }}>
-          Connect a WhatsApp Cloud API number so customer messages land on cards and
-          you can reply from Yondra.
+        <p
+          className="text-sm cf-mono"
+          style={{ color: "var(--cf-text-muted)" }}
+        >
+          Connect a WhatsApp Cloud API number so customer messages land on cards
+          and you can reply from Yondra.
         </p>
 
         <div className="flex flex-col gap-4">
@@ -215,14 +227,18 @@ export default function WhatsAppTab({ board, onSaved }: Props) {
             <label className="cf-label block mb-2">
               Access token{" "}
               {connected && (
-                <span style={{ color: "var(--cf-text-dim)" }}>· leave blank to keep current</span>
+                <span style={{ color: "var(--cf-text-dim)" }}>
+                  · leave blank to keep current
+                </span>
               )}
             </label>
             <input
               type="password"
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              placeholder={connected ? "•••••••• (saved)" : "Meta token / BSP api-key"}
+              placeholder={
+                connected ? "•••••••• (saved)" : "Meta token / BSP api-key"
+              }
               className="glass-input"
               autoComplete="off"
             />
@@ -237,14 +253,20 @@ export default function WhatsAppTab({ board, onSaved }: Props) {
             <label className="cf-label block mb-2">
               App secret{" "}
               {connected && (
-                <span style={{ color: "var(--cf-text-dim)" }}>· leave blank to keep current</span>
+                <span style={{ color: "var(--cf-text-dim)" }}>
+                  · leave blank to keep current
+                </span>
               )}
             </label>
             <input
               type="password"
               value={appSecret}
               onChange={(e) => setAppSecret(e.target.value)}
-              placeholder={connected ? "•••••••• (saved)" : "Verifies inbound webhook signatures"}
+              placeholder={
+                connected
+                  ? "•••••••• (saved)"
+                  : "Verifies inbound webhook signatures"
+              }
               className="glass-input"
               autoComplete="off"
             />
@@ -252,29 +274,49 @@ export default function WhatsAppTab({ board, onSaved }: Props) {
         </div>
 
         {/* Webhook setup */}
-        <div className="flex flex-col gap-3 pt-2 border-t" style={{ borderColor: "var(--cf-edge)" }}>
+        <div
+          className="flex flex-col gap-3 pt-2 border-t"
+          style={{ borderColor: "var(--cf-edge)" }}
+        >
           <label className="cf-label">Webhook (point Meta here)</label>
-          <p className="cf-mono text-[10px]" style={{ color: "var(--cf-text-muted)" }}>
-            In Meta → WhatsApp → Configuration → Webhooks: set the Callback URL and Verify
-            token below, then subscribe to the <b>messages</b> field.
+          <p
+            className="cf-mono text-[10px]"
+            style={{ color: "var(--cf-text-muted)" }}
+          >
+            In Meta → WhatsApp → Configuration → Webhooks: set the Callback URL
+            and Verify token below, then subscribe to the <b>messages</b> field.
           </p>
           <div>
-            <span className="cf-mono text-[9px] uppercase" style={{ color: "var(--cf-text-dim)" }}>
+            <span
+              className="cf-mono text-[9px] uppercase"
+              style={{ color: "var(--cf-text-dim)" }}
+            >
               Callback URL
             </span>
             <div className="flex items-center gap-1.5 mt-1">
-              <input readOnly value={webhookUrl} className="glass-input flex-1" style={{ fontSize: "11px" }} />
+              <input
+                readOnly
+                value={webhookUrl}
+                className="glass-input flex-1"
+                style={{ fontSize: "11px" }}
+              />
               <button
                 onClick={() => copy(webhookUrl, "url")}
                 className="aero-btn aero-btn--ghost px-2.5 py-2 flex-shrink-0"
                 title="Copy"
               >
-                <Icon icon={copied === "url" ? faCheck : faCopy} style={{ fontSize: "10px" }} />
+                <Icon
+                  icon={copied === "url" ? faCheck : faCopy}
+                  style={{ fontSize: "10px" }}
+                />
               </button>
             </div>
           </div>
           <div>
-            <span className="cf-mono text-[9px] uppercase" style={{ color: "var(--cf-text-dim)" }}>
+            <span
+              className="cf-mono text-[9px] uppercase"
+              style={{ color: "var(--cf-text-dim)" }}
+            >
               Verify token
             </span>
             <div className="flex items-center gap-1.5 mt-1">
@@ -291,7 +333,10 @@ export default function WhatsAppTab({ board, onSaved }: Props) {
                   className="aero-btn aero-btn--ghost px-2.5 py-2 flex-shrink-0"
                   title="Copy"
                 >
-                  <Icon icon={copied === "verify" ? faCheck : faCopy} style={{ fontSize: "10px" }} />
+                  <Icon
+                    icon={copied === "verify" ? faCheck : faCopy}
+                    style={{ fontSize: "10px" }}
+                  />
                 </button>
               )}
             </div>
@@ -299,7 +344,11 @@ export default function WhatsAppTab({ board, onSaved }: Props) {
         </div>
 
         <div className="flex justify-end pt-2">
-          <button onClick={saveConnection} disabled={saving} className="aero-btn aero-btn--cyan px-5 py-2.5">
+          <button
+            onClick={saveConnection}
+            disabled={saving}
+            className="aero-btn aero-btn--cyan px-5 py-2.5"
+          >
             {saving ? "Saving…" : "Save changes"}
           </button>
         </div>
@@ -308,14 +357,23 @@ export default function WhatsAppTab({ board, onSaved }: Props) {
       {/* Stage automations */}
       <div className="glass-panel p-6 flex flex-col gap-4">
         <PanelHeading>Stage automations</PanelHeading>
-        <p className="text-sm cf-mono" style={{ color: "var(--cf-text-muted)" }}>
-          Auto-send an approved template when a card enters a column. Only opted-in
-          contacts are messaged, and sends pause automatically if quality drops.
+        <p
+          className="text-sm cf-mono"
+          style={{ color: "var(--cf-text-muted)" }}
+        >
+          Auto-send an approved template when a card enters a column. Only
+          opted-in contacts are messaged, and sends pause automatically if
+          quality drops.
         </p>
 
-        {rowError && <FeedbackBanner feedback={{ type: "error", message: rowError }} />}
+        {rowError && (
+          <FeedbackBanner feedback={{ type: "error", message: rowError }} />
+        )}
         {loadingRows && (
-          <p className="cf-mono text-xs" style={{ color: "var(--cf-text-muted)" }}>
+          <p
+            className="cf-mono text-xs"
+            style={{ color: "var(--cf-text-muted)" }}
+          >
             Loading…
           </p>
         )}
@@ -325,10 +383,16 @@ export default function WhatsAppTab({ board, onSaved }: Props) {
             <div
               key={row.section_id}
               className="flex flex-col gap-2 rounded-lg p-3"
-              style={{ border: "1px solid var(--cf-edge)", background: "rgba(0,0,0,0.12)" }}
+              style={{
+                border: "1px solid var(--cf-edge)",
+                background: "rgba(0,0,0,0.12)",
+              }}
             >
               <div className="flex items-center gap-2">
-                <span className="cf-label uppercase tracking-widest font-bold flex-1" style={{ fontSize: "10px" }}>
+                <span
+                  className="cf-label uppercase tracking-widest font-bold flex-1"
+                  style={{ fontSize: "10px" }}
+                >
                   {row.section_name}
                 </span>
                 {row.paused_at && (
@@ -344,11 +408,16 @@ export default function WhatsAppTab({ board, onSaved }: Props) {
                     Paused · quality
                   </span>
                 )}
-                <label className="flex items-center gap-1.5 cf-mono" style={{ fontSize: "10px", color: "var(--cf-text-muted)" }}>
+                <label
+                  className="flex items-center gap-1.5 cf-mono"
+                  style={{ fontSize: "10px", color: "var(--cf-text-muted)" }}
+                >
                   <input
                     type="checkbox"
                     checked={row.enabled}
-                    onChange={(e) => patchRow(row.section_id, { enabled: e.target.checked })}
+                    onChange={(e) =>
+                      patchRow(row.section_id, { enabled: e.target.checked })
+                    }
                   />
                   enabled
                 </label>
@@ -356,14 +425,18 @@ export default function WhatsAppTab({ board, onSaved }: Props) {
               <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   value={row.template_name}
-                  onChange={(e) => patchRow(row.section_id, { template_name: e.target.value })}
+                  onChange={(e) =>
+                    patchRow(row.section_id, { template_name: e.target.value })
+                  }
                   placeholder="approved template name"
                   className="glass-input flex-1"
                   style={{ fontSize: "12px" }}
                 />
                 <input
                   value={row.language}
-                  onChange={(e) => patchRow(row.section_id, { language: e.target.value })}
+                  onChange={(e) =>
+                    patchRow(row.section_id, { language: e.target.value })
+                  }
                   placeholder="pt_BR"
                   className="glass-input"
                   style={{ fontSize: "12px", width: 90 }}
@@ -371,12 +444,20 @@ export default function WhatsAppTab({ board, onSaved }: Props) {
               </div>
               <div className="flex items-center justify-end gap-2">
                 {row.paused_at && (
-                  <button onClick={() => saveRow(row, true)} className="aero-btn aero-btn--ghost px-3 py-1.5" style={{ fontSize: "10px" }}>
+                  <button
+                    onClick={() => saveRow(row, true)}
+                    className="aero-btn aero-btn--ghost px-3 py-1.5"
+                    style={{ fontSize: "10px" }}
+                  >
                     Resume
                   </button>
                 )}
                 {row.exists && (
-                  <button onClick={() => removeRow(row)} className="aero-btn aero-btn--magenta px-3 py-1.5" style={{ fontSize: "10px" }}>
+                  <button
+                    onClick={() => removeRow(row)}
+                    className="aero-btn aero-btn--magenta px-3 py-1.5"
+                    style={{ fontSize: "10px" }}
+                  >
                     Remove
                   </button>
                 )}
@@ -392,7 +473,10 @@ export default function WhatsAppTab({ board, onSaved }: Props) {
             </div>
           ))}
           {!loadingRows && rows.length === 0 && (
-            <p className="cf-mono text-xs text-center py-2" style={{ color: "var(--cf-text-muted)" }}>
+            <p
+              className="cf-mono text-xs text-center py-2"
+              style={{ color: "var(--cf-text-muted)" }}
+            >
               This board has no columns yet.
             </p>
           )}

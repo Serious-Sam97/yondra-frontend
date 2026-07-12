@@ -1,236 +1,343 @@
-import { useEffect, useMemo, useRef, useState } from "react"
-import { CardInterface } from "@/interfaces/CardInterface"
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
-import { Droppable } from "../shared/Droppable"
-import { Card } from "./Card"
-import { SectionInterface } from "@/interfaces/SectionInterface"
-import { playWipReject } from "@/lib/sound"
-import { hapticReject } from "@/lib/haptics"
-import { formatMoney, toNumber } from "@/lib/currency"
-import Icon from "@/components/ui/Icon"
-import { faGear, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons"
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
+  faGear,
+  faTriangleExclamation,
+} from "@fortawesome/free-solid-svg-icons";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
+import Icon from "@/components/ui/Icon";
+import type { CardInterface } from "@/interfaces/CardInterface";
+import type { SectionInterface } from "@/interfaces/SectionInterface";
+import { formatMoney, toNumber } from "@/lib/currency";
+import { hapticReject } from "@/lib/haptics";
+import { playWipReject } from "@/lib/sound";
+import { Droppable } from "../shared/Droppable";
+import { Card } from "./Card";
 
-export function Section({id, name, color, cards, handleClick, onDelete, onRename, wipLimit, onSetWipLimit, boardType = 'kanban', currency = 'BRL', agingHours}: SectionInterface) {
-    const [editing, setEditing] = useState(false)
-    const [editValue, setEditValue] = useState(name)
-    const [editingWip, setEditingWip] = useState(false)
-    const [wipInput, setWipInput] = useState('')
-    const [shaking, setShaking] = useState(false)
-    const wipInputRef = useRef<HTMLInputElement>(null)
-    const cardListRef = useRef<HTMLDivElement>(null)
-    const prevOverLimit = useRef(false)
-    const prevCount = useRef(cards.length)
+// Memoized: Board re-renders on every search keystroke / modal toggle, and its
+// props are kept referentially stable (see Board.tsx), so unchanged columns —
+// and every Card inside them — skip re-rendering entirely.
+export const Section = memo(function Section({
+  id,
+  name,
+  color,
+  cards,
+  handleClick,
+  onDelete,
+  onRename,
+  wipLimit,
+  onSetWipLimit,
+  boardType = "kanban",
+  currency = "BRL",
+  agingHours,
+}: SectionInterface) {
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(name);
+  const [editingWip, setEditingWip] = useState(false);
+  const [wipInput, setWipInput] = useState("");
+  const [shaking, setShaking] = useState(false);
+  const wipInputRef = useRef<HTMLInputElement>(null);
+  const cardListRef = useRef<HTMLDivElement>(null);
+  const prevOverLimit = useRef(false);
+  const prevCount = useRef(cards.length);
 
-    const commitRename = () => {
-        const trimmed = editValue.trim()
-        if (trimmed && trimmed !== name) {
-            onRename?.(trimmed)
-        } else {
-            setEditValue(name)
-        }
-        setEditing(false)
+  const commitRename = () => {
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== name) {
+      onRename?.(id, trimmed);
+    } else {
+      setEditValue(name);
     }
+    setEditing(false);
+  };
 
-    const openWipEdit = () => {
-        setWipInput(wipLimit != null ? String(wipLimit) : '')
-        setEditingWip(true)
-        setTimeout(() => wipInputRef.current?.focus(), 0)
+  const openWipEdit = () => {
+    setWipInput(wipLimit != null ? String(wipLimit) : "");
+    setEditingWip(true);
+    setTimeout(() => wipInputRef.current?.focus(), 0);
+  };
+
+  const commitWip = () => {
+    const n = parseInt(wipInput);
+    onSetWipLimit?.(id, isNaN(n) || n <= 0 ? null : n);
+    setEditingWip(false);
+  };
+
+  const count = cards.length;
+  // CRM: sum of the column's deal values, shown as a funnel-stage total.
+  const isCrm = boardType === "crm";
+  const columnTotal = isCrm
+    ? cards.reduce((sum, c) => sum + toNumber(c.value), 0)
+    : 0;
+  const atLimit = wipLimit != null && count === wipLimit;
+  const overLimit = wipLimit != null && count > wipLimit;
+  // Status LED cycles green (nominal) / amber (at limit) / red (over limit)
+  const ledColor = overLimit
+    ? "var(--cf-red)"
+    : atLimit
+      ? "var(--cf-amber)"
+      : "var(--cf-phosphor)";
+  const countColor = overLimit
+    ? "var(--cf-red)"
+    : atLimit
+      ? "var(--cf-amber)"
+      : "var(--cf-text)";
+  const countBg = "#1c1a16";
+
+  // Ring animation when a card lands in this column — direct DOM to restart reliably
+  useEffect(() => {
+    if (cards.length > prevCount.current) {
+      const el = cardListRef.current;
+      if (el) {
+        el.classList.remove("col-ring");
+        void el.offsetWidth; // force reflow so browser sees the removal
+        el.classList.add("col-ring");
+      }
     }
+    prevCount.current = cards.length;
+  }, [cards.length]);
 
-    const commitWip = () => {
-        const n = parseInt(wipInput)
-        onSetWipLimit?.(isNaN(n) || n <= 0 ? null : n)
-        setEditingWip(false)
+  // Shake + sound when a card pushes the column over its WIP limit
+  useEffect(() => {
+    if (overLimit && !prevOverLimit.current) {
+      setShaking(true);
+      playWipReject();
+      hapticReject();
+      setTimeout(() => setShaking(false), 500);
     }
+    prevOverLimit.current = overLimit;
+  }, [overLimit]);
 
-    const count = cards.length
-    // CRM: sum of the column's deal values, shown as a funnel-stage total.
-    const isCrm = boardType === 'crm'
-    const columnTotal = isCrm ? cards.reduce((sum, c) => sum + toNumber(c.value), 0) : 0
-    const atLimit  = wipLimit != null && count === wipLimit
-    const overLimit = wipLimit != null && count > wipLimit
-    // Status LED cycles green (nominal) / amber (at limit) / red (over limit)
-    const ledColor = overLimit ? 'var(--cf-red)' : atLimit ? 'var(--cf-amber)' : 'var(--cf-phosphor)'
-    const countColor = overLimit ? 'var(--cf-red)' : atLimit ? 'var(--cf-amber)' : 'var(--cf-text)'
-    const countBg    = '#1c1a16'
+  const style = {
+    minHeight: "300px",
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: "8px",
+  };
 
-    // Ring animation when a card lands in this column — direct DOM to restart reliably
-    useEffect(() => {
-        if (cards.length > prevCount.current) {
-            const el = cardListRef.current
-            if (el) {
-                el.classList.remove('col-ring')
-                void el.offsetWidth  // force reflow so browser sees the removal
-                el.classList.add('col-ring')
-            }
-        }
-        prevCount.current = cards.length
-    }, [cards.length])
+  // dnd-kit requires a STABLE items array for SortableContext. `cards` is a fresh array
+  // on every Board render, so key the memo on the id sequence: the reference only changes
+  // when the actual order changes, which stops dnd-kit from re-registering/re-measuring
+  // the sortable set every render (a source of the "max update depth" loop, React #185).
+  const cardIdsKey = cards.map((c) => c.id).join(",");
+  const sortableIds = useMemo(
+    () =>
+      cardIdsKey
+        ? cardIdsKey.split(",").map((cardId) => `draggable-${cardId}`)
+        : [],
+    [cardIdsKey],
+  );
 
-    // Shake + sound when a card pushes the column over its WIP limit
-    useEffect(() => {
-        if (overLimit && !prevOverLimit.current) {
-            setShaking(true)
-            playWipReject()
-            hapticReject()
-            setTimeout(() => setShaking(false), 500)
-        }
-        prevOverLimit.current = overLimit
-    }, [overLimit])
+  return (
+    <div
+      className={`aero-column flex flex-col w-64 flex-shrink-0 group/section pb-2 ${shaking ? "wip-shake" : ""}`}
+    >
+      {/* Column header — status LED + mono label + readout count */}
+      <div className="flex items-center gap-2 mb-3 px-3 pt-2">
+        <span
+          style={{
+            background: ledColor,
+            boxShadow: `0 0 6px ${ledColor}, 0 0 11px ${ledColor}`,
+          }}
+          className="cf-led flex-shrink-0"
+        />
 
-    const style = {
-        minHeight: '300px',
-        display: 'flex',
-        flexDirection: 'column' as const,
-        gap: '8px',
-    }
+        {editing ? (
+          <input
+            autoFocus
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitRename();
+              if (e.key === "Escape") {
+                setEditValue(name);
+                setEditing(false);
+              }
+            }}
+            className="cf-mono flex-1 bg-transparent text-xs uppercase tracking-widest font-bold focus:outline-none border-b min-w-0"
+            style={{
+              color: "var(--cf-text)",
+              borderColor: "var(--cf-phosphor)",
+            }}
+          />
+        ) : (
+          <p
+            className="cf-label cursor-pointer truncate"
+            style={{
+              color: "var(--cf-text)",
+              fontSize: "12px",
+              fontWeight: 700,
+            }}
+            onDoubleClick={() => {
+              setEditValue(name);
+              setEditing(true);
+            }}
+            title="Double-click to rename"
+          >
+            {name}
+          </p>
+        )}
 
-    // dnd-kit requires a STABLE items array for SortableContext. `cards` is a fresh array
-    // on every Board render, so key the memo on the id sequence: the reference only changes
-    // when the actual order changes, which stops dnd-kit from re-registering/re-measuring
-    // the sortable set every render (a source of the "max update depth" loop, React #185).
-    const cardIdsKey = cards.map(c => c.id).join(',')
-    const sortableIds = useMemo(
-        () => (cardIdsKey ? cardIdsKey.split(',').map(cardId => `draggable-${cardId}`) : []),
-        [cardIdsKey],
-    )
-
-    return (
-        <div
-            className={`aero-column flex flex-col w-64 flex-shrink-0 group/section pb-2 ${shaking ? 'wip-shake' : ''}`}
+        {/* Count / WIP readout */}
+        {/* (CRM value total rendered on its own strip below the header) */}
+        <span
+          style={{
+            color: countColor,
+            backgroundColor: countBg,
+            fontSize: "11px",
+            letterSpacing: "0.06em",
+          }}
+          className="cf-mono ml-auto px-2 py-0.5 rounded-sm flex-shrink-0 tabular-nums"
+          title={
+            wipLimit != null
+              ? `${count} / ${wipLimit} WIP limit`
+              : `${count} cards`
+          }
         >
-            {/* Column header — status LED + mono label + readout count */}
-            <div className="flex items-center gap-2 mb-3 px-3 pt-2">
-                <span
-                    style={{ background: ledColor, boxShadow: `0 0 6px ${ledColor}, 0 0 11px ${ledColor}` }}
-                    className="cf-led flex-shrink-0"
-                />
+          {wipLimit != null ? `${count}/${wipLimit}` : count}
+        </span>
 
-                {editing ? (
-                    <input
-                        autoFocus
-                        value={editValue}
-                        onChange={e => setEditValue(e.target.value)}
-                        onBlur={commitRename}
-                        onKeyDown={e => {
-                            if (e.key === 'Enter') commitRename()
-                            if (e.key === 'Escape') { setEditValue(name); setEditing(false) }
-                        }}
-                        className="cf-mono flex-1 bg-transparent text-xs uppercase tracking-widest font-bold focus:outline-none border-b min-w-0"
-                        style={{ color: 'var(--cf-text)', borderColor: 'var(--cf-phosphor)' }}
-                    />
-                ) : (
-                    <p
-                        className="cf-label cursor-pointer truncate"
-                        style={{ color: 'var(--cf-text)', fontSize: '12px', fontWeight: 700 }}
-                        onDoubleClick={() => { setEditValue(name); setEditing(true) }}
-                        title="Double-click to rename"
-                    >
-                        {name}
-                    </p>
-                )}
+        {/* WIP edit trigger */}
+        {onSetWipLimit && (
+          <button
+            onClick={openWipEdit}
+            className="btn-physical opacity-0 group-hover/section:opacity-100 text-xs cursor-pointer leading-none flex-shrink-0"
+            style={{ color: "var(--cf-text-muted)" }}
+            title="Set WIP limit"
+          >
+            <Icon icon={faGear} />
+          </button>
+        )}
 
-                {/* Count / WIP readout */}
-                {/* (CRM value total rendered on its own strip below the header) */}
-                <span
-                    style={{ color: countColor, backgroundColor: countBg, fontSize: '11px', letterSpacing: '0.06em' }}
-                    className="cf-mono ml-auto px-2 py-0.5 rounded-sm flex-shrink-0 tabular-nums"
-                    title={wipLimit != null ? `${count} / ${wipLimit} WIP limit` : `${count} cards`}
-                >
-                    {wipLimit != null ? `${count}/${wipLimit}` : count}
-                </span>
+        {onDelete && (
+          <button
+            onClick={() => onDelete(id, name)}
+            className="btn-physical opacity-0 group-hover/section:opacity-100 text-xs cursor-pointer leading-none ml-1 flex-shrink-0"
+            style={{ color: "var(--cf-text-muted)" }}
+            title="Delete section"
+          >
+            ✕
+          </button>
+        )}
+      </div>
 
-                {/* WIP edit trigger */}
-                {onSetWipLimit && (
-                    <button
-                        onClick={openWipEdit}
-                        className="btn-physical opacity-0 group-hover/section:opacity-100 text-xs cursor-pointer leading-none flex-shrink-0"
-                        style={{ color: 'var(--cf-text-muted)' }}
-                        title="Set WIP limit"
-                    >
-                        <Icon icon={faGear} />
-                    </button>
-                )}
-
-                {onDelete && (
-                    <button
-                        onClick={onDelete}
-                        className="btn-physical opacity-0 group-hover/section:opacity-100 text-xs cursor-pointer leading-none ml-1 flex-shrink-0"
-                        style={{ color: 'var(--cf-text-muted)' }}
-                        title="Delete section"
-                    >
-                        ✕
-                    </button>
-                )}
-            </div>
-
-            {/* CRM funnel-stage total: sum of deal values + deal count */}
-            {isCrm && (
-                <div className="flex items-center gap-2 mx-3 mb-2">
-                    <span
-                        className="cf-mono px-2 py-0.5 rounded-sm tabular-nums font-bold"
-                        style={{ color: 'var(--cf-phosphor)', background: '#0d1410', fontSize: '11px', letterSpacing: '0.04em' }}
-                        title={`${count} deal${count !== 1 ? 's' : ''} · ${formatMoney(columnTotal, currency)}`}
-                    >
-                        {formatMoney(columnTotal, currency)}
-                    </span>
-                    <span className="cf-mono" style={{ color: 'var(--cf-text-muted)', fontSize: '9px', letterSpacing: '0.08em' }}>
-                        {count} deal{count !== 1 ? 's' : ''}
-                    </span>
-                </div>
-            )}
-
-            {/* WIP limit inline editor */}
-            {editingWip && (
-                <div className="flex items-center gap-2 mb-2 px-3">
-                    <input
-                        ref={wipInputRef}
-                        type="number"
-                        min="1"
-                        value={wipInput}
-                        onChange={e => setWipInput(e.target.value)}
-                        onKeyDown={e => {
-                            if (e.key === 'Enter') commitWip()
-                            if (e.key === 'Escape') setEditingWip(false)
-                        }}
-                        placeholder="Limit..."
-                        className="glass-input w-20 text-xs px-2 py-1"
-                    />
-                    <button onClick={commitWip} className="btn-physical cf-mono text-xs font-bold uppercase cursor-pointer hover:brightness-110" style={{ color: 'var(--cf-phosphor)' }}>Set</button>
-                    <button onClick={() => { onSetWipLimit?.(null); setEditingWip(false); }} className="btn-physical cf-mono text-xs uppercase cursor-pointer hover:brightness-110" style={{ color: 'var(--cf-text-muted)' }}>Clear</button>
-                </div>
-            )}
-
-            {/* WIP warning banner */}
-            {overLimit && (
-                <div
-                    className="cf-mono mx-3 mb-2 px-2 py-1 rounded-sm text-xs font-bold uppercase tracking-widest"
-                    style={{ color: 'var(--cf-red)', background: '#0d1410', border: '1px solid var(--cf-red)' }}
-                >
-                    <Icon icon={faTriangleExclamation} /> WIP limit exceeded
-                </div>
-            )}
-            {atLimit && (
-                <div
-                    className="cf-mono mx-3 mb-2 px-2 py-1 rounded-sm text-xs font-bold uppercase tracking-widest"
-                    style={{ color: 'var(--cf-amber)', background: '#0d1410', border: '1px solid var(--cf-amber)' }}
-                >
-                    WIP limit reached
-                </div>
-            )}
-
-            {/* Card list */}
-            <div ref={cardListRef} className="mx-2 rounded-xl p-2 flex-1 max-h-[50vh] md:max-h-[calc(100vh-320px)] overflow-y-auto">
-                <Droppable style={style} key={id} id={`section-${id}`}>
-                    <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-                        {cards.map((card: CardInterface) => (
-                            <div key={card.id} onClick={() => handleClick(card)}>
-                                <Card {...card} color={color} boardType={boardType} currency={currency} agingHours={agingHours} />
-                            </div>
-                        ))}
-                    </SortableContext>
-                </Droppable>
-            </div>
+      {/* CRM funnel-stage total: sum of deal values + deal count */}
+      {isCrm && (
+        <div className="flex items-center gap-2 mx-3 mb-2">
+          <span
+            className="cf-mono px-2 py-0.5 rounded-sm tabular-nums font-bold"
+            style={{
+              color: "var(--cf-phosphor)",
+              background: "#0d1410",
+              fontSize: "11px",
+              letterSpacing: "0.04em",
+            }}
+            title={`${count} deal${count !== 1 ? "s" : ""} · ${formatMoney(columnTotal, currency)}`}
+          >
+            {formatMoney(columnTotal, currency)}
+          </span>
+          <span
+            className="cf-mono"
+            style={{
+              color: "var(--cf-text-muted)",
+              fontSize: "9px",
+              letterSpacing: "0.08em",
+            }}
+          >
+            {count} deal{count !== 1 ? "s" : ""}
+          </span>
         </div>
-    )
-}
+      )}
+
+      {/* WIP limit inline editor */}
+      {editingWip && (
+        <div className="flex items-center gap-2 mb-2 px-3">
+          <input
+            ref={wipInputRef}
+            type="number"
+            min="1"
+            value={wipInput}
+            onChange={(e) => setWipInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitWip();
+              if (e.key === "Escape") setEditingWip(false);
+            }}
+            placeholder="Limit..."
+            className="glass-input w-20 text-xs px-2 py-1"
+          />
+          <button
+            onClick={commitWip}
+            className="btn-physical cf-mono text-xs font-bold uppercase cursor-pointer hover:brightness-110"
+            style={{ color: "var(--cf-phosphor)" }}
+          >
+            Set
+          </button>
+          <button
+            onClick={() => {
+              onSetWipLimit?.(id, null);
+              setEditingWip(false);
+            }}
+            className="btn-physical cf-mono text-xs uppercase cursor-pointer hover:brightness-110"
+            style={{ color: "var(--cf-text-muted)" }}
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
+      {/* WIP warning banner */}
+      {overLimit && (
+        <div
+          className="cf-mono mx-3 mb-2 px-2 py-1 rounded-sm text-xs font-bold uppercase tracking-widest"
+          style={{
+            color: "var(--cf-red)",
+            background: "#0d1410",
+            border: "1px solid var(--cf-red)",
+          }}
+        >
+          <Icon icon={faTriangleExclamation} /> WIP limit exceeded
+        </div>
+      )}
+      {atLimit && (
+        <div
+          className="cf-mono mx-3 mb-2 px-2 py-1 rounded-sm text-xs font-bold uppercase tracking-widest"
+          style={{
+            color: "var(--cf-amber)",
+            background: "#0d1410",
+            border: "1px solid var(--cf-amber)",
+          }}
+        >
+          WIP limit reached
+        </div>
+      )}
+
+      {/* Card list */}
+      <div
+        ref={cardListRef}
+        className="mx-2 rounded-xl p-2 flex-1 max-h-[50vh] md:max-h-[calc(100vh-320px)] overflow-y-auto"
+      >
+        <Droppable style={style} key={id} id={`section-${id}`}>
+          <SortableContext
+            items={sortableIds}
+            strategy={verticalListSortingStrategy}
+          >
+            {cards.map((card: CardInterface) => (
+              <div key={card.id} onClick={() => handleClick(card)}>
+                <Card
+                  {...card}
+                  color={color}
+                  boardType={boardType}
+                  currency={currency}
+                  agingHours={agingHours}
+                />
+              </div>
+            ))}
+          </SortableContext>
+        </Droppable>
+      </div>
+    </div>
+  );
+});

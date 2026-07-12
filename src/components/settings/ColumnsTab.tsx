@@ -149,21 +149,31 @@ function SortableRow({
 
       {/* CRM: per-stage SLA aging threshold (hours). Blank = no aging. */}
       {isCrm && (
-        <div className="flex items-center gap-1 flex-shrink-0" title="Cards turn red after this many hours in this stage. Blank = off.">
+        <div
+          className="flex items-center gap-1 flex-shrink-0"
+          title="Cards turn red after this many hours in this stage. Blank = off."
+        >
           <input
             type="number"
             min={1}
             defaultValue={section.aging_hours ?? ""}
             onBlur={(e) => {
               const raw = e.target.value.trim();
-              const n = raw === "" ? null : Math.max(1, parseInt(raw, 10) || 0) || null;
-              if (n !== (section.aging_hours ?? null)) onSetAging(section.id, n);
+              const n =
+                raw === "" ? null : Math.max(1, parseInt(raw, 10) || 0) || null;
+              if (n !== (section.aging_hours ?? null))
+                onSetAging(section.id, n);
             }}
             placeholder="SLA"
             className="glass-input cf-lcd text-xs py-1 w-16 text-center"
             style={{ color: "var(--cf-ink)" }}
           />
-          <span className="cf-mono" style={{ fontSize: "9px", color: "rgba(42,38,32,0.55)" }}>h</span>
+          <span
+            className="cf-mono"
+            style={{ fontSize: "9px", color: "rgba(42,38,32,0.55)" }}
+          >
+            h
+          </span>
         </div>
       )}
 
@@ -326,7 +336,9 @@ export default function ColumnsTab({ board, onChange, onBoardPatch }: Props) {
 
   const handleSetAging = async (id: number, hours: number | null) => {
     const prev = rows;
-    const next = rows.map((s) => (s.id === id ? { ...s, aging_hours: hours } : s));
+    const next = rows.map((s) =>
+      s.id === id ? { ...s, aging_hours: hours } : s,
+    );
     setRows(next);
     onChange(backlog ? [...next, backlog] : next);
     try {

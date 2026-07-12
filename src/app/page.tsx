@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function Home() {
-    const router = useRouter();
+  const router = useRouter();
 
-    useEffect(() => {
-        const token = localStorage.getItem('token');
-        router.replace(token ? '/dashboard' : '/login');
-    }, [router]);
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    router.replace(token ? "/dashboard" : "/login");
+  }, [router]);
 
-    return null;
+  return null;
 }

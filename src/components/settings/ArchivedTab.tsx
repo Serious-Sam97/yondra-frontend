@@ -9,7 +9,8 @@ import { getArchivedCards, restoreCard } from "@/lib/api";
 import { type Feedback, FeedbackBanner, PanelHeading } from "./shared";
 
 interface ArchivedCard {
-  id: number;
+  // number | string mirrors CardInterface (demo boards use string ids).
+  id: number | string;
   name: string;
   ticket_number?: number | null;
   archived_at?: string | null;
@@ -24,7 +25,11 @@ interface Props {
 
 export default function ArchivedTab({ board, onRestored }: Props) {
   const [cards, setCards] = useState<ArchivedCard[] | null>(null);
-  const [restoringId, setRestoringId] = useState<number | null>(null);
+  // API pagination (25/page): current page + whether another page exists.
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [restoringId, setRestoringId] = useState<number | string | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
   const prefix = board.ticket_prefix;
@@ -34,8 +39,11 @@ export default function ArchivedTab({ board, onRestored }: Props) {
   useEffect(() => {
     let active = true;
     getArchivedCards(board.id)
-      .then((res: ArchivedCard[]) => {
-        if (active) setCards(res ?? []);
+      .then((res) => {
+        if (!active) return;
+        setCards(res.data ?? []);
+        setPage(res.meta.current_page);
+        setHasMore(res.links.next != null);
       })
       .catch(() => {
         if (active) setCards([]);
@@ -45,7 +53,28 @@ export default function ArchivedTab({ board, onRestored }: Props) {
     };
   }, [board.id]);
 
-  const handleRestore = async (id: number) => {
+  const handleLoadMore = async () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await getArchivedCards(board.id, page + 1);
+      setCards((prev) => {
+        const seen = new Set((prev ?? []).map((c) => c.id));
+        return [...(prev ?? []), ...res.data.filter((c) => !seen.has(c.id))];
+      });
+      setPage(res.meta.current_page);
+      setHasMore(res.links.next != null);
+    } catch {
+      setFeedback({
+        type: "error",
+        message: "Could not load more archived cards.",
+      });
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const handleRestore = async (id: number | string) => {
     setFeedback(null);
     setRestoringId(id);
     try {
@@ -136,6 +165,23 @@ export default function ArchivedTab({ board, onRestored }: Props) {
               </button>
             </div>
           ))}
+          {hasMore && (
+            <button
+              type="button"
+              onClick={handleLoadMore}
+              disabled={loadingMore}
+              className="cf-mono uppercase font-bold rounded-md px-3 py-1.5 cursor-pointer transition-all duration-150 self-center disabled:opacity-50"
+              style={{
+                fontSize: "9px",
+                letterSpacing: "0.1em",
+                color: "var(--cf-phosphor)",
+                background: "rgba(154,166,126,0.16)",
+                border: "1px solid rgba(154,166,126,0.5)",
+              }}
+            >
+              {loadingMore ? "…" : "Load more"}
+            </button>
+          )}
         </div>
       )}
     </div>

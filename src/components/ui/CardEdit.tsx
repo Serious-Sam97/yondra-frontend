@@ -1,72 +1,35 @@
 "use client";
 
-import { faGithub } from "@fortawesome/free-brands-svg-icons";
 import {
   faArrowRightToBracket,
   faCheck,
-  faDownload,
   faLayerGroup,
   faLink,
-  faPaperclip,
-  faPlus,
-  faRotate,
   faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 import { useEffect, useRef, useState } from "react";
-import { getEcho } from "@/lib/echo";
+import { ChecklistSection } from "@/components/ui/card-edit/ChecklistSection";
+import { CommentsSection } from "@/components/ui/card-edit/CommentsSection";
+import { Lightbox } from "@/components/ui/card-edit/Lightbox";
+import { PropertiesPanel } from "@/components/ui/card-edit/PropertiesPanel";
+import { WhatsAppSection } from "@/components/ui/card-edit/WhatsAppSection";
 import Icon from "@/components/ui/Icon";
-import RichTextContent from "@/components/ui/RichTextContent";
 import RichTextEditor from "@/components/ui/RichTextEditor";
+import { useCardAttachments } from "@/hooks/useCardAttachments";
+import { useCardChecklist } from "@/hooks/useCardChecklist";
+import { useCardComments } from "@/hooks/useCardComments";
+import { useCardLinks } from "@/hooks/useCardLinks";
+import { type Template, useCardTemplates } from "@/hooks/useCardTemplates";
+import { useWhatsappThread } from "@/hooks/useWhatsappThread";
 import type {
   CardDocument,
   CardInterface,
-  CardLink,
   ChecklistItem,
 } from "@/interfaces/CardInterface";
 import type { TagInterface } from "@/interfaces/TagInterface";
 import {
-  ApiError,
-  addCardLink,
-  createChecklistItem,
-  createComment,
-  createSubtask,
-  createTemplate,
-  deleteCardDocument,
-  deleteCardLink,
-  deleteChecklistItem,
-  deleteComment,
-  deleteTemplate,
-  downloadCardDocument,
-  getComments,
-  getSubtasks,
-  getTemplates,
-  getWhatsappThread,
-  refreshCardLink,
-  sendWhatsappReply,
-  updateChecklistItem,
-  updateComment,
-  updateSubtask,
-  uploadCardDocument,
-  uploadInlineImage,
-} from "@/lib/api";
-import {
-  deleteDemoTemplate,
-  demoCreateChecklistItem,
-  demoCreateSubtask,
-  demoDeleteChecklistItem,
-  demoGetSubtasks,
-  demoToggleSubtask,
-  demoUpdateChecklistItem,
-  loadDemoTemplates,
-  saveDemoTemplate,
-} from "@/lib/demoStorage";
-import { hapticDone } from "@/lib/haptics";
-import { playComplete } from "@/lib/sound";
-import { FIBONACCI } from "@/lib/estimation";
-import {
   currencySymbol,
   formatMoneyInput,
-  maskMoneyInput,
   parseMoneyInput,
 } from "@/lib/currency";
 
@@ -75,42 +38,8 @@ interface BoardUser {
   name: string;
 }
 
-interface Comment {
-  id: number;
-  body: string;
-  user: { id: number; name: string };
-  created_at: string;
-}
-
-interface Subtask {
-  id: number;
-  name: string;
-  is_done: boolean;
-}
-
-interface WaMessage {
-  id: number;
-  direction: "in" | "out";
-  body: string | null;
-  status: string | null;
-  type: string;
-  created_at: string;
-  sent_by?: { id: number; name: string } | null;
-}
-
-interface WaConversation {
-  id: number;
-  wa_phone: string;
-  contact_name: string | null;
-  window_open: boolean;
-  messages: WaMessage[];
-}
-
-export interface Template {
-  id: number;
-  name: string;
-  template_data: unknown;
-}
+// Re-exported so existing importers (e.g. useBoardPreferences) keep working.
+export type { Template };
 
 // Payload handed to `submit` when the editor is saved.
 export interface CardFormData {
@@ -164,74 +93,6 @@ export interface CardEditProps {
   qaStatusColor?: string | null;
 }
 
-const SECTION_COLORS: Record<string, string> = {
-  "To Do": "#4CAF50",
-  "In Progress": "#FF9800",
-  Done: "#1976D2",
-};
-const DEFAULT_COLORS = [
-  "#4CAF50",
-  "#FF9800",
-  "#1976D2",
-  "#F44336",
-  "#7B1FA2",
-  "#FFC107",
-];
-const AVATAR_COLORS = [
-  "#4CAF50",
-  "#FF9800",
-  "#1976D2",
-  "#F44336",
-  "#7B1FA2",
-  "#FFC107",
-  "#00BCD4",
-  "#E91E63",
-];
-const PRIORITY_OPTS: {
-  value: "low" | "medium" | "high";
-  label: string;
-  color: string;
-}[] = [
-  { value: "low", label: "Low", color: "#9aa67e" },
-  { value: "medium", label: "Medium", color: "#ffb000" },
-  { value: "high", label: "High", color: "#ff5a4d" },
-];
-
-function getSectionColor(name: string, index: number): string {
-  return SECTION_COLORS[name] ?? DEFAULT_COLORS[index % DEFAULT_COLORS.length];
-}
-
-// GitHub PR/issue state → badge colour + label.
-const LINK_STATE_META: Record<string, { color: string; label: string }> = {
-  open: { color: "#9aa67e", label: "Open" },
-  merged: { color: "#a78bfa", label: "Merged" },
-  closed: { color: "#ff5a4d", label: "Closed" },
-  draft: { color: "#6f6a5c", label: "Draft" },
-};
-const CHECKS_COLOR: Record<string, string> = {
-  success: "#9aa67e",
-  failure: "#ff5a4d",
-  pending: "#ffb000",
-};
-
-function initials(name: string): string {
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
-
-// Human-friendly file size for the document list (e.g. 2.4 MB, 812 KB).
-function formatBytes(bytes?: number | null): string {
-  if (bytes == null) return "";
-  if (bytes < 1024) return `${bytes} B`;
-  const kb = bytes / 1024;
-  if (kb < 1024) return `${Math.round(kb)} KB`;
-  return `${(kb / 1024).toFixed(1)} MB`;
-}
-
 const CardEdit: React.FC<CardEditProps> = ({
   goBack,
   submit,
@@ -272,52 +133,36 @@ const CardEdit: React.FC<CardEditProps> = ({
   const [priority, setPriority] = useState<"low" | "medium" | "high" | null>(
     null,
   );
-  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
-  const [newChecklistText, setNewChecklistText] = useState("");
   // CRM deal value + scrum estimate/sprint (empty string = unset).
   const [value, setValue] = useState("");
   const [storyPoints, setStoryPoints] = useState("");
   const [sprintId, setSprintId] = useState<number | null>(null);
-  const [links, setLinks] = useState<CardLink[]>([]);
-  const [newLinkUrl, setNewLinkUrl] = useState("");
-  const [linkBusy, setLinkBusy] = useState(false);
-  const [linkError, setLinkError] = useState<string | null>(null);
-  // Card document attachments (files on the private disk, downloaded via an auth-gated route).
-  const [documents, setDocuments] = useState<CardDocument[]>([]);
-  const [docBusy, setDocBusy] = useState(false);
-  const [docError, setDocError] = useState<string | null>(null);
-  const docInputRef = useRef<HTMLInputElement>(null);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [newComment, setNewComment] = useState("");
-  const [loadingComments, setLoadingComments] = useState(false);
-  // Inline comment editing: id of the comment being edited + its draft body.
-  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
-  const [editingCommentBody, setEditingCommentBody] = useState("");
-  const [savingComment, setSavingComment] = useState(false);
-  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
-  const [newSubtaskName, setNewSubtaskName] = useState("");
-  const [loadingSubtasks, setLoadingSubtasks] = useState(false);
-  const [templates, setTemplates] = useState<Template[]>(initialTemplates);
-  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
-  const [templateNameInput, setTemplateNameInput] = useState("");
-  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
-  const [waThread, setWaThread] = useState<WaConversation | null>(null);
-  const [newWaReply, setNewWaReply] = useState("");
-  const [waSending, setWaSending] = useState(false);
-  const [waError, setWaError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
-    "details" | "checklist" | "comments" | "subtasks" | "whatsapp"
+    "details" | "checklist" | "comments" | "whatsapp"
   >("details");
   // Top-level switch between the card, Planning Poker, and Sentinel (QA).
   const [topTab, setTopTab] = useState<"card" | "planning" | "qa">("card");
 
+  // Unsaved-changes flag — lights the LED on the header Save button. Set by any
+  // edit to a field that only persists via Save; cleared on submit. Checklist,
+  // comments, links and docs save through their own API calls, so they don't
+  // touch it.
+  const [dirty, setDirty] = useState(false);
+  function dirtify<T>(setter: (v: T) => void): (v: T) => void {
+    return (v) => {
+      setDirty(true);
+      setter(v);
+    };
+  }
+
   // When Planning Poker applies an estimate, mirror it into the points field.
   useEffect(() => {
-    if (planningAppliedValue != null) setStoryPoints(String(planningAppliedValue));
+    if (planningAppliedValue != null) {
+      setStoryPoints(String(planningAppliedValue));
+      setDirty(true);
+    }
   }, [planningAppliedValue]);
-  // Full-size viewer opened by clicking any inline image (description or comments).
-  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
-  // Action failure feedback — shown when a checklist/comment/subtask mutation fails.
+  // Action failure feedback — shown when a checklist/comment mutation fails.
   const [actionError, setActionError] = useState<string | null>(null);
   const actionErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reportActionError = (message: string) => {
@@ -332,15 +177,122 @@ const CardEdit: React.FC<CardEditProps> = ({
     [],
   );
 
-  // Close the image lightbox on Escape.
-  useEffect(() => {
-    if (!lightboxSrc) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setLightboxSrc(null);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [lightboxSrc]);
+  // --- Per-feature state clusters (custom hooks, called unconditionally) ---
+
+  const {
+    checklistItems,
+    setChecklistItems,
+    newChecklistText,
+    setNewChecklistText,
+    handleAddChecklistItem,
+    handleToggleItem,
+    handleDeleteItem,
+    doneCount,
+  } = useCardChecklist({
+    isNew: card === null,
+    isDemo,
+    demoId,
+    boardId,
+    id,
+    reportActionError,
+  });
+
+  const {
+    links,
+    setLinks,
+    newLinkUrl,
+    setNewLinkUrl,
+    linkBusy,
+    linkError,
+    canUseLinks,
+    handleAddLink,
+    handleRefreshLink,
+    handleDeleteLink,
+  } = useCardLinks({ isNew: card === null, isDemo, boardId, card });
+
+  const {
+    documents,
+    setDocuments,
+    docBusy,
+    docError,
+    docInputRef,
+    canUseDocs,
+    handleUploadDoc,
+    handleDeleteDoc,
+    handleDownloadDoc,
+    lightboxSrc,
+    setLightboxSrc,
+    uploadImage,
+  } = useCardAttachments({
+    isNew: card === null,
+    isDemo,
+    boardId,
+    card,
+    onDocumentsChange,
+    reportActionError,
+  });
+
+  const {
+    comments,
+    newComment,
+    setNewComment,
+    loadingComments,
+    hasOlderComments,
+    loadingOlderComments,
+    handleLoadOlderComments,
+    editingCommentId,
+    editingCommentBody,
+    setEditingCommentBody,
+    savingComment,
+    handleAddComment,
+    startEditComment,
+    cancelEditComment,
+    handleUpdateComment,
+    handleDeleteComment,
+  } = useCardComments({
+    isNew: card === null,
+    isDemo,
+    boardId,
+    card,
+    id,
+    reportActionError,
+  });
+
+  const {
+    templates,
+    showTemplatePicker,
+    setShowTemplatePicker,
+    templateNameInput,
+    setTemplateNameInput,
+    showSaveTemplate,
+    setShowSaveTemplate,
+    handleSaveTemplate,
+    handleApplyTemplate,
+    handleDeleteTemplate,
+  } = useCardTemplates({
+    isDemo,
+    demoId,
+    boardId,
+    initialTemplates,
+    description,
+    selectedTagIds,
+    priority,
+    dueDate,
+    // Applying a template edits savable fields, so it must light the dirty LED.
+    setDescription: dirtify(setDescription),
+    setSelectedTagIds: dirtify(setSelectedTagIds),
+    setPriority: dirtify(setPriority),
+    setDueDate: dirtify(setDueDate),
+  });
+
+  const {
+    waThread,
+    newWaReply,
+    setNewWaReply,
+    waSending,
+    waError,
+    handleSendWaReply,
+  } = useWhatsappThread({ isNew: card === null, isDemo, boardId, card, id });
 
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -381,7 +333,9 @@ const CardEdit: React.FC<CardEditProps> = ({
       setLinks(card.links ?? []);
       setDocuments(card.documents ?? []);
       setValue(formatMoneyInput(card.value));
-      setStoryPoints(card.story_points != null ? String(card.story_points) : "");
+      setStoryPoints(
+        card.story_points != null ? String(card.story_points) : "",
+      );
       setSprintId(card.sprint_id ?? null);
     } else if (boardType === "scrum") {
       // New scrum cards default into the active sprint, if one exists.
@@ -389,113 +343,9 @@ const CardEdit: React.FC<CardEditProps> = ({
     }
   }, []);
 
-  // Reflect live link changes (e.g. a webhook flipping a PR to merged) that arrive
-  // on the card prop via the board's real-time event stream while the modal is open.
-  useEffect(() => {
-    if (card?.links) setLinks(card.links);
-  }, [JSON.stringify(card?.links ?? [])]);
-
-  // Same live-sync for document attachments arriving on the card prop.
-  useEffect(() => {
-    if (card?.documents) setDocuments(card.documents);
-  }, [JSON.stringify(card?.documents ?? [])]);
-
-  useEffect(() => {
-    if (!isNew && !isDemo && boardId && card?.id) {
-      setLoadingComments(true);
-      getComments(boardId, card.id)
-        .then((data) => setComments(Array.isArray(data) ? data : []))
-        .catch(() => {})
-        .finally(() => setLoadingComments(false));
-    }
-  }, []);
-
-  // WhatsApp thread (card #54/#55): load the conversation on open, then subscribe
-  // to the board channel so inbound messages + delivery-status ticks stream in live.
-  useEffect(() => {
-    if (isNew || isDemo || !boardId || !card?.id) return;
-
-    getWhatsappThread(boardId, card.id)
-      .then((data) => {
-        const conv = data?.conversation;
-        if (conv) {
-          setWaThread({ ...conv, window_open: !!data.window_open });
-        }
-      })
-      .catch(() => {});
-
-    let echo: ReturnType<typeof getEcho> | null = null;
-    const channel = `board.${boardId}`;
-    try {
-      echo = getEcho();
-      echo.private(channel).listen(".board.event", (e: {
-        type?: string;
-        payload?: { card_id?: number; message?: WaMessage };
-      }) => {
-        if (e?.payload?.card_id !== card.id || !e.payload.message) return;
-        const msg = e.payload.message;
-        if (e.type === "whatsapp.message.created") {
-          setWaThread((prev) =>
-            prev
-              ? prev.messages.some((m) => m.id === msg.id)
-                ? prev
-                : { ...prev, messages: [...prev.messages, msg] }
-              : prev,
-          );
-        } else if (e.type === "whatsapp.message.updated") {
-          setWaThread((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  messages: prev.messages.map((m) =>
-                    m.id === msg.id ? { ...m, status: msg.status } : m,
-                  ),
-                }
-              : prev,
-          );
-        }
-      });
-    } catch {
-      // Echo/Reverb not configured here — the initial fetch still shows history.
-    }
-    return () => {
-      echo?.leave(channel);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isNew && card?.id) {
-      setLoadingSubtasks(true);
-      if (isDemo) {
-        setSubtasks(
-          demoGetSubtasks(demoId, card.id as number).map((s) => ({
-            id: s.id,
-            name: s.name,
-            is_done: s.is_done ?? false,
-          })),
-        );
-        setLoadingSubtasks(false);
-      } else if (boardId) {
-        getSubtasks(boardId, card.id)
-          .then((data) => setSubtasks(Array.isArray(data) ? data : []))
-          .catch(() => {})
-          .finally(() => setLoadingSubtasks(false));
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isDemo) {
-      setTemplates(loadDemoTemplates(demoId));
-    } else if (boardId && initialTemplates.length === 0) {
-      getTemplates(boardId)
-        .then((data) => setTemplates(Array.isArray(data) ? data : []))
-        .catch(() => {});
-    }
-  }, []);
-
   const toggleTag = (tagId: number) => {
     if (isReadOnly) return;
+    setDirty(true);
     setSelectedTagIds((prev) =>
       prev.includes(tagId) ? prev.filter((i) => i !== tagId) : [...prev, tagId],
     );
@@ -520,382 +370,14 @@ const CardEdit: React.FC<CardEditProps> = ({
       },
       isNew,
     );
+    setDirty(false);
   };
 
-  // --- GitHub links ---
-
-  const canUseLinks = !isNew && !isDemo && !!boardId && !!card?.id;
-
-  const handleAddLink = async () => {
-    const url = newLinkUrl.trim();
-    if (!url || !canUseLinks) return;
-    setLinkBusy(true);
-    setLinkError(null);
-    try {
-      const updated = await addCardLink(boardId!, card!.id, url);
-      setLinks(updated.links ?? []);
-      setNewLinkUrl("");
-    } catch {
-      setLinkError("Enter a valid GitHub pull request or issue URL.");
-    } finally {
-      setLinkBusy(false);
-    }
-  };
-
-  const handleRefreshLink = async (linkId: number) => {
-    if (!canUseLinks) return;
-    try {
-      const updated = await refreshCardLink(boardId!, card!.id, linkId);
-      setLinks(updated.links ?? []);
-    } catch {
-      /* keep current state on failure */
-    }
-  };
-
-  const handleDeleteLink = async (linkId: number) => {
-    if (!canUseLinks) return;
-    setLinks((prev) => prev.filter((l) => l.id !== linkId)); // optimistic
-    try {
-      await deleteCardLink(boardId!, card!.id, linkId);
-    } catch {
-      setLinkError("Could not remove that link.");
-    }
-  };
-
-  // --- Document attachments ---
-
-  const canUseDocs = !isNew && !isDemo && !!boardId && !!card?.id;
-
-  const handleUploadDoc = async (file: File) => {
-    if (!canUseDocs) return;
-    setDocBusy(true);
-    setDocError(null);
-    try {
-      const created = await uploadCardDocument(boardId!, card!.id, file);
-      setDocuments((prev) => {
-        const next = [...prev, created];
-        onDocumentsChange?.(next);
-        return next;
-      });
-    } catch (e) {
-      setDocError(
-        e instanceof ApiError && e.status === 422
-          ? "Unsupported file type or file too large (max 20MB)."
-          : "Upload failed — try again.",
-      );
-    } finally {
-      setDocBusy(false);
-      if (docInputRef.current) docInputRef.current.value = "";
-    }
-  };
-
-  const handleDeleteDoc = async (documentId: number) => {
-    if (!canUseDocs) return;
-    const prev = documents;
-    const next = documents.filter((d) => d.id !== documentId);
-    setDocuments(next); // optimistic
-    onDocumentsChange?.(next);
-    try {
-      await deleteCardDocument(boardId!, card!.id, documentId);
-    } catch {
-      setDocuments(prev); // restore on failure
-      onDocumentsChange?.(prev);
-      setDocError("Could not remove that file.");
-    }
-  };
-
-  const handleDownloadDoc = async (doc: CardDocument) => {
-    if (!canUseDocs) return;
-    try {
-      await downloadCardDocument(
-        boardId!,
-        card!.id,
-        doc.id,
-        doc.original_name ?? `document-${doc.id}`,
-      );
-    } catch {
-      setDocError("Download failed — try again.");
-    }
-  };
-
-  // --- Templates ---
-
-  const handleSaveTemplate = async () => {
-    const tname = templateNameInput.trim();
-    if (!tname) return;
-    const data = {
-      name: tname,
-      description,
-      tag_ids: selectedTagIds,
-      priority,
-      due_date: dueDate || null,
-    };
-    if (isDemo) {
-      const t = saveDemoTemplate(demoId, tname, data);
-      setTemplates((prev) => [...prev, t]);
-    } else if (boardId) {
-      const t = await createTemplate(boardId, {
-        name: tname,
-        template_data: data,
-      }).catch(() => null);
-      if (t) setTemplates((prev) => [...prev, t]);
-    }
-    setTemplateNameInput("");
-    setShowSaveTemplate(false);
-  };
-
-  const handleApplyTemplate = (t: Template) => {
-    const d = t.template_data as {
-      description?: string;
-      tag_ids?: number[];
-      priority?: "low" | "medium" | "high" | null;
-      due_date?: string | null;
-    };
-    if (d.description !== undefined) setDescription(d.description);
-    if (d.tag_ids !== undefined) setSelectedTagIds(d.tag_ids);
-    if (d.priority !== undefined) setPriority(d.priority);
-    if (d.due_date !== undefined) setDueDate(d.due_date ?? "");
-    setShowTemplatePicker(false);
-  };
-
-  const handleDeleteTemplate = async (tId: number) => {
-    if (isDemo) {
-      deleteDemoTemplate(demoId, tId);
-    } else if (boardId) {
-      await deleteTemplate(boardId, tId).catch(() => {});
-    }
-    setTemplates((prev) => prev.filter((t) => t.id !== tId));
-  };
-
-  // --- Checklist ---
-
-  const handleAddChecklistItem = async () => {
-    const text = newChecklistText.trim();
-    if (!text) return;
-    if (isDemo) {
-      const item = demoCreateChecklistItem(demoId, id as number, text);
-      setChecklistItems((prev) => [...prev, item]);
-    } else if (boardId && id) {
-      let item;
-      try {
-        item = await createChecklistItem(boardId, id, text);
-      } catch {
-        // Keep what the user typed so they can retry.
-        reportActionError("Could not add item — try again");
-        return;
-      }
-      setChecklistItems((prev) => [...prev, item]);
-    } else {
-      setChecklistItems((prev) => [
-        ...prev,
-        { id: Date.now(), text, is_done: false, position: prev.length },
-      ]);
-    }
-    setNewChecklistText("");
-  };
-
-  const handleToggleItem = async (item: ChecklistItem) => {
-    const updated = { ...item, is_done: !item.is_done };
-    if (updated.is_done) {
-      playComplete();
-      hapticDone();
-    }
-    setChecklistItems((prev) =>
-      prev.map((i) => (i.id === item.id ? updated : i)),
-    );
-    if (!isNew) {
-      if (isDemo)
-        demoUpdateChecklistItem(demoId, id as number, item.id, {
-          is_done: updated.is_done,
-        });
-      else if (boardId)
-        updateChecklistItem(boardId, id, item.id, {
-          is_done: updated.is_done,
-        }).catch(() => {
-          setChecklistItems((prev) =>
-            prev.map((i) =>
-              i.id === item.id ? { ...i, is_done: item.is_done } : i,
-            ),
-          );
-          reportActionError("Change not saved — reverted");
-        });
-    }
-  };
-
-  const handleDeleteItem = async (item: ChecklistItem) => {
-    setChecklistItems((prev) => prev.filter((i) => i.id !== item.id));
-    if (!isNew) {
-      if (isDemo) demoDeleteChecklistItem(demoId, id as number, item.id);
-      else if (boardId)
-        deleteChecklistItem(boardId, id, item.id).catch(() => {
-          setChecklistItems((prev) => [...prev, item]);
-          reportActionError("Could not delete item — restored");
-        });
-    }
-  };
-
-  // --- Rich-text image upload (shared by description + comments) ---
-  // Uploads to the card's attachments endpoint and returns the public URL the
-  // editor embeds inline. Rejects in demo mode (no backend).
-  const uploadImage = async (file: File): Promise<string> => {
-    // Board-scoped so it works while composing a brand-new card (no card id yet).
-    if (isDemo || !boardId) throw new Error("uploads unavailable");
-    try {
-      const { url } = await uploadInlineImage(boardId, file);
-      return url;
-    } catch {
-      reportActionError("Image upload failed — try again");
-      throw new Error("upload failed");
-    }
-  };
-
-  // --- Comments ---
-
-  // An "empty" rich-text body is <p></p> / whitespace once tags are stripped —
-  // but an image-only comment is still valid content.
-  const isHtmlEmpty = (html: string) =>
-    !/<img\b/i.test(html) &&
-    html
-      .replace(/<[^>]*>/g, "")
-      .replace(/&nbsp;/g, " ")
-      .trim() === "";
-
-  const handleAddComment = async () => {
-    const body = newComment;
-    if (isHtmlEmpty(body) || !boardId || !id) return;
-    let comment;
-    try {
-      comment = await createComment(boardId, id, body);
-    } catch {
-      // Keep the draft so the user can retry.
-      reportActionError("Comment not posted — try again");
-      return;
-    }
-    setComments((prev) => [comment, ...prev]);
-    setNewComment("");
-  };
-
-  const startEditComment = (comment: Comment) => {
-    setEditingCommentId(comment.id);
-    setEditingCommentBody(comment.body);
-  };
-
-  const cancelEditComment = () => {
-    setEditingCommentId(null);
-    setEditingCommentBody("");
-  };
-
-  const handleUpdateComment = async (commentId: number) => {
-    const body = editingCommentBody;
-    if (isHtmlEmpty(body) || !boardId || !id || savingComment) return;
-    setSavingComment(true);
-    let updated;
-    try {
-      updated = await updateComment(boardId, id, commentId, body);
-    } catch {
-      reportActionError("Comment not updated — try again");
-      setSavingComment(false);
-      return;
-    }
-    setComments((prev) => prev.map((c) => (c.id === commentId ? updated : c)));
-    setSavingComment(false);
-    cancelEditComment();
-  };
-
-  const handleDeleteComment = async (commentId: number) => {
-    if (!boardId || !id) return;
-    try {
-      await deleteComment(boardId, id, commentId);
-    } catch {
-      reportActionError("Could not delete comment — try again");
-      return;
-    }
-    setComments((prev) => prev.filter((c) => c.id !== commentId));
-  };
-
-  // --- WhatsApp ---
-
-  const handleSendWaReply = async () => {
-    const body = newWaReply.trim();
-    if (!body || !boardId || !id || waSending) return;
-    setWaSending(true);
-    setWaError(null);
-    try {
-      const msg = await sendWhatsappReply(boardId, id, body);
-      // The live board event also appends this; guard against a duplicate.
-      setWaThread((prev) =>
-        prev && !prev.messages.some((m) => m.id === msg.id)
-          ? { ...prev, messages: [...prev.messages, msg] }
-          : prev,
-      );
-      setNewWaReply("");
-    } catch (e) {
-      setWaError(
-        e instanceof Error ? e.message : "Could not send — try again",
-      );
-    } finally {
-      setWaSending(false);
-    }
-  };
-
-  // --- Subtasks ---
-
-  const handleAddSubtask = async () => {
-    const n = newSubtaskName.trim();
-    if (!n) return;
-    if (isDemo) {
-      const s = demoCreateSubtask(demoId, id as number, { name: n });
-      setSubtasks((prev) => [
-        ...prev,
-        { id: s.id, name: s.name, is_done: false },
-      ]);
-    } else if (boardId && id) {
-      let s;
-      try {
-        s = await createSubtask(boardId, id, { name: n });
-      } catch {
-        // Keep what the user typed so they can retry.
-        reportActionError("Could not add subtask — try again");
-        return;
-      }
-      setSubtasks((prev) => [
-        ...prev,
-        { id: s.id, name: s.name, is_done: s.is_done ?? false },
-      ]);
-    }
-    setNewSubtaskName("");
-  };
-
-  const handleToggleSubtask = async (s: Subtask) => {
-    if (!s.is_done) {
-      playComplete();
-      hapticDone();
-    }
-    setSubtasks((prev) =>
-      prev.map((i) => (i.id === s.id ? { ...i, is_done: !i.is_done } : i)),
-    );
-    if (isDemo) {
-      demoToggleSubtask(demoId, s.id);
-    } else if (boardId && id) {
-      updateSubtask(boardId, id, s.id, { is_done: !s.is_done }).catch(() => {
-        setSubtasks((prev) =>
-          prev.map((i) => (i.id === s.id ? { ...i, is_done: s.is_done } : i)),
-        );
-        reportActionError("Change not saved — reverted");
-      });
-    }
-  };
-
-  const doneCount = checklistItems.filter((i) => i.is_done).length;
-  const doneSubtasks = subtasks.filter((s) => s.is_done).length;
-
-  const tabs: Array<
-    "details" | "checklist" | "subtasks" | "comments" | "whatsapp"
-  > = isNew
+  const tabs: Array<"details" | "checklist" | "comments" | "whatsapp"> = isNew
     ? []
     : waThread
-      ? ["details", "checklist", "subtasks", "comments", "whatsapp"]
-      : ["details", "checklist", "subtasks", "comments"];
+      ? ["details", "checklist", "comments", "whatsapp"]
+      : ["details", "checklist", "comments"];
 
   // Measure tab button positions for sliding indicator
   useEffect(() => {
@@ -921,9 +403,6 @@ const CardEdit: React.FC<CardEditProps> = ({
     };
   }, []);
 
-  const pct = (done: number, total: number) =>
-    total ? (done / total) * 100 : 0;
-
   // Tint the whole modal with the first tag's colour (live as tags toggle), like board cards.
   const activeTag = tags.find((t) => selectedTagIds.includes(t.id));
   const tagColor = activeTag?.color ?? null;
@@ -934,19 +413,6 @@ const CardEdit: React.FC<CardEditProps> = ({
         boxShadow: `0 16px 40px rgba(0,0,0,0.6), 0 0 34px ${tagColor}22, inset 0 1px 0 var(--cf-edge-lit)`,
       }
     : {};
-
-  const propLabel = (t: string) => (
-    <p
-      className="cf-label uppercase font-bold"
-      style={{
-        fontSize: "9px",
-        letterSpacing: "0.14em",
-        color: "var(--cf-text-dim)",
-      }}
-    >
-      {t}
-    </p>
-  );
 
   // Big hero title
   const renderTitle = () => (
@@ -960,6 +426,7 @@ const CardEdit: React.FC<CardEditProps> = ({
       className="w-full bg-transparent text-2xl lg:text-[28px] font-bold placeholder-white/25 focus:outline-none resize-none leading-tight disabled:opacity-70 flex-shrink-0 px-1 pt-1"
       value={name}
       onChange={(e) => {
+        setDirty(true);
         setName(e.target.value);
         titleRef.current?.animate(
           [{ filter: "blur(1.4px)" }, { filter: "blur(0)" }],
@@ -969,636 +436,113 @@ const CardEdit: React.FC<CardEditProps> = ({
     />
   );
 
-  // Roomy description — the main writing surface
+  // Roomy description — the main writing surface, on a recessed LCD screen.
+  // The toolbar fades in on hover/focus (see .cf-screen-editor in globals.css).
   const renderDescription = () => (
-    <RichTextEditor
-      value={description}
-      onChange={setDescription}
-      editable={!isReadOnly}
-      placeholder="Add a description — notes, context, images…"
-      onUploadImage={isDemo ? undefined : uploadImage}
-    />
+    <div className="cf-screen-editor">
+      <RichTextEditor
+        value={description}
+        onChange={dirtify(setDescription)}
+        editable={!isReadOnly}
+        placeholder="Add a description — notes, context, images…"
+        onUploadImage={isDemo ? undefined : uploadImage}
+      />
+    </div>
   );
 
-  // Metadata as a clean property list (sidebar on desktop, stacked on mobile)
-  const renderProperties = () => (
-    <div className="flex flex-col">
-      {/* Section */}
-      <div className="flex flex-col gap-2 py-4">
-        {propLabel("Section")}
-        <div className="flex gap-1.5 flex-wrap">
-          {sections
-            .filter((s) => s.id !== backlogSectionId)
-            .map((s, i) => {
-              const color = getSectionColor(s.name, i);
-              const isActive = s.id === sectionId;
-              return (
-                <button
-                  key={s.id}
-                  disabled={isReadOnly}
-                  onClick={() => setSectionId(s.id)}
-                  style={{
-                    borderColor: color,
-                    backgroundColor: isActive ? color : "transparent",
-                    color: isActive ? "#1c1a16" : color,
-                    boxShadow: isActive ? `0 0 8px ${color}55` : "none",
-                    fontSize: "10px",
-                  }}
-                  className="cf-mono uppercase tracking-widest px-2.5 py-1 rounded-sm border cursor-pointer font-bold disabled:opacity-60 disabled:cursor-not-allowed transition-all"
-                >
-                  {s.name}
-                </button>
-              );
-            })}
-        </div>
-      </div>
-
-      {/* Priority */}
-      <div
-        className="flex flex-col gap-2 py-4 border-t"
-        style={{ borderColor: "var(--cf-edge)" }}
+  // Header status readouts — the card's state at a glance, cockpit style.
+  const readout = (label: string, val: string, accent?: string) => (
+    <div key={label} className="flex flex-col leading-tight">
+      <span
+        className="cf-mono uppercase"
+        style={{
+          fontSize: "8px",
+          letterSpacing: "0.22em",
+          color: "var(--cf-text-dim)",
+        }}
       >
-        {propLabel("Priority")}
-        <div className="flex gap-1.5">
-          {PRIORITY_OPTS.map((opt) => {
-            const isActive = priority === opt.value;
-            return (
-              <button
-                key={opt.value}
-                disabled={isReadOnly}
-                onClick={() => setPriority(isActive ? null : opt.value)}
-                style={{
-                  borderColor: opt.color,
-                  backgroundColor: isActive ? opt.color : "transparent",
-                  color: isActive ? "#1c1a16" : opt.color,
-                  boxShadow: isActive ? `0 0 8px ${opt.color}55` : "none",
-                  fontSize: "9px",
-                }}
-                className="cf-mono uppercase tracking-widest px-2.5 py-1 rounded-sm border cursor-pointer font-bold disabled:opacity-60 disabled:cursor-not-allowed transition-all flex-1"
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Due date */}
-      <div
-        className="flex flex-col gap-2 py-4 border-t"
-        style={{ borderColor: "var(--cf-edge)" }}
+        {label}
+      </span>
+      <span
+        className="cf-mono uppercase tabular-nums whitespace-nowrap"
+        style={{
+          fontSize: "11px",
+          letterSpacing: "0.08em",
+          color: accent ?? "var(--cf-cream)",
+        }}
       >
-        {propLabel("Due date")}
-        <input
-          type="date"
-          disabled={isReadOnly}
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-          style={{ fontSize: "12px" }}
-          className="glass-input px-2 py-1.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed w-full"
-        />
-      </div>
-
-      {/* CRM: deal value */}
-      {boardType === "crm" && (
-        <div
-          className="flex flex-col gap-2 py-4 border-t"
-          style={{ borderColor: "var(--cf-edge)" }}
-        >
-          {propLabel(`Deal value (${currency})`)}
-          <div className="relative">
-            <span
-              className="cf-mono absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ fontSize: "12px", color: "var(--cf-text-muted)" }}
-            >
-              {currencySymbol(currency)}
-            </span>
-            <input
-              type="text"
-              inputMode="decimal"
-              disabled={isReadOnly}
-              value={value}
-              onChange={(e) => setValue(maskMoneyInput(e.target.value))}
-              placeholder="0,00"
-              style={{ fontSize: "12px", paddingLeft: "2.6em" }}
-              className="glass-input py-1.5 pr-2 text-right disabled:opacity-60 disabled:cursor-not-allowed w-full tabular-nums"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Scrum: story points + sprint */}
-      {boardType === "scrum" && (
-        <div
-          className="flex flex-col gap-2 py-4 border-t"
-          style={{ borderColor: "var(--cf-edge)" }}
-        >
-          {propLabel("Story points")}
-          <div className="flex gap-1.5 flex-wrap">
-            {FIBONACCI.map((pt) => {
-              const active = storyPoints === String(pt);
-              return (
-                <button
-                  key={pt}
-                  type="button"
-                  disabled={isReadOnly}
-                  onClick={() => setStoryPoints(active ? "" : String(pt))}
-                  style={{
-                    borderColor: active ? "var(--cf-cyan)" : "var(--cf-edge)",
-                    backgroundColor: active ? "var(--cf-cyan)" : "transparent",
-                    color: active ? "#1c1a16" : "var(--cf-cyan)",
-                    boxShadow: active ? "0 0 8px var(--cf-cyan)55" : "none",
-                    fontSize: "11px",
-                    minWidth: "34px",
-                  }}
-                  className="cf-mono tracking-widest px-2 py-1 rounded-sm border cursor-pointer font-bold disabled:opacity-60 disabled:cursor-not-allowed transition-all"
-                >
-                  {pt}
-                </button>
-              );
-            })}
-            {/* Clear / unestimated */}
-            <button
-              type="button"
-              disabled={isReadOnly}
-              onClick={() => setStoryPoints("")}
-              style={{
-                borderColor: storyPoints === "" ? "var(--cf-text-muted)" : "var(--cf-edge)",
-                color: "var(--cf-text-muted)",
-                fontSize: "11px",
-                minWidth: "34px",
-              }}
-              className="cf-mono tracking-widest px-2 py-1 rounded-sm border cursor-pointer font-bold disabled:opacity-60 disabled:cursor-not-allowed transition-all"
-              title="No estimate"
-            >
-              ?
-            </button>
-          </div>
-          <div className="mt-2">{propLabel("Sprint")}</div>
-          <select
-            disabled={isReadOnly}
-            value={sprintId ?? ""}
-            onChange={(e) => setSprintId(e.target.value === "" ? null : Number(e.target.value))}
-            style={{ fontSize: "12px" }}
-            className="glass-input px-2 py-1.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed w-full"
-          >
-            <option value="" className="text-black">Backlog (no sprint)</option>
-            {sprints.map((s) => (
-              <option key={s.id} value={s.id} className="text-black">
-                {s.name}{s.is_active ? " · active" : ""}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {/* GitHub */}
-      {canUseLinks && (
-        <div
-          className="flex flex-col gap-2 py-4 border-t"
-          style={{ borderColor: "var(--cf-edge)" }}
-        >
-          <div className="flex items-center gap-1.5">
-            <Icon
-              icon={faGithub}
-              style={{ fontSize: "11px", color: "var(--cf-text-dim)" }}
-            />
-            {propLabel("GitHub")}
-          </div>
-
-          {links.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              {links.map((link) => {
-                const meta = link.state ? LINK_STATE_META[link.state] : null;
-                return (
-                  <div
-                    key={link.id}
-                    className="flex items-center gap-2 rounded-md px-2 py-1.5"
-                    style={{
-                      background: "#211f1b",
-                      border: "1px solid #38352e",
-                    }}
-                  >
-                    <Icon
-                      icon={faGithub}
-                      style={{
-                        fontSize: "12px",
-                        color: "var(--cf-text-muted)",
-                      }}
-                    />
-                    <a
-                      href={link.html_url ?? link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 min-w-0 truncate cf-mono hover:underline"
-                      style={{ fontSize: "11px", color: "var(--cf-text)" }}
-                      title={link.title ?? undefined}
-                    >
-                      {link.repo ?? "link"}
-                      <span style={{ color: "var(--cf-text-dim)" }}>
-                        #{link.number}
-                      </span>
-                      {link.title && (
-                        <span style={{ color: "var(--cf-text-muted)" }}>
-                          {" "}
-                          · {link.title}
-                        </span>
-                      )}
-                    </a>
-                    {link.checks_state && (
-                      <span
-                        className="rounded-full flex-shrink-0"
-                        title={`checks: ${link.checks_state}`}
-                        style={{
-                          width: 7,
-                          height: 7,
-                          background: CHECKS_COLOR[link.checks_state],
-                          boxShadow: `0 0 5px ${CHECKS_COLOR[link.checks_state]}`,
-                        }}
-                      />
-                    )}
-                    <span
-                      className="cf-mono uppercase font-bold rounded-sm flex-shrink-0"
-                      style={{
-                        fontSize: "8px",
-                        letterSpacing: "0.1em",
-                        padding: "2px 5px",
-                        color: meta?.color ?? "var(--cf-text-dim)",
-                        border: `1px solid ${meta?.color ?? "var(--cf-edge)"}`,
-                        background: meta ? `${meta.color}1a` : "transparent",
-                      }}
-                    >
-                      {meta?.label ?? (link.type === "issue" ? "Issue" : "PR")}
-                    </span>
-                    {!isReadOnly && (
-                      <>
-                        <button
-                          onClick={() => handleRefreshLink(link.id)}
-                          aria-label="Refresh status"
-                          title="Refresh"
-                          className="w-5 h-5 rounded flex items-center justify-center cursor-pointer flex-shrink-0"
-                          style={{ color: "var(--cf-text-dim)" }}
-                          onMouseEnter={(e) =>
-                            (e.currentTarget.style.color = "var(--cf-cyan)")
-                          }
-                          onMouseLeave={(e) =>
-                            (e.currentTarget.style.color = "var(--cf-text-dim)")
-                          }
-                        >
-                          <Icon icon={faRotate} style={{ fontSize: "9px" }} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteLink(link.id)}
-                          aria-label="Remove link"
-                          title="Remove"
-                          className="w-5 h-5 rounded flex items-center justify-center cursor-pointer flex-shrink-0"
-                          style={{ color: "var(--cf-text-dim)" }}
-                          onMouseEnter={(e) =>
-                            (e.currentTarget.style.color = "var(--cf-red)")
-                          }
-                          onMouseLeave={(e) =>
-                            (e.currentTarget.style.color = "var(--cf-text-dim)")
-                          }
-                        >
-                          <Icon icon={faTrash} style={{ fontSize: "9px" }} />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {!isReadOnly && (
-            <div className="flex items-center gap-1.5">
-              <input
-                value={newLinkUrl}
-                onChange={(e) => setNewLinkUrl(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleAddLink();
-                }}
-                placeholder="Paste a GitHub PR or issue URL…"
-                style={{ fontSize: "11px" }}
-                className="glass-input px-2 py-1.5 flex-1"
-              />
-              <button
-                onClick={handleAddLink}
-                disabled={linkBusy || !newLinkUrl.trim()}
-                aria-label="Add link"
-                className="aero-btn aero-btn--cyan px-2.5 py-1.5 flex-shrink-0 disabled:opacity-50"
-              >
-                <Icon icon={faPlus} style={{ fontSize: "9px" }} />
-              </button>
-            </div>
-          )}
-          {linkError && (
-            <p
-              className="cf-mono"
-              style={{ fontSize: "9px", color: "var(--cf-red)" }}
-            >
-              {linkError}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Docs */}
-      {canUseDocs && (
-        <div
-          className="flex flex-col gap-2 py-4 border-t"
-          style={{ borderColor: "var(--cf-edge)" }}
-        >
-          <div className="flex items-center gap-1.5">
-            <Icon
-              icon={faPaperclip}
-              style={{ fontSize: "11px", color: "var(--cf-text-dim)" }}
-            />
-            {propLabel("Docs")}
-          </div>
-
-          {documents.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              {documents.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5"
-                  style={{ background: "#211f1b", border: "1px solid #38352e" }}
-                >
-                  <Icon
-                    icon={faPaperclip}
-                    style={{ fontSize: "11px", color: "var(--cf-text-muted)" }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadDoc(doc)}
-                    className="flex-1 min-w-0 truncate text-left cf-mono hover:underline cursor-pointer"
-                    style={{ fontSize: "11px", color: "var(--cf-text)" }}
-                    title={`Download ${doc.original_name ?? "file"}`}
-                  >
-                    {doc.original_name ?? `document-${doc.id}`}
-                    {doc.size != null && (
-                      <span style={{ color: "var(--cf-text-dim)" }}>
-                        {" "}
-                        · {formatBytes(doc.size)}
-                      </span>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadDoc(doc)}
-                    aria-label="Download file"
-                    title="Download"
-                    className="w-5 h-5 rounded flex items-center justify-center cursor-pointer flex-shrink-0"
-                    style={{ color: "var(--cf-text-dim)" }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.color = "var(--cf-cyan)")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.color = "var(--cf-text-dim)")
-                    }
-                  >
-                    <Icon icon={faDownload} style={{ fontSize: "9px" }} />
-                  </button>
-                  {!isReadOnly && (
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteDoc(doc.id)}
-                      aria-label="Remove file"
-                      title="Remove"
-                      className="w-5 h-5 rounded flex items-center justify-center cursor-pointer flex-shrink-0"
-                      style={{ color: "var(--cf-text-dim)" }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.color = "var(--cf-red)")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.color = "var(--cf-text-dim)")
-                      }
-                    >
-                      <Icon icon={faTrash} style={{ fontSize: "9px" }} />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {!isReadOnly && (
-            <div className="flex items-center gap-1.5">
-              <input
-                ref={docInputRef}
-                type="file"
-                className="hidden"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.md,.rtf,.odt,.ods,.odp,.zip"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleUploadDoc(file);
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => docInputRef.current?.click()}
-                disabled={docBusy}
-                className="aero-btn aero-btn--cyan px-2.5 py-1.5 flex items-center gap-1.5 disabled:opacity-50"
-                style={{ fontSize: "11px" }}
-              >
-                <Icon
-                  icon={docBusy ? faRotate : faPlus}
-                  style={{ fontSize: "9px" }}
-                />
-                {docBusy ? "Uploading…" : "Attach a file"}
-              </button>
-            </div>
-          )}
-          {docError && (
-            <p
-              className="cf-mono"
-              style={{ fontSize: "9px", color: "var(--cf-red)" }}
-            >
-              {docError}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Assignee */}
-      {users.length > 0 && (
-        <div
-          className="flex flex-col gap-2 py-4 border-t"
-          style={{ borderColor: "var(--cf-edge)" }}
-        >
-          {propLabel(
-            `Assignee${assignedUserId !== null ? ` · ${users.find((u) => u.id === assignedUserId)?.name ?? ""}` : ""}`,
-          )}
-          <div className="flex gap-2 flex-wrap items-center">
-            <button
-              disabled={isReadOnly}
-              onClick={() => setAssignedUserId(null)}
-              title="Unassigned"
-              style={{
-                fontSize: "9px",
-                borderColor: "var(--cf-edge)",
-                color:
-                  assignedUserId === null
-                    ? "var(--cf-text)"
-                    : "var(--cf-text-muted)",
-                backgroundColor:
-                  assignedUserId === null
-                    ? "var(--cf-graphite)"
-                    : "transparent",
-                width: 32,
-                height: 32,
-              }}
-              className="cf-mono rounded-full border-2 flex items-center justify-center font-bold cursor-pointer disabled:opacity-60 flex-shrink-0 transition-all"
-            >
-              —
-            </button>
-            {users.map((u) => {
-              const color = AVATAR_COLORS[u.id % AVATAR_COLORS.length];
-              const isActive = assignedUserId === u.id;
-              return (
-                <button
-                  key={u.id}
-                  disabled={isReadOnly}
-                  onClick={() => setAssignedUserId(isActive ? null : u.id)}
-                  title={u.name}
-                  style={{
-                    borderColor: color,
-                    backgroundColor: isActive ? color : "transparent",
-                    color: isActive ? "#1c1a16" : color,
-                    boxShadow: isActive ? `0 0 8px ${color}55` : "none",
-                    fontSize: "10px",
-                    width: 32,
-                    height: 32,
-                  }}
-                  className="cf-mono rounded-full border-2 flex items-center justify-center font-bold cursor-pointer disabled:opacity-60 flex-shrink-0 transition-all"
-                >
-                  {initials(u.name)}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Tags */}
-      {tags.length > 0 && (
-        <div
-          className="flex flex-col gap-2 py-4 border-t"
-          style={{ borderColor: "var(--cf-edge)" }}
-        >
-          {propLabel("Tags")}
-          <div className="flex gap-1.5 flex-wrap">
-            {tags.map((tag) => {
-              const isActive = selectedTagIds.includes(tag.id);
-              return (
-                <button
-                  key={tag.id}
-                  disabled={isReadOnly}
-                  onClick={() => toggleTag(tag.id)}
-                  style={{
-                    borderColor: tag.color,
-                    backgroundColor: isActive ? tag.color : "transparent",
-                    color: isActive ? "#1c1a16" : tag.color,
-                    boxShadow: isActive ? `0 0 8px ${tag.color}55` : "none",
-                    fontSize: "10px",
-                  }}
-                  className="cf-mono uppercase tracking-widest px-2.5 py-1 rounded-sm border cursor-pointer font-bold disabled:opacity-60 disabled:cursor-not-allowed transition-all"
-                >
-                  {tag.name}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Templates */}
-      {(!isReadOnly || templates.length > 0) && (
-        <div
-          className="flex flex-col gap-2 py-4 border-t"
-          style={{ borderColor: "var(--cf-edge)" }}
-        >
-          {propLabel("Template")}
-          <div className="flex gap-2 flex-wrap">
-            {templates.length > 0 && (
-              <button
-                onClick={() => setShowTemplatePicker((v) => !v)}
-                style={{ fontSize: "9px" }}
-                className="aero-pill uppercase tracking-widest px-2.5 py-1 cursor-pointer font-bold text-white/80 hover:text-white"
-              >
-                Apply ▾
-              </button>
-            )}
-            {!isReadOnly && (
-              <button
-                onClick={() => setShowSaveTemplate((v) => !v)}
-                style={{ fontSize: "9px" }}
-                className="aero-pill uppercase tracking-widest px-2.5 py-1 cursor-pointer font-bold text-white/80 hover:text-white"
-              >
-                Save as…
-              </button>
-            )}
-          </div>
-          {showTemplatePicker && templates.length > 0 && (
-            <div
-              style={{ background: "#1c1a16", borderColor: "var(--cf-edge)" }}
-              className="border rounded-lg p-2 flex flex-col gap-1"
-            >
-              {templates.map((t) => (
-                <div
-                  key={t.id}
-                  className="flex items-center justify-between gap-2 group"
-                >
-                  <button
-                    onClick={() => handleApplyTemplate(t)}
-                    style={{ fontSize: "11px", color: "var(--cf-text-muted)" }}
-                    className="cf-mono flex-1 text-left hover:text-[var(--cf-phosphor)] cursor-pointer truncate"
-                  >
-                    {t.name}
-                  </button>
-                  {!isReadOnly && (
-                    <button
-                      onClick={() => handleDeleteTemplate(t.id)}
-                      style={{
-                        fontSize: "10px",
-                        color: "var(--cf-text-muted)",
-                      }}
-                      className="opacity-0 group-hover:opacity-100 hover:text-[var(--cf-red)] cursor-pointer flex-shrink-0 transition-all"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          {showSaveTemplate && (
-            <div className="flex gap-2 items-center">
-              <input
-                autoFocus
-                value={templateNameInput}
-                onChange={(e) => setTemplateNameInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSaveTemplate();
-                  if (e.key === "Escape") setShowSaveTemplate(false);
-                }}
-                placeholder="Template name..."
-                style={{ fontSize: "11px" }}
-                className="glass-input flex-1 px-2 py-1"
-              />
-              <button
-                onClick={handleSaveTemplate}
-                style={{ fontSize: "10px" }}
-                className="aero-btn aero-btn--cyan px-3 py-1 font-bold cursor-pointer"
-              >
-                Save
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+        {val}
+      </span>
     </div>
+  );
+
+  const sectionName = sections.find((s) => s.id === sectionId)?.name ?? "—";
+  const dueReadout = dueDate
+    ? new Date(`${dueDate}T00:00:00`).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      })
+    : "—";
+  const sprintName =
+    sprintId != null
+      ? (sprints.find((s) => s.id === sprintId)?.name ?? "—")
+      : "Backlog";
+
+  // Metadata as a clean property list (sidebar on desktop, stacked on mobile)
+  const propertiesPanel = (
+    <PropertiesPanel
+      isReadOnly={isReadOnly}
+      sections={sections}
+      backlogSectionId={backlogSectionId}
+      sectionId={sectionId}
+      setSectionId={dirtify(setSectionId)}
+      priority={priority}
+      setPriority={dirtify(setPriority)}
+      dueDate={dueDate}
+      setDueDate={dirtify(setDueDate)}
+      boardType={boardType}
+      currency={currency}
+      value={value}
+      setValue={dirtify(setValue)}
+      storyPoints={storyPoints}
+      setStoryPoints={dirtify(setStoryPoints)}
+      sprintId={sprintId}
+      setSprintId={dirtify(setSprintId)}
+      sprints={sprints}
+      canUseLinks={canUseLinks}
+      links={links}
+      newLinkUrl={newLinkUrl}
+      setNewLinkUrl={setNewLinkUrl}
+      linkBusy={linkBusy}
+      linkError={linkError}
+      handleAddLink={handleAddLink}
+      handleRefreshLink={handleRefreshLink}
+      handleDeleteLink={handleDeleteLink}
+      canUseDocs={canUseDocs}
+      documents={documents}
+      docBusy={docBusy}
+      docError={docError}
+      docInputRef={docInputRef}
+      handleUploadDoc={handleUploadDoc}
+      handleDeleteDoc={handleDeleteDoc}
+      handleDownloadDoc={handleDownloadDoc}
+      users={users}
+      assignedUserId={assignedUserId}
+      setAssignedUserId={dirtify(setAssignedUserId)}
+      tags={tags}
+      selectedTagIds={selectedTagIds}
+      toggleTag={toggleTag}
+      templates={templates}
+      showTemplatePicker={showTemplatePicker}
+      setShowTemplatePicker={setShowTemplatePicker}
+      templateNameInput={templateNameInput}
+      setTemplateNameInput={setTemplateNameInput}
+      showSaveTemplate={showSaveTemplate}
+      setShowSaveTemplate={setShowSaveTemplate}
+      handleSaveTemplate={handleSaveTemplate}
+      handleApplyTemplate={handleApplyTemplate}
+      handleDeleteTemplate={handleDeleteTemplate}
+    />
   );
 
   const renderSave = () =>
@@ -1616,484 +560,58 @@ const CardEdit: React.FC<CardEditProps> = ({
       </button>
     ) : null;
 
-  const renderChecklist = () => (
-    <div className="flex flex-col gap-2">
-      {checklistItems.length === 0 && (
-        <p
-          style={{ fontSize: "12px", color: "var(--cf-text-muted)" }}
-          className="cf-mono text-center py-4"
-        >
-          No items yet. Add one below.
-        </p>
-      )}
-      {checklistItems.map((item) => (
-        <div key={item.id} className="flex items-center gap-2 group">
-          {/* key changes on toggle → React remounts → check-pop replays */}
-          <div
-            key={`${item.id}-${item.is_done}`}
-            className="check-pop flex-shrink-0"
-          >
-            <input
-              type="checkbox"
-              checked={item.is_done}
-              disabled={isReadOnly}
-              onChange={() => handleToggleItem(item)}
-              className="cursor-pointer accent-[var(--cf-phosphor)] w-4 h-4 disabled:cursor-not-allowed"
-            />
-          </div>
-          <span
-            style={{
-              color: item.is_done ? "var(--cf-text-muted)" : "var(--cf-text)",
-              textDecoration: item.is_done ? "line-through" : "none",
-              fontSize: "13px",
-              flex: 1,
-              transition: "color 200ms ease, text-decoration-color 200ms ease",
-            }}
-          >
-            {item.text}
-          </span>
-          {!isReadOnly && (
-            <button
-              onClick={() => handleDeleteItem(item)}
-              style={{ fontSize: "10px", color: "var(--cf-text-muted)" }}
-              className="opacity-0 group-hover:opacity-100 hover:text-[var(--cf-red)] cursor-pointer"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-      ))}
-
-      {/* Progress bar */}
-      {checklistItems.length > 0 && (
-        <div className="flex items-center gap-2 mt-1">
-          <div
-            className="flex-1 h-1.5 rounded-full overflow-hidden"
-            style={{ background: "var(--cf-screen)" }}
-          >
-            <div
-              style={{
-                width: `${(doneCount / checklistItems.length) * 100}%`,
-                backgroundColor: "var(--cf-phosphor)",
-                boxShadow: "0 0 6px var(--cf-phosphor)",
-              }}
-              className="h-full rounded-full transition-all duration-300"
-            />
-          </div>
-          <span
-            style={{ fontSize: "10px", color: "var(--cf-text-muted)" }}
-            className="cf-mono"
-          >
-            {doneCount}/{checklistItems.length}
-          </span>
-        </div>
-      )}
-
-      {/* Add item */}
-      {!isReadOnly && (
-        <div className="flex gap-2 mt-2">
-          <input
-            value={newChecklistText}
-            onChange={(e) => setNewChecklistText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleAddChecklistItem();
-            }}
-            placeholder="Add item..."
-            style={{ fontSize: "12px" }}
-            className="glass-input flex-1 px-2 py-1.5"
-          />
-          <button
-            onClick={handleAddChecklistItem}
-            style={{ fontSize: "11px" }}
-            className="aero-btn aero-btn--cyan px-3 py-1.5 font-bold cursor-pointer"
-          >
-            +
-          </button>
-        </div>
-      )}
-    </div>
+  // Per-feature sections (presentational; state + handlers come from the hooks
+  // above). Built once per render and reused by both the desktop worklog and the
+  // mobile tabs so props stay in one place.
+  const checklistSection = (
+    <ChecklistSection
+      checklistItems={checklistItems}
+      newChecklistText={newChecklistText}
+      setNewChecklistText={setNewChecklistText}
+      handleAddChecklistItem={handleAddChecklistItem}
+      handleToggleItem={handleToggleItem}
+      handleDeleteItem={handleDeleteItem}
+      doneCount={doneCount}
+      isReadOnly={isReadOnly}
+    />
   );
 
-  const renderSubtasks = () => (
-    <div className="flex flex-col gap-2">
-      {loadingSubtasks && (
-        <p
-          style={{ fontSize: "12px", color: "var(--cf-text-muted)" }}
-          className="cf-mono text-center py-4"
-        >
-          Loading...
-        </p>
-      )}
-      {!loadingSubtasks && subtasks.length === 0 && (
-        <p
-          style={{ fontSize: "12px", color: "var(--cf-text-muted)" }}
-          className="cf-mono text-center py-4"
-        >
-          No subtasks yet.
-        </p>
-      )}
-      {subtasks.map((s) => (
-        <div key={s.id} className="flex items-center gap-2">
-          <div key={`${s.id}-${s.is_done}`} className="check-pop flex-shrink-0">
-            <input
-              type="checkbox"
-              checked={s.is_done}
-              disabled={isReadOnly}
-              onChange={() => handleToggleSubtask(s)}
-              className="cursor-pointer accent-[var(--cf-phosphor)] w-4 h-4 disabled:cursor-not-allowed"
-            />
-          </div>
-          <span
-            style={{
-              color: s.is_done ? "var(--cf-text-muted)" : "var(--cf-text)",
-              textDecoration: s.is_done ? "line-through" : "none",
-              fontSize: "13px",
-              flex: 1,
-              transition: "color 200ms ease",
-            }}
-          >
-            {s.name}
-          </span>
-        </div>
-      ))}
-
-      {/* Progress bar */}
-      {subtasks.length > 0 && (
-        <div className="flex items-center gap-2 mt-1">
-          <div
-            className="flex-1 h-1.5 rounded-full overflow-hidden"
-            style={{ background: "var(--cf-screen)" }}
-          >
-            <div
-              style={{
-                width: `${(doneSubtasks / subtasks.length) * 100}%`,
-                backgroundColor: "var(--cf-phosphor)",
-                boxShadow: "0 0 6px var(--cf-phosphor)",
-              }}
-              className="h-full rounded-full transition-all duration-300"
-            />
-          </div>
-          <span
-            style={{ fontSize: "10px", color: "var(--cf-text-muted)" }}
-            className="cf-mono"
-          >
-            {doneSubtasks}/{subtasks.length}
-          </span>
-        </div>
-      )}
-
-      {/* Add subtask */}
-      {!isReadOnly && (
-        <div className="flex gap-2 mt-2">
-          <input
-            value={newSubtaskName}
-            onChange={(e) => setNewSubtaskName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleAddSubtask();
-            }}
-            placeholder="Add subtask..."
-            style={{ fontSize: "12px" }}
-            className="glass-input flex-1 px-2 py-1.5"
-          />
-          <button
-            onClick={handleAddSubtask}
-            style={{ fontSize: "11px" }}
-            className="aero-btn aero-btn--cyan px-3 py-1.5 font-bold cursor-pointer"
-          >
-            +
-          </button>
-        </div>
-      )}
-    </div>
+  const commentsSection = (
+    <CommentsSection
+      isDemo={isDemo}
+      users={users}
+      comments={comments}
+      loadingComments={loadingComments}
+      hasOlderComments={hasOlderComments}
+      loadingOlderComments={loadingOlderComments}
+      handleLoadOlderComments={handleLoadOlderComments}
+      newComment={newComment}
+      setNewComment={setNewComment}
+      handleAddComment={handleAddComment}
+      editingCommentId={editingCommentId}
+      editingCommentBody={editingCommentBody}
+      setEditingCommentBody={setEditingCommentBody}
+      savingComment={savingComment}
+      startEditComment={startEditComment}
+      cancelEditComment={cancelEditComment}
+      handleUpdateComment={handleUpdateComment}
+      handleDeleteComment={handleDeleteComment}
+      uploadImage={uploadImage}
+    />
   );
 
-  const renderComments = () => (
-    <div className="flex flex-col gap-3">
-      {/* Compose */}
-      {!isDemo && (
-        <div className="flex flex-col gap-2">
-          <div
-            className="rounded-lg px-3 py-2"
-            style={{
-              border: "1px solid var(--cf-edge)",
-              background: "rgba(0,0,0,0.14)",
-            }}
-          >
-            <RichTextEditor
-              compact
-              value={newComment}
-              onChange={setNewComment}
-              placeholder="Write a comment… (type @ to mention, paste or drop an image)"
-              mentionUsers={users}
-              onUploadImage={uploadImage}
-            />
-          </div>
-          <button
-            onClick={handleAddComment}
-            disabled={isHtmlEmpty(newComment)}
-            style={{ fontSize: "11px" }}
-            className="aero-btn aero-btn--cyan self-end px-4 py-1.5 font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Post
-          </button>
-        </div>
-      )}
-      {isDemo && (
-        <p
-          style={{ fontSize: "12px", color: "var(--cf-text-muted)" }}
-          className="cf-mono text-center py-2"
-        >
-          Comments are not available in demo mode.
-        </p>
-      )}
-
-      {/* Thread */}
-      {loadingComments && (
-        <p
-          style={{ fontSize: "12px", color: "var(--cf-text-muted)" }}
-          className="cf-mono text-center"
-        >
-          Loading...
-        </p>
-      )}
-      {comments.map((comment) => (
-        <div key={comment.id} className="flex flex-col gap-0.5 group">
-          <div className="flex items-center gap-2">
-            <span
-              style={{
-                fontSize: "11px",
-                fontWeight: "bold",
-                color: "var(--cf-text)",
-              }}
-            >
-              {comment.user?.name}
-            </span>
-            <span
-              style={{ fontSize: "10px", color: "var(--cf-text-muted)" }}
-              className="cf-mono"
-            >
-              {new Date(comment.created_at).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </span>
-            {editingCommentId !== comment.id && (
-              <div className="ml-auto flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                <button
-                  onClick={() => startEditComment(comment)}
-                  style={{ fontSize: "10px", color: "var(--cf-text-muted)" }}
-                  className="hover:text-[var(--cf-cyan)] cursor-pointer transition-all"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDeleteComment(comment.id)}
-                  style={{ fontSize: "10px", color: "var(--cf-text-muted)" }}
-                  className="hover:text-[var(--cf-red)] cursor-pointer transition-all"
-                >
-                  ✕
-                </button>
-              </div>
-            )}
-          </div>
-          {editingCommentId === comment.id ? (
-            <div className="flex flex-col gap-2">
-              <div
-                className="rounded-lg px-3 py-2"
-                style={{
-                  border: "1px solid var(--cf-edge)",
-                  background: "rgba(0,0,0,0.14)",
-                }}
-              >
-                <RichTextEditor
-                  compact
-                  value={editingCommentBody}
-                  onChange={setEditingCommentBody}
-                  placeholder="Edit your comment…"
-                  mentionUsers={users}
-                  onUploadImage={uploadImage}
-                />
-              </div>
-              <div className="flex items-center gap-2 self-end">
-                <button
-                  onClick={cancelEditComment}
-                  style={{ fontSize: "11px" }}
-                  className="aero-btn px-4 py-1.5 font-bold cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleUpdateComment(comment.id)}
-                  disabled={isHtmlEmpty(editingCommentBody) || savingComment}
-                  style={{ fontSize: "11px" }}
-                  className="aero-btn aero-btn--cyan px-4 py-1.5 font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          ) : (
-            <RichTextContent html={comment.body} className="text-[12px]" />
-          )}
-          <div
-            style={{ borderColor: "var(--cf-edge)" }}
-            className="border-b mt-1"
-          />
-        </div>
-      ))}
-      {!loadingComments && !isDemo && comments.length === 0 && (
-        <p
-          style={{ fontSize: "12px", color: "var(--cf-text-muted)" }}
-          className="cf-mono text-center py-2"
-        >
-          No comments yet.
-        </p>
-      )}
-    </div>
+  const whatsappSection = (
+    <WhatsAppSection
+      waThread={waThread}
+      newWaReply={newWaReply}
+      setNewWaReply={setNewWaReply}
+      waSending={waSending}
+      waError={waError}
+      handleSendWaReply={handleSendWaReply}
+    />
   );
 
-  const waStatusMark = (status: string | null) => {
-    switch (status) {
-      case "read":
-        return { mark: "✓✓", color: "var(--cf-cyan, #38bdf8)" };
-      case "delivered":
-        return { mark: "✓✓", color: "var(--cf-text-muted)" };
-      case "sent":
-        return { mark: "✓", color: "var(--cf-text-muted)" };
-      case "failed":
-        return { mark: "⚠", color: "var(--cf-red)" };
-      default:
-        return { mark: "·", color: "var(--cf-text-muted)" };
-    }
-  };
-
-  const renderWhatsapp = () => {
-    if (!waThread) return null;
-    const windowClosed = !waThread.window_open;
-    return (
-      <div className="flex flex-col gap-3">
-        <div
-          className="flex items-center gap-2 rounded-lg px-3 py-2"
-          style={{ border: "1px solid var(--cf-edge)", background: "rgba(0,0,0,0.14)" }}
-        >
-          <span style={{ fontSize: "12px", fontWeight: "bold", color: "var(--cf-text)" }}>
-            {waThread.contact_name || waThread.wa_phone}
-          </span>
-          <span style={{ fontSize: "10px", color: "var(--cf-text-muted)" }} className="cf-mono">
-            {waThread.wa_phone}
-          </span>
-          <span
-            className="cf-mono ml-auto uppercase tracking-widest"
-            style={{
-              fontSize: "9px",
-              color: windowClosed ? "var(--cf-text-muted)" : "var(--cf-phosphor)",
-            }}
-          >
-            {windowClosed ? "window closed" : "window open"}
-          </span>
-        </div>
-
-        {/* Thread */}
-        <div className="flex flex-col gap-2">
-          {waThread.messages.map((m) => {
-            const out = m.direction === "out";
-            const s = waStatusMark(m.status);
-            return (
-              <div
-                key={m.id}
-                className="flex flex-col max-w-[85%]"
-                style={{ alignSelf: out ? "flex-end" : "flex-start" }}
-              >
-                <div
-                  className="rounded-lg px-3 py-1.5"
-                  style={{
-                    background: out ? "rgba(37,211,102,0.12)" : "rgba(255,255,255,0.05)",
-                    border: `1px solid ${out ? "rgba(37,211,102,0.35)" : "var(--cf-edge)"}`,
-                    color: "var(--cf-text)",
-                    fontSize: "12px",
-                  }}
-                >
-                  {m.body || <span style={{ color: "var(--cf-text-muted)" }}>[{m.type}]</span>}
-                </div>
-                <div
-                  className="flex items-center gap-1 mt-0.5"
-                  style={{ alignSelf: out ? "flex-end" : "flex-start" }}
-                >
-                  <span style={{ fontSize: "9px", color: "var(--cf-text-muted)" }} className="cf-mono">
-                    {new Date(m.created_at).toLocaleTimeString("en-US", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                  {out && (
-                    <span style={{ fontSize: "10px", color: s.color }} title={m.status ?? ""}>
-                      {s.mark}
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-          {waThread.messages.length === 0 && (
-            <p
-              style={{ fontSize: "12px", color: "var(--cf-text-muted)" }}
-              className="cf-mono text-center py-2"
-            >
-              No messages yet.
-            </p>
-          )}
-        </div>
-
-        {/* Reply composer */}
-        {windowClosed ? (
-          <p
-            style={{ fontSize: "11px", color: "var(--cf-text-muted)" }}
-            className="cf-mono py-2"
-          >
-            The 24-hour reply window has closed. An approved template is required to
-            message this contact again.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            <textarea
-              value={newWaReply}
-              onChange={(e) => setNewWaReply(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSendWaReply();
-              }}
-              placeholder="Reply on WhatsApp… (⌘/Ctrl+Enter to send)"
-              rows={2}
-              className="rounded-lg px-3 py-2 resize-none"
-              style={{
-                border: "1px solid var(--cf-edge)",
-                background: "rgba(0,0,0,0.14)",
-                color: "var(--cf-text)",
-                fontSize: "12px",
-              }}
-            />
-            {waError && (
-              <p style={{ fontSize: "11px", color: "var(--cf-red)" }} className="cf-mono">
-                {waError}
-              </p>
-            )}
-            <button
-              onClick={handleSendWaReply}
-              disabled={!newWaReply.trim() || waSending}
-              style={{ fontSize: "11px" }}
-              className="aero-btn aero-btn--cyan self-end px-4 py-1.5 font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {waSending ? "Sending…" : "Send"}
-            </button>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Right pane on desktop: unified WORKLOG console (checklist + subtasks + comments stacked).
-  // Clean section header used inside the main column (checklist / subtasks / comments)
+  // Clean section header used by the work sections and the chat pane
   const workHeader = (label: string, chip: string | null) => (
     <div className="flex items-center gap-2 mb-2">
       <span
@@ -2122,7 +640,7 @@ const CardEdit: React.FC<CardEditProps> = ({
     </div>
   );
 
-  // The three work sections stacked (main column, desktop). Clean, no console chrome.
+  // Work sections stacked in the main column (desktop).
   const renderWork = () => (
     <div className="flex flex-col gap-6">
       <div>
@@ -2132,26 +650,22 @@ const CardEdit: React.FC<CardEditProps> = ({
             ? `${doneCount}/${checklistItems.length}`
             : null,
         )}
-        {renderChecklist()}
-      </div>
-      <div className="border-t pt-6" style={{ borderColor: "var(--cf-edge)" }}>
-        {workHeader(
-          "Subtasks",
-          subtasks.length ? `${doneSubtasks}/${subtasks.length}` : null,
-        )}
-        {renderSubtasks()}
+        {checklistSection}
       </div>
       <div className="border-t pt-6" style={{ borderColor: "var(--cf-edge)" }}>
         {workHeader(
           "Comments",
           comments.length ? String(comments.length) : null,
         )}
-        {renderComments()}
+        {commentsSection}
       </div>
       {waThread && (
-        <div className="border-t pt-6" style={{ borderColor: "var(--cf-edge)" }}>
+        <div
+          className="border-t pt-6"
+          style={{ borderColor: "var(--cf-edge)" }}
+        >
           {workHeader("WhatsApp", String(waThread.messages.length))}
-          {renderWhatsapp()}
+          {whatsappSection}
         </div>
       )}
     </div>
@@ -2160,7 +674,7 @@ const CardEdit: React.FC<CardEditProps> = ({
   return (
     <div
       style={tagTintStyle}
-      className="aero-menu flex flex-col w-full min-h-[100svh] sm:min-h-0 sm:w-[95vw] sm:max-w-[520px] sm:h-auto sm:max-h-[90vh] lg:max-w-[960px] lg:h-[85vh] lg:max-h-[85vh] relative transition-[background,border-color,box-shadow] duration-300"
+      className="aero-menu flex flex-col w-full min-h-[100svh] sm:min-h-0 sm:w-[95vw] sm:max-w-[520px] sm:h-auto sm:max-h-[90vh] lg:max-w-[1360px] lg:h-[85vh] lg:max-h-[85vh] relative transition-[background,border-color,box-shadow] duration-300"
       onClick={(e) => {
         // Clicking any inline rich-text image opens it full size.
         const t = e.target as HTMLElement;
@@ -2173,41 +687,15 @@ const CardEdit: React.FC<CardEditProps> = ({
     >
       {/* Full-size image viewer */}
       {lightboxSrc && (
-        <div
-          onClick={() => setLightboxSrc(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 120,
-            background: "rgba(0,0,0,0.85)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "4vh",
-            cursor: "zoom-out",
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={lightboxSrc}
-            alt=""
-            style={{
-              maxWidth: "92vw",
-              maxHeight: "92vh",
-              objectFit: "contain",
-              borderRadius: 8,
-              boxShadow: "0 12px 48px rgba(0,0,0,0.6)",
-            }}
-          />
-        </div>
+        <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
       )}
 
-      {/* Glue strip */}
+      {/* Glue strip — identity, status readouts, actions, save */}
       <div
         style={{ borderColor: "var(--cf-edge)" }}
-        className="h-9 w-full flex items-center justify-between px-4 flex-shrink-0 border-b"
+        className="h-9 lg:h-12 w-full flex items-center justify-between px-4 flex-shrink-0 border-b"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <span
             className="cf-led"
             style={{
@@ -2255,6 +743,43 @@ const CardEdit: React.FC<CardEditProps> = ({
               · READ ONLY
             </span>
           )}
+          {/* Status readouts (desktop, saved cards) */}
+          {!isNew && (
+            <div
+              className="hidden lg:flex items-center gap-5 ml-3 pl-4 border-l overflow-hidden"
+              style={{ borderColor: "var(--cf-edge)" }}
+            >
+              {readout(
+                boardType === "crm" ? "Stage" : "Column",
+                sectionName,
+                "var(--cf-amber)",
+              )}
+              {boardType !== "scrum" &&
+                readout(
+                  "Priority",
+                  priority ?? "—",
+                  priority ? undefined : "var(--cf-text-dim)",
+                )}
+              {boardType === "scrum" &&
+                readout(
+                  "Points",
+                  storyPoints || "—",
+                  storyPoints ? undefined : "var(--cf-text-dim)",
+                )}
+              {boardType === "scrum" && readout("Sprint", sprintName)}
+              {readout(
+                "Due",
+                dueReadout,
+                dueDate ? undefined : "var(--cf-text-dim)",
+              )}
+              {boardType === "crm" &&
+                readout(
+                  "Value",
+                  value ? `${currencySymbol(currency)} ${value}` : "—",
+                  value ? undefined : "var(--cf-text-dim)",
+                )}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-3">
           {!isNew && isBacklogCard && !isReadOnly && onAddToBoard && (
@@ -2286,6 +811,28 @@ const CardEdit: React.FC<CardEditProps> = ({
               {linkCopied ? "Copied" : "Copy Link"}
             </button>
           )}
+          {/* Save lives here on desktop (footer removed); the LED lights amber
+              while there are unsaved changes. Mobile keeps its inline save.
+              Gated on isDesktop because .aero-btn's display beats Tailwind's
+              `hidden` in the cascade. */}
+          {!isNew && !isReadOnly && isDesktop && (
+            <button
+              onClick={handleSubmit}
+              className="aero-btn aero-btn--cyan cf-mono text-[10px] uppercase tracking-widest font-bold px-4 py-1.5 cursor-pointer inline-flex items-center gap-2 whitespace-nowrap"
+              title={dirty ? "You have unsaved changes" : "All changes saved"}
+            >
+              <span
+                className="cf-led"
+                style={{
+                  width: 6,
+                  height: 6,
+                  background: dirty ? "var(--cf-amber)" : "var(--cf-edge)",
+                  boxShadow: dirty ? "0 0 6px var(--cf-amber)" : "none",
+                }}
+              />
+              Save Changes
+            </button>
+          )}
           {!isNew && !isReadOnly && onDelete && (
             <button
               onClick={onDelete}
@@ -2313,9 +860,27 @@ const CardEdit: React.FC<CardEditProps> = ({
           style={{ borderColor: "var(--cf-edge)" }}
         >
           {[
-            { key: "card" as const, label: "Card", show: true, led: undefined as string | undefined, badge: 0 },
-            { key: "planning" as const, label: "Planning Poker", show: !!planningTab, led: undefined, badge: planningCount },
-            { key: "qa" as const, label: "Sentinel · QA", show: !!qaTab, led: qaStatusColor ?? undefined, badge: 0 },
+            {
+              key: "card" as const,
+              label: "Card",
+              show: true,
+              led: undefined as string | undefined,
+              badge: 0,
+            },
+            {
+              key: "planning" as const,
+              label: "Planning Poker",
+              show: !!planningTab,
+              led: undefined,
+              badge: planningCount,
+            },
+            {
+              key: "qa" as const,
+              label: "Sentinel · QA",
+              show: !!qaTab,
+              led: qaStatusColor ?? undefined,
+              badge: 0,
+            },
           ]
             .filter((t) => t.show)
             .map((t) => {
@@ -2325,7 +890,10 @@ const CardEdit: React.FC<CardEditProps> = ({
                 <button
                   key={t.key}
                   onClick={() => setTopTab(t.key)}
-                  style={{ color: on ? "var(--cf-text)" : "var(--cf-text-muted)", fontSize: "10px" }}
+                  style={{
+                    color: on ? "var(--cf-text)" : "var(--cf-text-muted)",
+                    fontSize: "10px",
+                  }}
                   className="cf-mono uppercase tracking-widest font-bold pb-2 cursor-pointer transition-colors flex items-center gap-1.5"
                 >
                   <span
@@ -2333,15 +901,21 @@ const CardEdit: React.FC<CardEditProps> = ({
                     style={{
                       width: 6,
                       height: 6,
-                      background: t.led ?? (on ? "var(--cf-phosphor)" : "var(--cf-edge)"),
-                      boxShadow: t.led || on ? `0 0 6px ${activeColor}` : "none",
+                      background:
+                        t.led ?? (on ? "var(--cf-phosphor)" : "var(--cf-edge)"),
+                      boxShadow:
+                        t.led || on ? `0 0 6px ${activeColor}` : "none",
                     }}
                   />
                   {t.label}
                   {t.badge > 0 && (
                     <span
                       className="cf-mono px-1.5 rounded-sm"
-                      style={{ background: "#1c1a16", color: "var(--cf-phosphor)", fontSize: "10px" }}
+                      style={{
+                        background: "#1c1a16",
+                        color: "var(--cf-phosphor)",
+                        fontSize: "10px",
+                      }}
                     >
                       {t.badge}
                     </span>
@@ -2353,137 +927,132 @@ const CardEdit: React.FC<CardEditProps> = ({
       )}
 
       {topTab === "planning" && planningTab ? (
-        <div className="sm:flex-1 sm:overflow-y-auto min-h-0">{planningTab}</div>
+        <div className="sm:flex-1 sm:overflow-y-auto min-h-0">
+          {planningTab}
+        </div>
       ) : topTab === "qa" && qaTab ? (
         <div className="sm:flex-1 sm:overflow-y-auto min-h-0">{qaTab}</div>
       ) : (
         <>
-      {/* Tabs (existing cards, mobile only — desktop uses the two-pane worklog) */}
-      {!isNew && !isDesktop && (
-        <div
-          className="relative flex border-b px-4 pt-2 gap-4 flex-shrink-0"
-          style={{ borderColor: "var(--cf-edge)" }}
-        >
-          {tabs.map((tab, i) => {
-            const isActive = activeTab === tab;
-            return (
-              <button
-                key={tab}
-                ref={(el) => {
-                  tabRefs.current[i] = el;
-                }}
-                onClick={() => setActiveTab(tab)}
-                style={{
-                  color: isActive
-                    ? "var(--cf-phosphor)"
-                    : "var(--cf-text-muted)",
-                  fontSize: "10px",
-                }}
-                className="cf-mono uppercase tracking-widest font-bold pb-2 cursor-pointer transition-colors flex items-center gap-1.5"
-              >
-                <span
-                  className="cf-led"
-                  style={{
-                    width: 6,
-                    height: 6,
-                    background: isActive
-                      ? "var(--cf-phosphor)"
-                      : "var(--cf-edge)",
-                    boxShadow: isActive ? "0 0 6px var(--cf-phosphor)" : "none",
-                  }}
-                />
-                {tab === "checklist" && checklistItems.length > 0
-                  ? `checklist ${doneCount}/${checklistItems.length}`
-                  : tab === "comments" && comments.length > 0
-                    ? `comments ${comments.length}`
-                    : tab === "subtasks" && subtasks.length > 0
-                      ? `subtasks ${doneSubtasks}/${subtasks.length}`
-                      : tab === "whatsapp" && waThread
-                        ? `whatsapp ${waThread.messages.length}`
-                        : tab}
-              </button>
-            );
-          })}
-          {/* Sliding indicator — springs between tabs */}
-          <div
-            style={{
-              position: "absolute",
-              bottom: -1,
-              left: tabIndicator.left,
-              width: tabIndicator.width,
-              height: 2,
-              backgroundColor: "var(--cf-phosphor)",
-              borderRadius: 1,
-              boxShadow: "0 0 8px var(--cf-phosphor)",
-              transition:
-                "left 240ms cubic-bezier(0.34,1.56,0.64,1), width 240ms cubic-bezier(0.34,1.56,0.64,1)",
-            }}
-          />
-        </div>
-      )}
-
-      {/* Action failure notice */}
-      {actionError && (
-        <p
-          role="alert"
-          className="cf-mono text-xs font-bold uppercase tracking-widest px-6 pt-3"
-          style={{ color: "var(--cf-red)" }}
-        >
-          {actionError}
-        </p>
-      )}
-
-      {/* Body */}
-      {isDesktop && !isNew ? (
-        /* Desktop: document (title + description + work) on the left, properties sidebar on the right, save footer */
-        <>
-          <div className="flex flex-1 min-h-0">
-            <div className="flex-1 min-w-0 flex flex-col overflow-y-auto px-8 pt-6 pb-8 gap-4">
-              {renderTitle()}
-              {renderDescription()}
-              <div
-                className="border-t mt-1 pt-6"
-                style={{ borderColor: "var(--cf-edge)" }}
-              >
-                {renderWork()}
-              </div>
-            </div>
+          {/* Tabs (existing cards, mobile only — desktop uses the two-pane worklog) */}
+          {!isNew && !isDesktop && (
             <div
-              className="w-[300px] flex-shrink-0 overflow-y-auto border-l px-5 py-2"
-              style={{
-                borderColor: "var(--cf-edge)",
-                background: "rgba(0,0,0,0.15)",
-              }}
-            >
-              {renderProperties()}
-            </div>
-          </div>
-          {!isReadOnly && (
-            <div
-              className="flex-shrink-0 border-t px-6 py-3 flex justify-end"
+              className="relative flex border-b px-4 pt-2 gap-4 flex-shrink-0"
               style={{ borderColor: "var(--cf-edge)" }}
             >
-              <div className="w-56">{renderSave()}</div>
+              {tabs.map((tab, i) => {
+                const isActive = activeTab === tab;
+                return (
+                  <button
+                    key={tab}
+                    ref={(el) => {
+                      tabRefs.current[i] = el;
+                    }}
+                    onClick={() => setActiveTab(tab)}
+                    style={{
+                      color: isActive
+                        ? "var(--cf-phosphor)"
+                        : "var(--cf-text-muted)",
+                      fontSize: "10px",
+                    }}
+                    className="cf-mono uppercase tracking-widest font-bold pb-2 cursor-pointer transition-colors flex items-center gap-1.5"
+                  >
+                    <span
+                      className="cf-led"
+                      style={{
+                        width: 6,
+                        height: 6,
+                        background: isActive
+                          ? "var(--cf-phosphor)"
+                          : "var(--cf-edge)",
+                        boxShadow: isActive
+                          ? "0 0 6px var(--cf-phosphor)"
+                          : "none",
+                      }}
+                    />
+                    {tab === "checklist" && checklistItems.length > 0
+                      ? `checklist ${doneCount}/${checklistItems.length}`
+                      : tab === "comments" && comments.length > 0
+                        ? `comments ${comments.length}`
+                        : tab === "whatsapp" && waThread
+                          ? `whatsapp ${waThread.messages.length}`
+                          : tab}
+                  </button>
+                );
+              })}
+              {/* Sliding indicator — springs between tabs */}
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: -1,
+                  left: tabIndicator.left,
+                  width: tabIndicator.width,
+                  height: 2,
+                  backgroundColor: "var(--cf-phosphor)",
+                  borderRadius: 1,
+                  boxShadow: "0 0 8px var(--cf-phosphor)",
+                  transition:
+                    "left 240ms cubic-bezier(0.34,1.56,0.64,1), width 240ms cubic-bezier(0.34,1.56,0.64,1)",
+                }}
+              />
             </div>
           )}
-        </>
-      ) : (
-        /* Mobile & new: single column; details tab holds title + description + properties + save */
-        <div className="flex flex-col sm:flex-1 px-6 pt-4 pb-6 gap-4 sm:overflow-y-auto">
-          {(isNew || activeTab === "details") && (
-            <>
-              {renderTitle()}
-              {renderDescription()}
-              {renderProperties()}
-              {renderSave()}
-            </>
+
+          {/* Action failure notice */}
+          {actionError && (
+            <p
+              role="alert"
+              className="cf-mono text-xs font-bold uppercase tracking-widest px-6 pt-3"
+              style={{ color: "var(--cf-red)" }}
+            >
+              {actionError}
+            </p>
           )}
-          {!isNew && activeTab === "checklist" && renderChecklist()}
-          {!isNew && activeTab === "subtasks" && renderSubtasks()}
-          {!isNew && activeTab === "comments" && renderComments()}
-          {!isNew && activeTab === "whatsapp" && renderWhatsapp()}
-        </div>
-      )}
+
+          {/* Body */}
+          {isDesktop && !isNew ? (
+            /* Desktop: document (title + description + work) on the left at a
+               readable measure, properties rail on the right. Save is in the
+               header — no footer. */
+            <div className="flex flex-1 min-h-0">
+              <div className="flex-1 min-w-0 overflow-y-auto px-8 pt-6 pb-10">
+                <div className="max-w-[720px] mx-auto flex flex-col gap-5">
+                  {renderTitle()}
+                  {renderDescription()}
+                  <div
+                    className="border-t mt-1 pt-6"
+                    style={{ borderColor: "var(--cf-edge)" }}
+                  >
+                    {renderWork()}
+                  </div>
+                </div>
+              </div>
+              <div
+                className="w-[300px] flex-shrink-0 overflow-y-auto border-l px-5 py-2"
+                style={{
+                  borderColor: "var(--cf-edge)",
+                  background: "rgba(0,0,0,0.15)",
+                }}
+              >
+                {propertiesPanel}
+              </div>
+            </div>
+          ) : (
+            /* Mobile & new: single column; details tab holds title + description + properties + save */
+            <div className="flex flex-col sm:flex-1 px-6 pt-4 pb-6 gap-4 sm:overflow-y-auto">
+              {(isNew || activeTab === "details") && (
+                <>
+                  {renderTitle()}
+                  {renderDescription()}
+                  {propertiesPanel}
+                  {renderSave()}
+                </>
+              )}
+              {!isNew && activeTab === "checklist" && checklistSection}
+              {!isNew && activeTab === "comments" && commentsSection}
+              {!isNew && activeTab === "whatsapp" && whatsappSection}
+            </div>
+          )}
         </>
       )}
     </div>

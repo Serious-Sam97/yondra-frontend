@@ -106,7 +106,8 @@ export default function BoardSettingsPage({
     }
     if (canManage) t.push({ key: "members", label: "Members", icon: faUsers });
     if (canManage) t.push({ key: "github", label: "GitHub", icon: faGithub });
-    if (canManage) t.push({ key: "whatsapp", label: "WhatsApp", icon: faWhatsapp });
+    if (canManage)
+      t.push({ key: "whatsapp", label: "WhatsApp", icon: faWhatsapp });
     t.push({ key: "activity", label: "Activity", icon: faClockRotateLeft });
     if (canManage) {
       t.push({ key: "archived", label: "Archived", icon: faBoxArchive });
@@ -198,7 +199,9 @@ export default function BoardSettingsPage({
         <div className="flex-1 min-w-0">
           {active === "general" && <GeneralTab board={board} onSaved={patch} />}
           {active === "github" && <GitHubTab board={board} onSaved={patch} />}
-          {active === "whatsapp" && <WhatsAppTab board={board} onSaved={patch} />}
+          {active === "whatsapp" && (
+            <WhatsAppTab board={board} onSaved={patch} />
+          )}
           {active === "columns" && (
             <ColumnsTab
               board={board}

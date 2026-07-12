@@ -29,7 +29,8 @@ interface ShareCandidate {
   email: string;
   role: string;
   shared: boolean;
-  permission?: BoardPermission;
+  // null when the board isn't shared to this candidate yet.
+  permission?: BoardPermission | null;
 }
 
 interface Props {

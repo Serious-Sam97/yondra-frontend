@@ -1,26 +1,26 @@
-'use client'
+"use client";
 
-import { useCallback, useEffect, useState } from 'react'
-import { getEcho } from '@/lib/echo'
+import { useCallback, useEffect, useState } from "react";
+import type { TestCase, Verdict } from "@/interfaces/QAInterface";
 import {
+  generateCiToken as apiGenerateCiToken,
+  linkBug as apiLinkBug,
   createTestCase,
   createTestRun,
   deleteTestCase,
-  generateCiToken as apiGenerateCiToken,
   getQa,
-  linkBug as apiLinkBug,
   setCaseVerdict,
   updateTestCase,
-} from '@/lib/api'
-import type { TestCase, Verdict } from '@/interfaces/QAInterface'
+} from "@/lib/api";
+import { getEcho } from "@/lib/echo";
 
-type IncomingEvent = { type: string; payload: unknown }
+type IncomingEvent = { type: string; payload: unknown };
 
 const isCase = (p: unknown): p is TestCase =>
-  !!p && typeof p === 'object' && Array.isArray((p as TestCase).runs)
+  !!p && typeof p === "object" && Array.isArray((p as TestCase).runs);
 
 function sortCases(list: TestCase[]): TestCase[] {
-  return [...list].sort((a, b) => a.position - b.position || a.id - b.id)
+  return [...list].sort((a, b) => a.position - b.position || a.id - b.id);
 }
 
 // Per-card QA session: N test cases (each with N runs). Fetches the card's cases,
@@ -31,143 +31,166 @@ export function useSentinelCard(
   cardId: number | string | undefined,
   enabled: boolean,
 ) {
-  const [cases, setCases] = useState<TestCase[]>([])
-  const [selectedCaseId, setSelectedCaseId] = useState<number | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [busy, setBusy] = useState(false)
+  const [cases, setCases] = useState<TestCase[]>([]);
+  const [selectedCaseId, setSelectedCaseId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  const numericCardId = typeof cardId === 'number' ? cardId : Number(cardId)
+  const numericCardId = typeof cardId === "number" ? cardId : Number(cardId);
 
   const upsert = useCallback((c: TestCase) => {
     setCases((prev) => {
-      const exists = prev.some((x) => x.id === c.id)
-      return sortCases(exists ? prev.map((x) => (x.id === c.id ? c : x)) : [...prev, c])
-    })
-  }, [])
+      const exists = prev.some((x) => x.id === c.id);
+      return sortCases(
+        exists ? prev.map((x) => (x.id === c.id ? c : x)) : [...prev, c],
+      );
+    });
+  }, []);
 
   useEffect(() => {
-    if (!enabled || !boardId || !numericCardId) return
-    let cancelled = false
-    const controller = new AbortController()
+    if (!enabled || !boardId || !numericCardId) return;
+    let cancelled = false;
+    const controller = new AbortController();
 
-    setLoading(true)
+    setLoading(true);
     getQa(boardId, numericCardId, controller.signal)
       .then((data) => {
-        if (cancelled) return
-        const list: TestCase[] = sortCases(data?.cases ?? [])
-        setCases(list)
-        setSelectedCaseId((cur) => cur ?? list[0]?.id ?? null)
+        if (cancelled) return;
+        const list: TestCase[] = sortCases(data?.cases ?? []);
+        setCases(list);
+        setSelectedCaseId((cur) => cur ?? list[0]?.id ?? null);
       })
       .catch(() => {})
       .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
+        if (!cancelled) setLoading(false);
+      });
 
-    const channel = getEcho().private(`board.${boardId}`)
+    const channel = getEcho().private(`board.${boardId}`);
     const handler = (e: IncomingEvent) => {
-      if (!e.type.startsWith('qa.')) return
-      const p = e.payload as { card_id?: number; id?: number }
-      if (p.card_id !== numericCardId) return
-      if (e.type === 'qa.case.deleted') {
-        setCases((prev) => prev.filter((x) => x.id !== p.id))
+      if (!e.type.startsWith("qa.")) return;
+      const p = e.payload as { card_id?: number; id?: number };
+      if (p.card_id !== numericCardId) return;
+      if (e.type === "qa.case.deleted") {
+        setCases((prev) => prev.filter((x) => x.id !== p.id));
       } else if (isCase(e.payload)) {
-        upsert(e.payload)
+        upsert(e.payload);
       }
-    }
-    channel.listen('.board.event', handler)
+    };
+    channel.listen(".board.event", handler);
 
     return () => {
-      cancelled = true
-      controller.abort()
-      channel.stopListening('.board.event', handler)
-    }
-  }, [enabled, boardId, numericCardId, upsert])
+      cancelled = true;
+      controller.abort();
+      channel.stopListening(".board.event", handler);
+    };
+  }, [enabled, boardId, numericCardId, upsert]);
 
-  const run = useCallback(
-    async <T>(fn: () => Promise<T>) => {
-      setBusy(true)
-      try {
-        return await fn()
-      } finally {
-        setBusy(false)
-      }
-    },
-    [],
-  )
+  const run = useCallback(async <T>(fn: () => Promise<T>) => {
+    setBusy(true);
+    try {
+      return await fn();
+    } finally {
+      setBusy(false);
+    }
+  }, []);
 
   const createCase = useCallback(
-    (title: string, type = 'manual') =>
+    (title: string, type = "manual") =>
       run(async () => {
-        const c: TestCase = await createTestCase(boardId!, numericCardId, { title, type })
-        upsert(c)
-        setSelectedCaseId(c.id)
-        return c
+        const c: TestCase = await createTestCase(boardId!, numericCardId, {
+          title,
+          type,
+        });
+        upsert(c);
+        setSelectedCaseId(c.id);
+        return c;
       }),
     [run, boardId, numericCardId, upsert],
-  )
+  );
 
   const saveCase = useCallback(
     (caseId: number, patch: Record<string, unknown>) =>
       run(async () => {
-        const c: TestCase = await updateTestCase(boardId!, numericCardId, caseId, patch)
-        upsert(c)
-        return c
+        const c: TestCase = await updateTestCase(
+          boardId!,
+          numericCardId,
+          caseId,
+          patch,
+        );
+        upsert(c);
+        return c;
       }),
     [run, boardId, numericCardId, upsert],
-  )
+  );
 
   const removeCase = useCallback(
     (caseId: number) =>
       run(async () => {
-        await deleteTestCase(boardId!, numericCardId, caseId)
+        await deleteTestCase(boardId!, numericCardId, caseId);
         setCases((prev) => {
-          const next = prev.filter((x) => x.id !== caseId)
-          setSelectedCaseId((cur) => (cur === caseId ? next[0]?.id ?? null : cur))
-          return next
-        })
+          const next = prev.filter((x) => x.id !== caseId);
+          setSelectedCaseId((cur) =>
+            cur === caseId ? (next[0]?.id ?? null) : cur,
+          );
+          return next;
+        });
       }),
     [run, boardId, numericCardId],
-  )
+  );
 
   const launchRun = useCallback(
     (caseId: number, payload: Parameters<typeof createTestRun>[3]) =>
       run(async () => {
-        const c: TestCase = await createTestRun(boardId!, numericCardId, caseId, payload)
-        upsert(c)
-        return c
+        const c: TestCase = await createTestRun(
+          boardId!,
+          numericCardId,
+          caseId,
+          payload,
+        );
+        upsert(c);
+        return c;
       }),
     [run, boardId, numericCardId, upsert],
-  )
+  );
 
   const linkBug = useCallback(
     (caseId: number) =>
       run(async () => {
-        const c: TestCase = await apiLinkBug(boardId!, numericCardId, caseId)
-        upsert(c)
-        return c
+        const c: TestCase = await apiLinkBug(boardId!, numericCardId, caseId);
+        upsert(c);
+        return c;
       }),
     [run, boardId, numericCardId, upsert],
-  )
+  );
 
   const setVerdict = useCallback(
     (caseId: number, verdict: Verdict | null) =>
       run(async () => {
-        const c: TestCase = await setCaseVerdict(boardId!, numericCardId, caseId, verdict)
-        upsert(c)
-        return c
+        const c: TestCase = await setCaseVerdict(
+          boardId!,
+          numericCardId,
+          caseId,
+          verdict,
+        );
+        upsert(c);
+        return c;
       }),
     [run, boardId, numericCardId, upsert],
-  )
+  );
 
   const generateCiToken = useCallback(
     (caseId: number) =>
       run(async () => {
-        const c: TestCase = await apiGenerateCiToken(boardId!, numericCardId, caseId)
-        upsert(c)
-        return c
+        const c: TestCase = await apiGenerateCiToken(
+          boardId!,
+          numericCardId,
+          caseId,
+        );
+        upsert(c);
+        return c;
       }),
     [run, boardId, numericCardId, upsert],
-  )
+  );
 
   return {
     cases,
@@ -182,5 +205,5 @@ export function useSentinelCard(
     linkBug,
     setVerdict,
     generateCiToken,
-  }
+  };
 }
