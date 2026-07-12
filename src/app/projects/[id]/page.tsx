@@ -781,7 +781,17 @@ export default function ProjectPage() {
           transition: "opacity 200ms ease",
         }}
       >
-        {project && <MembersPanel project={project} />}
+        {project && (
+          <MembersPanel
+            project={project}
+            onInvite={
+              canManage
+                ? () =>
+                    router.push(`/projects/${projectId}/settings?tab=members`)
+                : undefined
+            }
+          />
+        )}
       </aside>
 
       {/* ── Modals ── */}

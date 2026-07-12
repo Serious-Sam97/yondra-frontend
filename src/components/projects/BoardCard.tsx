@@ -1,18 +1,14 @@
 "use client";
 
 import type { ProjectBoard } from "@/interfaces/ProjectInterface";
-import {
-  boardColor,
-  boardFlow,
-  boardProgress,
-  shade,
-  timeAgo,
-  tint,
-} from "@/lib/ui";
+import { boardColor, boardFlow, boardProgress, timeAgo } from "@/lib/ui";
 import Avatar from "./Avatar";
 
-// Accent-tinted "monitor" card: the casing takes the board's own colour, with a
-// dark inset flow screen showing the To Do / Doing / Done breakdown.
+// "Anodized rack module": graphite casing tinted with the board's own colour
+// (rail + LED + header wash), with a dark inset flow screen showing the
+// To Do / Doing / Done breakdown.
+const DIM_INK = "rgba(232,228,214,0.58)";
+
 export default function BoardCard({
   board,
   projectColor,
@@ -29,9 +25,6 @@ export default function BoardCard({
   const ac = boardColor(board, projectColor);
   const flow = boardFlow(board);
   const { done, total, pct } = boardProgress(board);
-  const ink = shade(ac, 0.28);
-  const sub = shade(ac, 0.42);
-  const casing = `linear-gradient(to bottom, ${tint(ac, 0.72)}, ${tint(ac, 0.52)})`;
 
   const members = [board.owner, ...(board.shared_with ?? [])].filter(
     (u): u is NonNullable<typeof u> => !!u,
@@ -51,36 +44,41 @@ export default function BoardCard({
     ) : null;
 
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
-      className="rounded-lg overflow-hidden cursor-pointer transition-transform duration-150 hover:-translate-y-0.5"
-      style={{
-        background: casing,
-        border: `1.5px solid ${editMode && isOwner ? "var(--cf-amber)" : tint(ac, 0.35)}`,
-        color: ink,
-        boxShadow:
-          editMode && isOwner
-            ? `inset 0 1px 0 rgba(255,255,255,0.55), 0 0 0 2px rgba(255,176,0,0.5), 0 3px 7px rgba(0,0,0,0.45)`
-            : "inset 0 1px 0 rgba(255,255,255,0.55), 0 4px 10px rgba(0,0,0,0.45)",
-      }}
+      className="bc-mod block w-full text-left p-0"
+      style={
+        {
+          "--bc-ac": ac,
+          ...(editMode && isOwner
+            ? {
+                borderColor: "var(--cf-amber)",
+                boxShadow:
+                  "inset 0 1px 0 rgba(255,255,255,0.14), 0 0 0 2px rgba(255,176,0,0.5), 0 3px 7px rgba(0,0,0,0.45)",
+              }
+            : null),
+        } as React.CSSProperties
+      }
     >
-      {/* colour cap */}
-      <div style={{ height: 7, background: ac, boxShadow: `0 0 10px ${ac}` }} />
+      {/* edge-lit colour rail + backlight wash */}
+      <div className="bc-rail" />
+      <div className="bc-wash" />
 
-      <div className="px-3.5 pt-3 pb-3.5">
+      <div className="px-3.5 pt-3 pb-3.5 relative">
         <div className="flex items-center gap-2">
           <span
             className="rounded-full flex-shrink-0"
             style={{
               width: 8,
               height: 8,
-              background: shade(ac, 0.8),
-              boxShadow: `0 0 6px ${ac}`,
+              background: ac,
+              boxShadow: `0 0 7px ${ac}, inset 0 -1px 1px rgba(0,0,0,0.4)`,
             }}
           />
           <span
             className="font-bold flex-1 truncate"
-            style={{ fontSize: "14px" }}
+            style={{ fontSize: "14px", color: "var(--cf-cream)" }}
           >
             {board.name}
           </span>
@@ -98,7 +96,7 @@ export default function BoardCard({
           ) : (
             <span
               className="cf-mono flex-shrink-0"
-              style={{ fontSize: "9px", color: sub }}
+              style={{ fontSize: "9px", color: DIM_INK }}
             >
               {total} card{total !== 1 ? "s" : ""}
             </span>
@@ -106,7 +104,7 @@ export default function BoardCard({
         </div>
         <div
           className="cf-mono mt-1 truncate"
-          style={{ fontSize: "9px", color: sub }}
+          style={{ fontSize: "9px", color: DIM_INK }}
         >
           {board.updated_at
             ? `updated ${timeAgo(board.updated_at)}`
@@ -150,79 +148,98 @@ export default function BoardCard({
                   flex: 1,
                   height: "100%",
                   borderRadius: 2,
-                  background: "#22251f",
+                  background: "#1b1e18",
                 }}
               />
             )}
           </div>
-          <div
-            className="flex justify-between cf-lcd"
-            style={{ fontSize: "16px", marginTop: 6 }}
-          >
-            <b className="flex items-center gap-1" style={{ color: "#8a8f80" }}>
-              <span
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: "50%",
-                  background: "#3a3d38",
-                  display: "inline-block",
-                }}
-              />
-              {flow.todo}
-            </b>
-            <b
-              className="flex items-center gap-1"
-              style={{ color: "var(--cf-amber)" }}
+          {total === 0 ? (
+            <div className="bc-standby" style={{ marginTop: 6 }}>
+              STANDBY
+              <span className="bc-cursor">_</span>
+            </div>
+          ) : (
+            <div
+              className="flex justify-between cf-lcd"
+              style={{ fontSize: "16px", marginTop: 6 }}
             >
-              <span
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: "50%",
-                  background: "var(--cf-amber)",
-                  display: "inline-block",
-                }}
-              />
-              {flow.doing}
-            </b>
-            <b
-              className="flex items-center gap-1"
-              style={{ color: "var(--cf-phosphor)" }}
-            >
-              <span
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: "50%",
-                  background: "var(--cf-phosphor)",
-                  display: "inline-block",
-                }}
-              />
-              {flow.done}
-            </b>
-          </div>
+              <b
+                className="flex items-center gap-1"
+                style={{ color: "#8a8f80" }}
+              >
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    background: "#3a3d38",
+                    display: "inline-block",
+                  }}
+                />
+                {flow.todo}
+              </b>
+              <b
+                className="flex items-center gap-1"
+                style={{ color: "var(--cf-amber)" }}
+              >
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    background: "var(--cf-amber)",
+                    display: "inline-block",
+                  }}
+                />
+                {flow.doing}
+              </b>
+              <b
+                className="flex items-center gap-1"
+                style={{ color: "var(--cf-phosphor)" }}
+              >
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    background: "var(--cf-phosphor)",
+                    boxShadow: "0 0 5px var(--cf-phosphor)",
+                    display: "inline-block",
+                  }}
+                />
+                {flow.done}
+              </b>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between mt-2.5">
           <span
             className="cf-lcd"
-            style={{ fontSize: "24px", lineHeight: 1, color: ink }}
+            style={{
+              fontSize: "24px",
+              lineHeight: 1,
+              color: done > 0 ? "var(--cf-phosphor)" : "rgba(232,228,214,0.38)",
+              textShadow:
+                done > 0
+                  ? "0 0 8px color-mix(in srgb, var(--cf-phosphor) 45%, transparent)"
+                  : undefined,
+            }}
           >
             {pct}
-            <span style={{ fontSize: "12px", color: sub }}>%</span>
+            <span style={{ fontSize: "12px", color: DIM_INK }}>%</span>
           </span>
           {members.length > 0 && (
             <div className="flex">
               {members.slice(0, 4).map((u, i) => (
                 <span key={u.id} style={{ marginLeft: i ? -6 : 0 }}>
-                  <Avatar user={u} size={19} ring={tint(ac, 0.55)} />
+                  <Avatar user={u} size={19} ring="#232220" />
                 </span>
               ))}
             </div>
           )}
         </div>
       </div>
-    </div>
+    </button>
   );
 }

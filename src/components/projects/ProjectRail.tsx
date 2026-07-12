@@ -18,7 +18,10 @@ function projectPct(p: ProjectInterface): number | null {
   return total > 0 ? Math.round((done / total) * 100) : 0;
 }
 
-function FolderTab({
+// "Channel strip": the active project is a powered-on channel in the same
+// anodized material as the board cards; idle channels sit flat with a dimmed
+// LED in their project colour.
+function ChannelTab({
   project,
   active,
   isMember,
@@ -32,59 +35,62 @@ function FolderTab({
   const pct = projectPct(project);
   const count = project.boards_count ?? project.boards?.length ?? 0;
   return (
-    <button onClick={onClick} className="w-full text-left focus:outline-none">
-      <div
-        className="flex items-center gap-3 px-2.5 py-2.5 border-l-[3px] rounded-r-lg transition-colors duration-100 cursor-pointer"
-        style={{
-          borderLeftColor: active ? project.color : "transparent",
-          background: active ? "#2f2d27" : "transparent",
-          boxShadow: active
-            ? "inset 0 0 0 1px var(--cf-edge), 0 0 14px rgba(111,224,255,0.10)"
-            : undefined,
-        }}
-      >
-        <span
-          className="cf-led flex-shrink-0"
-          style={{
-            width: 8,
-            height: 8,
-            background: project.color,
-            boxShadow: `0 0 6px ${project.color}`,
-          }}
-        />
-        <div
-          className="cf-mono rounded-md flex items-center justify-center font-bold flex-shrink-0 border"
-          style={{
-            width: 27,
-            height: 27,
-            fontSize: 13,
-            background: "#211f1b",
-            color: "var(--cf-text)",
-            borderColor: "var(--cf-edge)",
-          }}
-        >
-          {project.name[0]?.toUpperCase()}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p
-            className="font-bold truncate leading-tight"
+    <button
+      type="button"
+      onClick={onClick}
+      className={`pr-chan${active ? " active" : ""}`}
+      style={{ "--pr-ac": project.color } as React.CSSProperties}
+    >
+      <span className="pr-chan-rail" />
+      <span className="flex items-center gap-2.5 py-2 pl-3 pr-2.5">
+        <span className="pr-chan-led" />
+        <span className="flex-1 min-w-0">
+          <span
+            className="block font-bold truncate leading-tight"
             style={{
               fontSize: 12.5,
-              color: active ? "var(--cf-text)" : "var(--cf-text-muted)",
+              color: active ? "var(--cf-cream)" : "var(--cf-text-muted)",
             }}
           >
             {project.name}
-          </p>
-          <p
-            className="cf-mono truncate"
-            style={{ fontSize: 9.5, color: "var(--cf-text-dim)" }}
+          </span>
+          <span
+            className="cf-mono flex items-center gap-1.5"
+            style={{
+              fontSize: 9,
+              marginTop: 3,
+              color: active ? "rgba(232,228,214,0.6)" : "var(--cf-text-dim)",
+            }}
           >
-            {count} board{count !== 1 ? "s" : ""}
-            {pct !== null ? ` · ${pct}%` : ""}
-            {isMember ? " · member" : ""}
-          </p>
-        </div>
-      </div>
+            <span className="truncate">
+              {count} board{count !== 1 ? "s" : ""}
+              {isMember ? " · member" : ""}
+            </span>
+            {pct !== null && (
+              <>
+                <span
+                  className="flex-shrink-0 rounded-sm overflow-hidden"
+                  style={{
+                    width: 34,
+                    height: 3,
+                    background: active ? "rgba(0,0,0,0.45)" : "#14130e",
+                    boxShadow: "inset 0 1px 1px rgba(0,0,0,0.7)",
+                  }}
+                >
+                  <span
+                    className="block h-full rounded-sm"
+                    style={{
+                      width: `${Math.max(pct, 2)}%`,
+                      background: "var(--cf-phosphor)",
+                    }}
+                  />
+                </span>
+                <span className="flex-shrink-0">{pct}%</span>
+              </>
+            )}
+          </span>
+        </span>
+      </span>
     </button>
   );
 }
@@ -114,7 +120,7 @@ export default function ProjectRail({
               Yours
             </p>
             {owned.map((p) => (
-              <FolderTab
+              <ChannelTab
                 key={p.id}
                 project={p}
                 active={p.id === activeId}
@@ -132,7 +138,7 @@ export default function ProjectRail({
               Shared
             </p>
             {member.map((p) => (
-              <FolderTab
+              <ChannelTab
                 key={p.id}
                 project={p}
                 active={p.id === activeId}
@@ -144,11 +150,13 @@ export default function ProjectRail({
         )}
       </div>
       <div className="p-2.5" style={{ borderTop: "1px solid var(--cf-edge)" }}>
-        <button
-          onClick={onNewProject}
-          className="aero-btn aero-btn--cyan w-full uppercase tracking-widest font-bold px-3 py-2.5 text-[11px] inline-flex items-center justify-center gap-1.5"
-        >
-          <Icon icon={faPlus} style={{ fontSize: 11 }} /> New project
+        <button type="button" onClick={onNewProject} className="pr-newkey">
+          <Icon
+            icon={faPlus}
+            className="pr-newkey-plus"
+            style={{ fontSize: 11 }}
+          />
+          New project
         </button>
       </div>
     </div>
