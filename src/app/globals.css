@@ -385,8 +385,12 @@ input[type="number"]:focus {
   }
 }
 .view-swap {
-  animation: view-swap-in 0.42s var(--ease-expo) both;
-  will-change: transform, opacity;
+  /* `backwards` (not `both`): apply the 0% frame before the run so there's no
+     mount flash, but DON'T retain the transform afterwards. A lingering
+     transform (or will-change: transform) would make this element the
+     containing block for the fixed-positioned dnd-kit DragOverlay, offsetting
+     dragged cards from the pointer. Clearing it after the run avoids that. */
+  animation: view-swap-in 0.42s var(--ease-expo) backwards;
 }
 @media (prefers-reduced-motion: reduce) {
   .view-swap {
