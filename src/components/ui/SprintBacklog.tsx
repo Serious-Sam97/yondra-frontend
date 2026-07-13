@@ -17,6 +17,7 @@ import {
   faBolt,
   faCalendarDays,
   faChartLine,
+  faChevronDown,
   faFlagCheckered,
   faGripVertical,
   faLayerGroup,
@@ -307,8 +308,19 @@ function Group({
       <div className="flex items-center gap-2 px-3 py-2.5">
         <button
           onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
           className="cf-mono flex items-center gap-2 cursor-pointer flex-1 min-w-0 text-left"
         >
+          <Icon
+            icon={faChevronDown}
+            className="flex-shrink-0"
+            style={{
+              fontSize: "9px",
+              color: "var(--cf-text-muted)",
+              transition: "transform 300ms cubic-bezier(0.4, 0, 0.2, 1)",
+              transform: open ? "rotate(0deg)" : "rotate(-90deg)",
+            }}
+          />
           <span
             className="cf-led flex-shrink-0"
             style={{
@@ -340,10 +352,17 @@ function Group({
       </div>
       {subheader}
 
-      {/* Droppable body — dropping anywhere here reassigns the ticket to this group */}
+      {/* Droppable body — dropping anywhere here reassigns the ticket to this group.
+          Collapse is animated via grid-template-rows 0fr→1fr (animates to auto height). */}
       <div ref={setNodeRef}>
-        {open && (
-          <div>
+        <div
+          className="grid"
+          style={{
+            gridTemplateRows: open ? "1fr" : "0fr",
+            transition: "grid-template-rows 300ms cubic-bezier(0.4, 0, 0.2, 1)",
+          }}
+        >
+          <div className="overflow-hidden min-h-0">
             {cards.length === 0 && (
               <p
                 className="cf-mono text-center py-4"
@@ -396,7 +415,7 @@ function Group({
               </div>
             )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

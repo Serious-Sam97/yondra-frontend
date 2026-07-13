@@ -366,6 +366,34 @@ input[type="number"]:focus {
   animation: wip-shake 0.46s var(--ease-expo) both;
 }
 
+/* ─── View swap (Board ⇄ List ⇄ Backlog ⇄ Cal ⇄ Stats ⇄ QA) ───────────────── */
+/* Clip the horizontal slide so it never spills a page-level scrollbar.        */
+.view-swap-clip {
+  overflow-x: clip;
+}
+@keyframes view-swap-in {
+  0% {
+    opacity: 0;
+    transform: translateX(var(--view-vx, 44px));
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.view-swap {
+  animation: view-swap-in 0.42s var(--ease-expo) both;
+  will-change: transform, opacity;
+}
+@media (prefers-reduced-motion: reduce) {
+  .view-swap {
+    animation: none;
+  }
+}
+
 /* ─── Card drop column resonance ───────────────────────────────────────────── */
 @keyframes col-ring {
   0% {

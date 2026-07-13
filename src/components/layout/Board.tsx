@@ -90,6 +90,17 @@ const SECTION_COLORS = [
   "#FFC107",
 ];
 
+// Left-to-right order of the view tabs (matches BoardTopBar) — used to pick the
+// slide direction so a new view enters from the side you're moving toward.
+const VIEW_ORDER: BoardViewMode[] = [
+  "kanban",
+  "list",
+  "backlog",
+  "calendar",
+  "analytics",
+  "plans",
+];
+
 // Re-measure droppables on every frame while dragging (not just at drag start). Without
 // this, moving a card into another column mid-drag leaves the target column's rects stale,
 // so its cards don't slide open to make room — the cross-column gap animation is missing.
@@ -151,6 +162,20 @@ export function Board({
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<BoardViewMode>("kanban");
   const [isCommandOpen, setIsCommandOpen] = useState(false);
+  // Direction of the view-swap slide: +1 = moving right through the tabs
+  // (enter from the right), -1 = moving left. Recomputed only when the view
+  // actually changes and frozen in a ref otherwise, so unrelated re-renders
+  // can't overwrite --view-vx on the element while its animation is running.
+  const prevViewRef = useRef<BoardViewMode>(viewMode);
+  const viewDirRef = useRef(1);
+  if (prevViewRef.current !== viewMode) {
+    viewDirRef.current =
+      VIEW_ORDER.indexOf(viewMode) >= VIEW_ORDER.indexOf(prevViewRef.current)
+        ? 1
+        : -1;
+    prevViewRef.current = viewMode;
+  }
+  const viewDir = viewDirRef.current;
   // Section a newly-created card should default into (used by backlog "+ New" → full editor)
   const [newCardSectionId, setNewCardSectionId] = useState<number | null>(null);
 
@@ -920,196 +945,208 @@ export function Board({
         />
       )}
 
-      {/* Calendar view */}
-      {viewMode === "calendar" && (
-        <CalendarView
-          cards={boardCards}
-          sections={boardSections}
-          onCardClick={handleClick}
-        />
-      )}
-
-      {/* Analytics view */}
-      {viewMode === "analytics" && (
-        <AnalyticsView cards={boardCards} sections={boardSections} />
-      )}
-
-      {/* QA — test-plan overview (cross-card suites) */}
-      {viewMode === "plans" && qaEnabled && (
-        <TestPlansOverview
-          boardId={id}
-          onCaseClick={(cardId) => {
-            const c = boardCards.find((x) => x.id === cardId);
-            if (c) handleClick(c);
-          }}
-        />
-      )}
-
-      {/* List view */}
-      {viewMode === "list" && (
-        <ListView
-          cards={boardCards.filter(matchesFilters)}
-          sections={boardSections}
-          users={boardUsers}
-          onCardClick={handleClick}
-          boardType={type}
-          currency={currency}
-        />
-      )}
-
-      {/* Backlog view — Scrum: sprint planning; other board types: reserved-section parking lot */}
-      {viewMode === "backlog" &&
-        (type === "scrum" ? (
-          <SprintBacklog
-            sprints={sprints}
-            cards={boardCards.filter(matchesFilters)}
-            canManage={!isReadOnly}
-            onAssignSprint={handleAssignSprint}
-            onCreateSprint={handleCreateSprint}
-            onStartSprint={handleStartSprint}
-            onDeleteSprint={handleDeleteSprint}
-            onUpdateSprintDates={handleUpdateSprintDates}
-            onQuickCreate={handleScrumQuickCreate}
-            onCardClick={handleClick}
-            onOpenReport={openReport}
-          />
-        ) : (
-          <BacklogView
-            cards={backlogCards.filter(matchesFilters)}
-            users={boardUsers}
-            onCardClick={handleClick}
-            onAddToBoard={handleAddToBoard}
-            onQuickCreate={handleQuickCreateBacklog}
-            onOpenEditor={handleOpenBacklogEditor}
-            canPromote={boardSections.length > 0}
-            isReadOnly={isReadOnly}
-          />
-        ))}
-
-      {/* Scrum: compact active-sprint status bar (Board view shows the active sprint only) */}
-      {type === "scrum" &&
-        (viewMode === "kanban" || viewMode === "list") &&
-        activeSprint && (
-          <SprintStatusBar
-            sprint={activeSprint}
-            sections={boardSections}
-            sprintCards={boardCards.filter(
-              (c) => c.sprint_id === activeSprint.id,
-            )}
-            canManage={!isReadOnly}
-            onComplete={setCompletingSprint}
-            onOpenReport={openReport}
-          />
-        )}
-
-      {/* Scrum: no active sprint → prompt to plan one in the Backlog */}
-      {type === "scrum" && viewMode === "kanban" && !activeSprint && (
-        <div className="glass-panel flex flex-col items-center gap-3 text-center px-6 py-14 rounded-2xl">
-          <Icon
-            icon={faLayerGroup}
-            style={{ fontSize: 28, color: "var(--cf-text-muted)" }}
-          />
-          <p
-            className="cf-mono uppercase tracking-widest font-bold"
-            style={{ fontSize: "13px", color: "var(--cf-text)" }}
-          >
-            No active sprint
-          </p>
-          <p
-            className="cf-mono"
-            style={{ fontSize: "11px", color: "var(--cf-text-muted)" }}
-          >
-            Plan and start a sprint from the Backlog to begin.
-          </p>
-          <button
-            onClick={() => setViewMode("backlog")}
-            className="aero-btn aero-btn--cyan text-[10px] uppercase tracking-widest font-bold px-4 py-2 cursor-pointer inline-flex items-center gap-1.5"
-          >
-            <Icon icon={faLayerGroup} style={{ fontSize: "9px" }} /> Go to
-            Backlog
-          </button>
-        </div>
-      )}
-
-      {viewMode === "kanban" && !(type === "scrum" && !activeSprint) && (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={collisionDetectionStrategy}
-          measuring={KANBAN_MEASURING}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-          onDragCancel={handleDragCancel}
+      {/* View body — keyed by viewMode so each switch replays an entrance animation.
+          Outer clip stops the horizontal slide from spilling a page scrollbar. */}
+      <div className="view-swap-clip">
+        <div
+          key={viewMode}
+          className="view-swap"
+          style={{ "--view-vx": `${viewDir * 44}px` } as React.CSSProperties}
         >
-          <div
-            ref={kanbanRef}
-            className="flex gap-5 items-start overflow-x-auto pb-4"
-            style={{
-              transformOrigin: "center center",
-              willChange: "transform",
-            }}
-          >
-            {boardSections.map((section, i) => (
-              <Section
-                key={section.id}
-                handleClick={handleClick}
-                cards={sectionCardsById.get(section.id) ?? []}
-                id={section.id}
-                name={section.name}
-                color={SECTION_COLORS[i % SECTION_COLORS.length]}
-                parent={null}
-                onDelete={isReadOnly ? undefined : handleRequestDeleteSection}
-                onRename={isReadOnly ? undefined : handleRenameSection}
-                wipLimit={wipLimits[section.id] ?? null}
-                onSetWipLimit={isReadOnly ? undefined : handleSetWipLimit}
-                boardType={type}
-                currency={currency}
-                agingHours={section.aging_hours ?? null}
+          {/* Calendar view */}
+          {viewMode === "calendar" && (
+            <CalendarView
+              cards={boardCards}
+              sections={boardSections}
+              onCardClick={handleClick}
+            />
+          )}
+
+          {/* Analytics view */}
+          {viewMode === "analytics" && (
+            <AnalyticsView cards={boardCards} sections={boardSections} />
+          )}
+
+          {/* QA — test-plan overview (cross-card suites) */}
+          {viewMode === "plans" && qaEnabled && (
+            <TestPlansOverview
+              boardId={id}
+              onCaseClick={(cardId) => {
+                const c = boardCards.find((x) => x.id === cardId);
+                if (c) handleClick(c);
+              }}
+            />
+          )}
+
+          {/* List view */}
+          {viewMode === "list" && (
+            <ListView
+              cards={boardCards.filter(matchesFilters)}
+              sections={boardSections}
+              users={boardUsers}
+              onCardClick={handleClick}
+              boardType={type}
+              currency={currency}
+            />
+          )}
+
+          {/* Backlog view — Scrum: sprint planning; other board types: reserved-section parking lot */}
+          {viewMode === "backlog" &&
+            (type === "scrum" ? (
+              <SprintBacklog
+                sprints={sprints}
+                cards={boardCards.filter(matchesFilters)}
+                canManage={!isReadOnly}
+                onAssignSprint={handleAssignSprint}
+                onCreateSprint={handleCreateSprint}
+                onStartSprint={handleStartSprint}
+                onDeleteSprint={handleDeleteSprint}
+                onUpdateSprintDates={handleUpdateSprintDates}
+                onQuickCreate={handleScrumQuickCreate}
+                onCardClick={handleClick}
+                onOpenReport={openReport}
+              />
+            ) : (
+              <BacklogView
+                cards={backlogCards.filter(matchesFilters)}
+                users={boardUsers}
+                onCardClick={handleClick}
+                onAddToBoard={handleAddToBoard}
+                onQuickCreate={handleQuickCreateBacklog}
+                onOpenEditor={handleOpenBacklogEditor}
+                canPromote={boardSections.length > 0}
+                isReadOnly={isReadOnly}
               />
             ))}
 
-            {!isReadOnly && (
-              <AddSectionColumn
-                isAddingSection={isAddingSection}
-                setIsAddingSection={setIsAddingSection}
-                newSectionName={newSectionName}
-                setNewSectionName={setNewSectionName}
-                sectionError={sectionError}
-                setSectionError={setSectionError}
-                onAddSection={handleAddSection}
+          {/* Scrum: compact active-sprint status bar (Board view shows the active sprint only) */}
+          {type === "scrum" &&
+            (viewMode === "kanban" || viewMode === "list") &&
+            activeSprint && (
+              <SprintStatusBar
+                sprint={activeSprint}
+                sections={boardSections}
+                sprintCards={boardCards.filter(
+                  (c) => c.sprint_id === activeSprint.id,
+                )}
+                canManage={!isReadOnly}
+                onComplete={setCompletingSprint}
+                onOpenReport={openReport}
               />
             )}
-          </div>
 
-          <DragOverlay dropAnimation={null}>
-            {activeCard ? (
+          {/* Scrum: no active sprint → prompt to plan one in the Backlog */}
+          {type === "scrum" && viewMode === "kanban" && !activeSprint && (
+            <div className="glass-panel flex flex-col items-center gap-3 text-center px-6 py-14 rounded-2xl">
+              <Icon
+                icon={faLayerGroup}
+                style={{ fontSize: 28, color: "var(--cf-text-muted)" }}
+              />
+              <p
+                className="cf-mono uppercase tracking-widest font-bold"
+                style={{ fontSize: "13px", color: "var(--cf-text)" }}
+              >
+                No active sprint
+              </p>
+              <p
+                className="cf-mono"
+                style={{ fontSize: "11px", color: "var(--cf-text-muted)" }}
+              >
+                Plan and start a sprint from the Backlog to begin.
+              </p>
+              <button
+                onClick={() => setViewMode("backlog")}
+                className="aero-btn aero-btn--cyan text-[10px] uppercase tracking-widest font-bold px-4 py-2 cursor-pointer inline-flex items-center gap-1.5"
+              >
+                <Icon icon={faLayerGroup} style={{ fontSize: "9px" }} /> Go to
+                Backlog
+              </button>
+            </div>
+          )}
+
+          {viewMode === "kanban" && !(type === "scrum" && !activeSprint) && (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={collisionDetectionStrategy}
+              measuring={KANBAN_MEASURING}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragEnd={handleDragEnd}
+              onDragCancel={handleDragCancel}
+            >
               <div
+                ref={kanbanRef}
+                className="flex gap-5 items-start overflow-x-auto pb-4"
                 style={{
-                  transform: "rotate(4deg) skewX(-1.5deg)",
-                  opacity: 0.97,
-                  filter:
-                    "drop-shadow(0 18px 28px rgba(0,0,0,0.65)) drop-shadow(0 6px 10px rgba(0,0,0,0.4))",
-                  transition: "none",
+                  transformOrigin: "center center",
+                  willChange: "transform",
                 }}
               >
-                <Card
-                  {...activeCard}
-                  overlay
-                  boardType={type}
-                  currency={currency}
-                  color={
-                    SECTION_COLORS[
-                      sections.findIndex(
-                        (s) => s.id === activeCard.section_id,
-                      ) % SECTION_COLORS.length
-                    ] ?? SECTION_COLORS[0]
-                  }
-                />
+                {boardSections.map((section, i) => (
+                  <Section
+                    key={section.id}
+                    handleClick={handleClick}
+                    cards={sectionCardsById.get(section.id) ?? []}
+                    id={section.id}
+                    name={section.name}
+                    color={SECTION_COLORS[i % SECTION_COLORS.length]}
+                    parent={null}
+                    onDelete={
+                      isReadOnly ? undefined : handleRequestDeleteSection
+                    }
+                    onRename={isReadOnly ? undefined : handleRenameSection}
+                    wipLimit={wipLimits[section.id] ?? null}
+                    onSetWipLimit={isReadOnly ? undefined : handleSetWipLimit}
+                    boardType={type}
+                    currency={currency}
+                    agingHours={section.aging_hours ?? null}
+                  />
+                ))}
+
+                {!isReadOnly && (
+                  <AddSectionColumn
+                    isAddingSection={isAddingSection}
+                    setIsAddingSection={setIsAddingSection}
+                    newSectionName={newSectionName}
+                    setNewSectionName={setNewSectionName}
+                    sectionError={sectionError}
+                    setSectionError={setSectionError}
+                    onAddSection={handleAddSection}
+                  />
+                )}
               </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
-      )}
+
+              <DragOverlay dropAnimation={null}>
+                {activeCard ? (
+                  <div
+                    style={{
+                      transform: "rotate(4deg) skewX(-1.5deg)",
+                      opacity: 0.97,
+                      filter:
+                        "drop-shadow(0 18px 28px rgba(0,0,0,0.65)) drop-shadow(0 6px 10px rgba(0,0,0,0.4))",
+                      transition: "none",
+                    }}
+                  >
+                    <Card
+                      {...activeCard}
+                      overlay
+                      boardType={type}
+                      currency={currency}
+                      color={
+                        SECTION_COLORS[
+                          sections.findIndex(
+                            (s) => s.id === activeCard.section_id,
+                          ) % SECTION_COLORS.length
+                        ] ?? SECTION_COLORS[0]
+                      }
+                    />
+                  </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          )}
+        </div>
+      </div>
 
       {/* FAB */}
       {!isReadOnly && (
