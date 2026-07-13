@@ -13,6 +13,7 @@ import { CommentsSection } from "@/components/ui/card-edit/CommentsSection";
 import { Lightbox } from "@/components/ui/card-edit/Lightbox";
 import { PropertiesPanel } from "@/components/ui/card-edit/PropertiesPanel";
 import { WhatsAppSection } from "@/components/ui/card-edit/WhatsAppSection";
+import { CardSummary } from "@/components/ui/CardSummary";
 import Icon from "@/components/ui/Icon";
 import RichTextEditor from "@/components/ui/RichTextEditor";
 import { useCardAttachments } from "@/hooks/useCardAttachments";
@@ -465,6 +466,13 @@ const CardEdit: React.FC<CardEditProps> = ({
       />
     </div>
   );
+
+  // AI thread summary — a read-only assist, available on any saved card once a live
+  // backend exists (hidden for new/demo cards, and dark server-side without a key).
+  const summaryPanel =
+    !isNew && !isDemo && !!boardId && !!id ? (
+      <CardSummary boardId={boardId} cardId={id} />
+    ) : null;
 
   // Header status readouts — the card's state at a glance, cockpit style.
   const readout = (label: string, val: string, accent?: string) => (
@@ -1043,6 +1051,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                 <div className="max-w-[720px] mx-auto flex flex-col gap-5">
                   {renderTitle()}
                   {renderDescription()}
+                  {summaryPanel}
                   <div
                     className="border-t mt-1 pt-6"
                     style={{ borderColor: "var(--cf-edge)" }}
@@ -1068,6 +1077,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                 <>
                   {renderTitle()}
                   {renderDescription()}
+                  {summaryPanel}
                   {propertiesPanel}
                   {renderSave()}
                 </>

@@ -1330,6 +1330,24 @@ export async function applyPlanning(
   });
 }
 
+// --- AI assist ---
+
+// Kicks off a streamed card-thread summary. The heavy work runs server-side and
+// streams back over the board channel as ai.token/ai.done frames — this call just
+// arms the job and echoes the request_id. The caller mints the id and sets its
+// listener filter BEFORE calling, so no early token is missed. 202 on success;
+// 503 (ApiError) when the server has no Anthropic key configured.
+export async function summarizeCard(
+  boardId: number,
+  cardId: number | string,
+  requestId: string,
+): Promise<{ request_id: string }> {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/ai/summarize`, {
+    method: "POST",
+    body: JSON.stringify({ request_id: requestId }),
+  });
+}
+
 // --- Sentinel (QA) ---
 
 const qaBase = (boardId: number, cardId: number | string) =>
