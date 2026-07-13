@@ -49,7 +49,13 @@ import type {
 } from "@/interfaces/BoardInterface";
 import type { CardInterface } from "@/interfaces/CardInterface";
 import type { TagInterface } from "@/interfaces/TagInterface";
-import { ApiError, createCard, reorderCards, updateCard } from "@/lib/api";
+import {
+  ApiError,
+  createCard,
+  fetchBoard,
+  reorderCards,
+  updateCard,
+} from "@/lib/api";
 import { toNumber } from "@/lib/currency";
 import { demoCreateCard, demoUpdateCard } from "@/lib/demoStorage";
 import { hapticDrop, hapticPick } from "@/lib/haptics";
@@ -64,6 +70,7 @@ import { BacklogView } from "../ui/BacklogView";
 import BoardChat from "../ui/BoardChat";
 import { ArchiveCardModal, DeleteSectionModal } from "../ui/BoardConfirmModals";
 import { BoardFilterStrip } from "../ui/BoardFilterStrip";
+import { BoardStandupModal } from "../ui/BoardStandupModal";
 import { BoardToolsDock } from "../ui/BoardToolsDock";
 import { BoardTopBar, type BoardViewMode } from "../ui/BoardTopBar";
 import { CalendarView } from "../ui/CalendarView";
@@ -160,8 +167,13 @@ export function Board({
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCard, setActiveCard] = useState<CardInterface | null>(null);
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
+  const [isStandupOpen, setIsStandupOpen] = useState(false);
   const [viewMode, setViewMode] = useState<BoardViewMode>("kanban");
   const [isCommandOpen, setIsCommandOpen] = useState(false);
+  // Subtasks (child cards) are hidden from the board by default; this toggle reveals them
+  // in their own columns. They're fetched + merged once on first enable.
+  const [showSubtasks, setShowSubtasks] = useState(false);
+  const subtasksLoadedRef = useRef(false);
   // Direction of the view-swap slide: +1 = moving right through the tabs
   // (enter from the right), -1 = moving left. Recomputed only when the view
   // actually changes and frozen in a ref otherwise, so unrelated re-renders
@@ -319,15 +331,20 @@ export function Board({
     [sections, backlogSection],
   );
   const backlogCards = backlogSection
-    ? cardsProp.filter((c) => c.section_id === backlogSection.id)
+    ? cardsProp.filter(
+        (c) =>
+          c.section_id === backlogSection.id &&
+          (showSubtasks || !c.parent_card_id),
+      )
     : [];
-  const boardCards = useMemo(
-    () =>
-      backlogSection
-        ? cardsProp.filter((c) => c.section_id !== backlogSection.id)
-        : cardsProp,
-    [cardsProp, backlogSection],
-  );
+  // Subtasks are gated at render (not in state) so realtime can hold them while the
+  // toggle is off; flipping the toggle reveals them without a refetch after the first.
+  const boardCards = useMemo(() => {
+    const base = backlogSection
+      ? cardsProp.filter((c) => c.section_id !== backlogSection.id)
+      : cardsProp;
+    return showSubtasks ? base : base.filter((c) => !c.parent_card_id);
+  }, [cardsProp, backlogSection, showSubtasks]);
 
   // --- Section management ---
   const {
@@ -420,6 +437,12 @@ export function Board({
   }, [boardSections, boardCards, matchesFilters, matchesSprint]);
 
   const totalCards = boardCards.length;
+  // Total subtasks across the board (epic rollup counts) — drives the toggle's badge so
+  // hidden subtasks are discoverable.
+  const subtaskTotal = useMemo(
+    () => cardsProp.reduce((n, c) => n + (c.subtasks_count ?? 0), 0),
+    [cardsProp],
+  );
   const doneSection = boardSections.find(
     (s) => s.name?.toLowerCase() === "done",
   );
@@ -453,6 +476,72 @@ export function Board({
   const handleClick = useCallback(
     (card: CardInterface) => openCard(card),
     [openCard],
+  );
+
+  // Fetch + merge subtasks once (annotating each with its epic's ticket key for the
+  // "↳ epic" chip). Idempotent — rendering is gated by boardCards, not by state.
+  const loadSubtasks = useCallback(async () => {
+    if (subtasksLoadedRef.current || isDemo) return;
+    subtasksLoadedRef.current = true;
+    try {
+      const board = await fetchBoard(id, undefined, true);
+      const all = (board.cards ?? []) as CardInterface[];
+      const keyById = new Map(all.map((c) => [c.id, c.ticket_key]));
+      const subs = all
+        .filter((c) => c.parent_card_id)
+        .map((c) => ({
+          ...c,
+          parent_ticket_key: c.parent_card_id
+            ? (keyById.get(c.parent_card_id) ?? null)
+            : null,
+        }));
+      setCards((prev) => {
+        const have = new Set(prev.map((c) => c.id));
+        return [...prev, ...subs.filter((c) => !have.has(c.id))];
+      });
+    } catch {
+      subtasksLoadedRef.current = false; // let a later attempt retry
+    }
+  }, [isDemo, id]);
+
+  // Toggle on-board subtasks; load them on first reveal.
+  const toggleShowSubtasks = useCallback(() => {
+    setShowSubtasks((v) => !v);
+    void loadSubtasks();
+  }, [loadSubtasks]);
+
+  // Deep-link fallback: a `?card=<id>` that isn't in board state may be a HIDDEN subtask
+  // (e.g. a shared subtask link opened cold). Load subtasks + reveal them so the modal
+  // routing can resolve it once they merge in.
+  useEffect(() => {
+    if (isDemo || subtasksLoadedRef.current) return;
+    const cardId = Number(
+      new URLSearchParams(window.location.search).get("card"),
+    );
+    if (!cardId || cardsProp.some((c) => c.id === cardId)) return;
+    setShowSubtasks(true);
+    void loadSubtasks();
+  }, [cardsProp, isDemo, loadSubtasks]);
+
+  // Open a subtask as its own card — merge it into board state first so it resolves
+  // (and stays live) even when the board toggle is off.
+  const handleOpenSubtask = useCallback(
+    (subtask: CardInterface) => {
+      setCards((prev) =>
+        prev.some((c) => c.id === subtask.id) ? prev : [...prev, subtask],
+      );
+      openCard(subtask);
+    },
+    [openCard],
+  );
+
+  // Open a subtask's parent epic — always a top-level card in board state.
+  const handleOpenParent = useCallback(
+    (parentId: number) => {
+      const parent = cardsProp.find((c) => c.id === parentId);
+      if (parent) openCard(parent);
+    },
+    [cardsProp, openCard],
   );
 
   // Stable per-section handler for the delete-confirm modal (Section passes its
@@ -916,6 +1005,9 @@ export function Board({
         doneCards={doneCards}
         viewMode={viewMode}
         qaEnabled={qaEnabled}
+        showSubtasks={showSubtasks}
+        subtaskTotal={subtaskTotal}
+        onToggleSubtasks={toggleShowSubtasks}
         onSelectView={(key) => {
           if (key === "backlog" && type !== "scrum")
             ensureBacklogSection().catch(() => {});
@@ -1189,7 +1281,16 @@ export function Board({
         onOpenChat={handleOpenChat}
         onOpenArchived={handleOpenArchived}
         onOpenBackground={() => setIsBgOpen(true)}
+        onOpenStandup={() => setIsStandupOpen(true)}
       />
+
+      {/* AI standup / sprint summary modal */}
+      {isStandupOpen && (
+        <BoardStandupModal
+          boardId={id}
+          onClose={() => setIsStandupOpen(false)}
+        />
+      )}
 
       {/* Tags modal */}
       {isTagsOpen && (
@@ -1331,6 +1432,8 @@ export function Board({
               key={selectedCard?.id ?? "new"}
               currentUserId={currentUserId}
               qaEnabled={qaEnabled}
+              onOpenSubtask={handleOpenSubtask}
+              onOpenParent={handleOpenParent}
               card={liveSelectedCard}
               sections={sections}
               users={boardUsers}

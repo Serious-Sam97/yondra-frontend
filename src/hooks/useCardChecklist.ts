@@ -64,6 +64,41 @@ export function useCardChecklist({
     setNewChecklistText("");
   };
 
+  // Bulk-add items (used by AI "Generate checklist" → apply). Creates each via the
+  // same path as manual add so the editor's list stays consistent.
+  const addItems = async (texts: string[]) => {
+    const clean = texts.map((t) => t.trim()).filter(Boolean);
+    if (clean.length === 0) return;
+    if (isDemo) {
+      setChecklistItems((prev) => [
+        ...prev,
+        ...clean.map((text) =>
+          demoCreateChecklistItem(demoId, id as number, text),
+        ),
+      ]);
+    } else if (boardId && id) {
+      try {
+        const created: ChecklistItem[] = [];
+        for (const text of clean) {
+          created.push(await createChecklistItem(boardId, id, text));
+        }
+        setChecklistItems((prev) => [...prev, ...created]);
+      } catch {
+        reportActionError("Could not add all items — try again");
+      }
+    } else {
+      setChecklistItems((prev) => [
+        ...prev,
+        ...clean.map((text, i) => ({
+          id: Date.now() + i,
+          text,
+          is_done: false,
+          position: prev.length + i,
+        })),
+      ]);
+    }
+  };
+
   const handleToggleItem = async (item: ChecklistItem) => {
     const updated = { ...item, is_done: !item.is_done };
     if (updated.is_done) {
@@ -112,6 +147,7 @@ export function useCardChecklist({
     newChecklistText,
     setNewChecklistText,
     handleAddChecklistItem,
+    addItems,
     handleToggleItem,
     handleDeleteItem,
     doneCount,

@@ -8,9 +8,11 @@ import {
   faRotate,
   faTrash,
 } from "@fortawesome/free-solid-svg-icons";
+import { useState } from "react";
 import Icon from "@/components/ui/Icon";
 import type { Template } from "@/hooks/useCardTemplates";
 import type { CardDocument, CardLink } from "@/interfaces/CardInterface";
+import { ApiError, suggestStoryPoints, suggestTriage } from "@/lib/api";
 import { currencySymbol, maskMoneyInput } from "@/lib/currency";
 import { FIBONACCI } from "@/lib/estimation";
 
@@ -110,6 +112,9 @@ const subLabel = (t: string) => (
 
 interface PropertiesPanelProps {
   isReadOnly: boolean;
+  // Present on saved cards — enables the AI story-point suggestion on Scrum boards.
+  boardId?: number;
+  cardId?: number | string;
   // Section
   sections: { id: number; name: string }[];
   backlogSectionId?: number;
@@ -175,6 +180,8 @@ interface PropertiesPanelProps {
 // live in CardEdit's hooks and arrive via props.
 export function PropertiesPanel({
   isReadOnly,
+  boardId,
+  cardId,
   sections,
   backlogSectionId,
   sectionId,
@@ -229,8 +236,94 @@ export function PropertiesPanel({
   const boardSections = sections.filter((s) => s.id !== backlogSectionId);
   const currentStepIdx = boardSections.findIndex((s) => s.id === sectionId);
 
+  // AI story-point suggestion (Scrum). Fills the picker + shows a one-line rationale.
+  const [suggesting, setSuggesting] = useState(false);
+  const [rationale, setRationale] = useState<string | null>(null);
+  const [suggestErr, setSuggestErr] = useState<string | null>(null);
+  const canSuggest = !isReadOnly && !!boardId && !!cardId;
+  const suggestPoints = async () => {
+    if (!boardId || !cardId || suggesting) return;
+    setSuggesting(true);
+    setSuggestErr(null);
+    setRationale(null);
+    try {
+      const r = await suggestStoryPoints(boardId, cardId);
+      setStoryPoints(String(r.points));
+      setRationale(r.rationale || null);
+    } catch (e) {
+      setSuggestErr(
+        e instanceof ApiError && e.status === 503
+          ? "AI isn't configured on this server."
+          : "Couldn't estimate — try again.",
+      );
+    } finally {
+      setSuggesting(false);
+    }
+  };
+
+  // AI triage — applies suggested labels (additive), priority and assignee.
+  const [triaging, setTriaging] = useState(false);
+  const [triageMsg, setTriageMsg] = useState<string | null>(null);
+  const [triageErr, setTriageErr] = useState<string | null>(null);
+  const runTriage = async () => {
+    if (!boardId || !cardId || triaging) return;
+    setTriaging(true);
+    setTriageErr(null);
+    setTriageMsg(null);
+    try {
+      const r = await suggestTriage(boardId, cardId);
+      // Additive: only add suggested tags not already on the card (never remove).
+      for (const id of r.tag_ids) {
+        if (!selectedTagIds.includes(id)) toggleTag(id);
+      }
+      if (r.priority) setPriority(r.priority);
+      if (r.assignee_id) setAssignedUserId(r.assignee_id);
+      setTriageMsg(r.rationale || "Applied.");
+    } catch (e) {
+      setTriageErr(
+        e instanceof ApiError && e.status === 503
+          ? "AI isn't configured on this server."
+          : "Couldn't triage — try again.",
+      );
+    } finally {
+      setTriaging(false);
+    }
+  };
+
   return (
     <div className="flex flex-col">
+      {canSuggest && (
+        <div className="flex flex-col gap-1 pt-3">
+          <button
+            type="button"
+            onClick={runTriage}
+            disabled={triaging}
+            className="ai-btn self-start"
+          >
+            {triaging ? "Triaging…" : "AI triage"}
+          </button>
+          {triageMsg && (
+            <span
+              className="cf-mono"
+              style={{
+                fontSize: "10px",
+                color: "var(--cf-text-dim)",
+                lineHeight: 1.4,
+              }}
+            >
+              {triageMsg}
+            </span>
+          )}
+          {triageErr && (
+            <span
+              className="cf-mono"
+              style={{ fontSize: "10px", color: "var(--cf-red)" }}
+            >
+              {triageErr}
+            </span>
+          )}
+        </div>
+      )}
       {/* Pipeline / Column — the board's stages as a vertical stepper: passed
           stages glow dim phosphor, the current one amber, the rest unlit. */}
       <div className="flex flex-col gap-2.5 py-4">
@@ -489,6 +582,38 @@ export function PropertiesPanel({
               ?
             </button>
           </div>
+          {canSuggest && (
+            <div className="flex flex-col gap-1">
+              <button
+                type="button"
+                onClick={suggestPoints}
+                disabled={suggesting}
+                className="ai-btn self-start"
+              >
+                {suggesting ? "Estimating…" : "Suggest"}
+              </button>
+              {rationale && (
+                <span
+                  className="cf-mono"
+                  style={{
+                    fontSize: "10px",
+                    color: "var(--cf-text-dim)",
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {rationale}
+                </span>
+              )}
+              {suggestErr && (
+                <span
+                  className="cf-mono"
+                  style={{ fontSize: "10px", color: "var(--cf-red)" }}
+                >
+                  {suggestErr}
+                </span>
+              )}
+            </div>
+          )}
           {subLabel("Sprint")}
           <select
             disabled={isReadOnly}

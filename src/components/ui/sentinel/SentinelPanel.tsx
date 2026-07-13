@@ -24,8 +24,15 @@ import {
   faTrash,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import Icon from "@/components/ui/Icon";
+import { useCardAi } from "@/hooks/useCardAi";
 import type { useSentinelCard } from "@/hooks/useSentinelCard";
 import { useStepLibrary } from "@/hooks/useStepLibrary";
 import { useTestPlans } from "@/hooks/useTestPlans";
@@ -182,10 +189,12 @@ function localKey() {
 export function SentinelPanel({
   session,
   boardId,
+  cardId,
   canWrite,
 }: {
   session: ReturnType<typeof useSentinelCard>;
   boardId: number;
+  cardId?: number | string;
   canWrite: boolean;
 }) {
   const s = session;
@@ -204,6 +213,44 @@ export function SentinelPanel({
   const library = useStepLibrary(boardId, true);
   const plansLib = useTestPlans(boardId, true);
 
+  // AI test-case generation — streams a Gherkin draft from the card, then creates a new
+  // case seeded with it (auto-selected). Uses the same AiDriver pipeline as the rest.
+  const ai = useCardAi(boardId, cardId, canWrite && !!cardId);
+  const wantSeed = useRef(false);
+  useEffect(() => {
+    if (!wantSeed.current || ai.streaming) return;
+    wantSeed.current = false;
+    const gherkin = ai.text.trim();
+    if (ai.action === "tests" && gherkin && !gherkin.startsWith("# Not enough")) {
+      (async () => {
+        try {
+          const c = await createCase("AI test case");
+          if (c) await saveCase(c.id, { gherkin });
+        } catch {
+          /* the hook surfaces failures via its own busy/error handling */
+        }
+      })();
+    }
+  }, [ai.streaming, ai.action, ai.text, createCase, saveCase]);
+  const generateTests = () => {
+    wantSeed.current = true;
+    ai.run("tests");
+  };
+  const renderAi = (sizeCls: string, label: string) =>
+    canWrite && cardId ? (
+      <button
+        type="button"
+        onClick={generateTests}
+        disabled={ai.streaming || busy}
+        className={`ai-btn ${sizeCls}`}
+      >
+        {ai.streaming ? "Generating…" : label}
+      </button>
+    ) : null;
+  // Compact chip for the tab row; larger button for the empty state.
+  const aiTabButton = renderAi("", "AI case");
+  const aiBigButton = renderAi("ai-btn--lg", "Generate with AI");
+
   // ── Empty state ───────────────────────────────────────────────────────────
   if (cases.length === 0) {
     return (
@@ -219,13 +266,21 @@ export function SentinelPanel({
           verdict.
         </p>
         {canWrite && (
-          <button
-            onClick={() => createCase("New test case")}
-            disabled={busy}
-            className="aero-btn aero-btn--cyan px-5 py-2 uppercase tracking-widest font-bold text-xs disabled:opacity-50 inline-flex items-center gap-2"
-          >
-            <Icon icon={faPlus} /> New test case
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <button
+              onClick={() => createCase("New test case")}
+              disabled={busy}
+              className="aero-btn aero-btn--cyan px-5 py-2 uppercase tracking-widest font-bold text-xs disabled:opacity-50 inline-flex items-center gap-2"
+            >
+              <Icon icon={faPlus} /> New test case
+            </button>
+            {aiBigButton}
+          </div>
+        )}
+        {ai.error && (
+          <p className="cf-mono" style={{ fontSize: "11px", color: "var(--cf-red)" }}>
+            {ai.error}
+          </p>
         )}
       </div>
     );
@@ -275,7 +330,16 @@ export function SentinelPanel({
         canWrite={canWrite}
         busy={busy}
         onNew={() => createCase("New test case")}
+        aiButton={aiTabButton}
       />
+      {ai.error && (
+        <p
+          className="cf-mono px-5 pt-1"
+          style={{ fontSize: "11px", color: "var(--cf-red)" }}
+        >
+          {ai.error}
+        </p>
+      )}
 
       {selected && (
         <CaseDetail
@@ -334,6 +398,7 @@ function CaseTabs({
   canWrite,
   busy,
   onNew,
+  aiButton,
 }: {
   cases: TestCase[];
   selectedCaseId: number | null;
@@ -341,6 +406,7 @@ function CaseTabs({
   canWrite: boolean;
   busy: boolean;
   onNew: () => void;
+  aiButton?: ReactNode;
 }) {
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [ind, setInd] = useState<{ left: number; width: number }>({
@@ -400,13 +466,16 @@ function CaseTabs({
         );
       })}
       {canWrite && (
-        <button
-          onClick={onNew}
-          disabled={busy}
-          className="aero-btn aero-btn--cyan px-3 py-1 uppercase tracking-widest font-bold text-[10px] disabled:opacity-50 ml-auto mb-1.5 flex-shrink-0 inline-flex items-center gap-1.5"
-        >
-          <Icon icon={faPlus} /> New case
-        </button>
+        <div className="ml-auto mb-1.5 flex items-center gap-2 flex-shrink-0">
+          {aiButton}
+          <button
+            onClick={onNew}
+            disabled={busy}
+            className="aero-btn aero-btn--cyan px-3 py-1 uppercase tracking-widest font-bold text-[10px] disabled:opacity-50 flex-shrink-0 inline-flex items-center gap-1.5"
+          >
+            <Icon icon={faPlus} /> New case
+          </button>
+        </div>
       )}
       <div
         style={{

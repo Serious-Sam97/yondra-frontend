@@ -7,6 +7,7 @@ import {
   faCommentDots,
   faPalette,
   faTag,
+  faWandMagicSparkles,
 } from "@fortawesome/free-solid-svg-icons";
 import { type Dispatch, type SetStateAction, useRef } from "react";
 import Icon from "@/components/ui/Icon";
@@ -20,6 +21,7 @@ export const TOOL_COLORS = {
   archived: "#d9a441", // 🗂 manila folder
   background: "#c08bff", // 🎨 artist palette
   config: "#9ca3af", // ⚙ steel gear
+  standup: "#9ece6a", // AI phosphor green
 } as const;
 
 function ToolBtn({
@@ -91,6 +93,7 @@ interface BoardToolsDockProps {
   onOpenChat: () => void;
   onOpenArchived: () => void;
   onOpenBackground: () => void;
+  onOpenStandup: () => void;
 }
 
 // Board tool launchers: the desktop toolbar (vertical on kanban/list, horizontal
@@ -105,6 +108,7 @@ export function BoardToolsDock({
   onOpenChat,
   onOpenArchived,
   onOpenBackground,
+  onOpenStandup,
 }: BoardToolsDockProps) {
   const touchStartY = useRef<number>(0);
 
@@ -136,6 +140,14 @@ export function BoardToolsDock({
               color={TOOL_COLORS.chat}
               label="Chat"
               onClick={onOpenChat}
+            />
+          )}
+          {!isDemo && (
+            <ToolBtn
+              icon={faWandMagicSparkles}
+              color={TOOL_COLORS.standup}
+              label="Standup"
+              onClick={onOpenStandup}
             />
           )}
           <ToolBtn
@@ -180,6 +192,16 @@ export function BoardToolsDock({
                     color: TOOL_COLORS.chat,
                     label: "Chat",
                     onClick: onOpenChat,
+                  },
+                ]
+              : []),
+            ...(!isDemo
+              ? [
+                  {
+                    icon: faWandMagicSparkles,
+                    color: TOOL_COLORS.standup,
+                    label: "Standup",
+                    onClick: onOpenStandup,
                   },
                 ]
               : []),
@@ -279,6 +301,17 @@ export function BoardToolsDock({
                   label="Chat"
                   onClick={() => {
                     onOpenChat();
+                    setIsToolbarOpen(false);
+                  }}
+                />
+              )}
+              {!isDemo && (
+                <MobileToolBtn
+                  icon={faWandMagicSparkles}
+                  color={TOOL_COLORS.standup}
+                  label="Standup"
+                  onClick={() => {
+                    onOpenStandup();
                     setIsToolbarOpen(false);
                   }}
                 />

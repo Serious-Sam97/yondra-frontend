@@ -1,44 +1,35 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiError, summarizeCard } from "@/lib/api";
+import { ApiError, startStandup } from "@/lib/api";
 import { getEcho } from "@/lib/echo";
 
-type AiPayload = {
-  card_id: number;
+type BoardAiPayload = {
+  scope?: string;
+  board_id: number;
   request_id: string;
   delta?: string;
   text?: string;
   message?: string;
 };
-type IncomingEvent = { type: string; payload: AiPayload };
+type IncomingEvent = { type: string; payload: BoardAiPayload };
 
-// One-shot streamed AI summary of a card's thread (description + checklist + comments).
-// Subscribes to the SHARED private `board.{id}` channel — like usePlanningSession, it
-// only detaches its own handler and NEVER leaves the channel (Board owns it). Once a run
-// is armed with a request_id, `ai.token` deltas append until `ai.done`. The request_id
-// is minted in run() and set BEFORE the POST, so the filter is live before the first
-// token can arrive.
-export function useCardSummary(
-  boardId: number | undefined,
-  cardId: number | string | undefined,
-  enabled: boolean,
-) {
+// Board-level streamed AI (the standup / sprint summary). Subscribes to the SHARED
+// private `board.{id}` channel and only accepts scope:'board' frames for the active
+// run — so it never collides with the card-scoped useCardAi on the same channel. Only
+// detaches its own handler; never leaves the channel.
+export function useBoardAi(boardId: number | undefined, enabled: boolean) {
   const [text, setText] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const numericCardId = typeof cardId === "number" ? cardId : Number(cardId);
-  // The active run's id — a ref so the socket handler reads the latest value without
-  // re-subscribing on every token. Null between runs.
   const activeId = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!enabled || !boardId || !numericCardId) return;
+    if (!enabled || !boardId) return;
 
     const channel = getEcho().private(`board.${boardId}`);
     const handler = (e: IncomingEvent) => {
-      if (e.payload.card_id !== numericCardId) return;
+      if (e.payload.scope !== "board") return;
       if (e.payload.request_id !== activeId.current) return;
       if (e.type === "ai.token") {
         setText((prev) => prev + (e.payload.delta ?? ""));
@@ -47,7 +38,7 @@ export function useCardSummary(
         setStreaming(false);
         activeId.current = null;
       } else if (e.type === "ai.error") {
-        setError(e.payload.message ?? "The summary failed.");
+        setError(e.payload.message ?? "That didn't work.");
         setStreaming(false);
         activeId.current = null;
       }
@@ -57,10 +48,10 @@ export function useCardSummary(
     return () => {
       channel.stopListening(".board.event", handler);
     };
-  }, [enabled, boardId, numericCardId]);
+  }, [enabled, boardId]);
 
   const run = useCallback(async () => {
-    if (!boardId || !numericCardId || streaming) return;
+    if (!boardId || streaming) return;
 
     const id =
       typeof crypto !== "undefined" && crypto.randomUUID
@@ -72,17 +63,23 @@ export function useCardSummary(
     setError(null);
     setStreaming(true);
     try {
-      await summarizeCard(boardId, numericCardId, id);
+      await startStandup(boardId, id);
     } catch (e) {
       activeId.current = null;
       setStreaming(false);
       setError(
         e instanceof ApiError && e.status === 503
           ? "AI assist isn't configured on this server."
-          : "Couldn't start the summary — try again.",
+          : "Couldn't start — try again.",
       );
     }
-  }, [boardId, numericCardId, streaming]);
+  }, [boardId, streaming]);
 
-  return { text, streaming, error, run, hasRun: streaming || text !== "" };
+  return {
+    text,
+    streaming,
+    error,
+    run,
+    hasRun: streaming || text !== "" || error !== null,
+  };
 }

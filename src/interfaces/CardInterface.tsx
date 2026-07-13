@@ -82,6 +82,14 @@ export interface SubtaskCard {
   description: string;
   is_done: boolean;
   position: number;
+  // Real board-card fields the subtasks endpoint now returns (epic list renders them).
+  assigned_user?: { id: number; name: string } | null;
+  assigned_user_id?: number | null;
+  due_date?: string | null;
+  priority?: "low" | "medium" | "high" | null;
+  done_at?: string | null;
+  ticket_key?: string;
+  ticket_number?: number | null;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -118,4 +126,9 @@ export interface CardInterface {
   is_done?: boolean;
   ticket_number?: number | null;
   ticket_key?: string;
+  // Epic rollup: how many subtasks this card has, and how many are done.
+  subtasks_count?: number;
+  done_subtasks_count?: number;
+  // Set client-side on a subtask card so the board can show a "↳ epic" chip.
+  parent_ticket_key?: string | null;
 }

@@ -6,6 +6,7 @@ import {
   faChartColumn,
   faLayerGroup,
   faMagnifyingGlass,
+  faSitemap,
   faSquareCheck,
   faTableCells,
 } from "@fortawesome/free-solid-svg-icons";
@@ -33,6 +34,9 @@ interface BoardTopBarProps {
   doneCards: number;
   viewMode: BoardViewMode;
   qaEnabled: boolean;
+  showSubtasks: boolean;
+  subtaskTotal: number;
+  onToggleSubtasks: () => void;
   onSelectView: (view: BoardViewMode) => void;
   onOpenCommand: () => void;
 }
@@ -49,6 +53,9 @@ export function BoardTopBar({
   doneCards,
   viewMode,
   qaEnabled,
+  showSubtasks,
+  subtaskTotal,
+  onToggleSubtasks,
   onSelectView,
   onOpenCommand,
 }: BoardTopBarProps) {
@@ -144,6 +151,48 @@ export function BoardTopBar({
           </button>
         ))}
       </div>
+
+      {/* subtasks reveal toggle — shows child cards in their columns. When there are
+          hidden subtasks it glows phosphor + shows a count so it's discoverable. */}
+      {subtaskTotal > 0 && (
+        <button
+          type="button"
+          onClick={onToggleSubtasks}
+          aria-pressed={showSubtasks}
+          title={
+            showSubtasks
+              ? "Hide subtasks"
+              : `Show ${subtaskTotal} subtask${subtaskTotal === 1 ? "" : "s"} on the board`
+          }
+          className={`bh-key${showSubtasks ? " on" : ""}`}
+          style={
+            !showSubtasks
+              ? {
+                  borderColor: "var(--cf-phosphor)",
+                  color: "var(--cf-phosphor)",
+                  boxShadow: "0 0 8px rgba(120,255,180,0.25)",
+                }
+              : undefined
+          }
+        >
+          <span className="bh-led" />
+          <Icon icon={faSitemap} />
+          Subtasks
+          <span
+            className="cf-mono"
+            style={{
+              marginLeft: 4,
+              padding: "0 5px",
+              borderRadius: 999,
+              fontSize: "9px",
+              background: showSubtasks ? "rgba(0,0,0,0.25)" : "var(--cf-phosphor)",
+              color: showSubtasks ? "var(--cf-text)" : "var(--cf-screen)",
+            }}
+          >
+            {subtaskTotal}
+          </span>
+        </button>
+      )}
 
       {/* right zone: keycap shortcut hints (desktop only) */}
       <div className="bh-right hidden md:flex">

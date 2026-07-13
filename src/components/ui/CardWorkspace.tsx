@@ -54,6 +54,7 @@ export function CardWorkspace(
               <SentinelPanel
                 session={qa}
                 boardId={boardId!}
+                cardId={card?.id}
                 canWrite={!isReadOnly}
               />
             ),

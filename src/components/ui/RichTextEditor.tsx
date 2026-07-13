@@ -461,7 +461,9 @@ export default function RichTextEditor({
   }, [value]);
 
   useEffect(() => {
-    editor?.setEditable(editable);
+    // Pass emitUpdate=false: syncing editability must NOT fire onUpdate, otherwise
+    // every card mount emits a spurious change that marks the card dirty on open.
+    editor?.setEditable(editable, false);
   }, [editor, editable]);
 
   const uploadAndInsert = async (file: File) => {

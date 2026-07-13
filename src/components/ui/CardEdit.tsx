@@ -7,18 +7,21 @@ import {
   faLink,
   faTrash,
 } from "@fortawesome/free-solid-svg-icons";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ChecklistSection } from "@/components/ui/card-edit/ChecklistSection";
 import { CommentsSection } from "@/components/ui/card-edit/CommentsSection";
 import { Lightbox } from "@/components/ui/card-edit/Lightbox";
 import { PropertiesPanel } from "@/components/ui/card-edit/PropertiesPanel";
+import { SubtasksSection } from "@/components/ui/card-edit/SubtasksSection";
 import { WhatsAppSection } from "@/components/ui/card-edit/WhatsAppSection";
-import { CardSummary } from "@/components/ui/CardSummary";
+import { CardAiPanel } from "@/components/ui/CardAiPanel";
 import Icon from "@/components/ui/Icon";
 import RichTextEditor from "@/components/ui/RichTextEditor";
 import { useCardAttachments } from "@/hooks/useCardAttachments";
 import { useCardChecklist } from "@/hooks/useCardChecklist";
 import { useCardComments } from "@/hooks/useCardComments";
+import { type Subtask, useCardSubtasks } from "@/hooks/useCardSubtasks";
 import { useCardLinks } from "@/hooks/useCardLinks";
 import { type Template, useCardTemplates } from "@/hooks/useCardTemplates";
 import { useWhatsappThread } from "@/hooks/useWhatsappThread";
@@ -96,6 +99,11 @@ export interface CardEditProps {
   // Who is looking — drives "mine" state on comment reactions and own-comment
   // actions. 0 (default) disables those affordances (e.g. demo mode).
   currentUserId?: number;
+  // Open a subtask as its own card. Provided by the board (merges the subtask into
+  // board state so it resolves even when hidden); falls back to a deep-link push.
+  onOpenSubtask?: (subtask: CardInterface) => void;
+  // Open this subtask's parent epic card (resolved from board state by id).
+  onOpenParent?: (parentId: number) => void;
 }
 
 const CardEdit: React.FC<CardEditProps> = ({
@@ -126,7 +134,10 @@ const CardEdit: React.FC<CardEditProps> = ({
   qaTab,
   qaStatusColor,
   currentUserId = 0,
+  onOpenSubtask,
+  onOpenParent,
 }) => {
+  const router = useRouter();
   const [id, setId] = useState<number | string>(0);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -144,10 +155,15 @@ const CardEdit: React.FC<CardEditProps> = ({
   const [storyPoints, setStoryPoints] = useState("");
   const [sprintId, setSprintId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<
-    "details" | "checklist" | "comments" | "whatsapp"
+    "details" | "checklist" | "subtasks" | "comments" | "whatsapp"
   >("details");
   // Top-level switch between the card, Planning Poker, and Sentinel (QA).
   const [topTab, setTopTab] = useState<"card" | "planning" | "qa">("card");
+  // Desktop worklog: Checklist + Subtasks are collapsible, starting minimized.
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
+    checklist: true,
+    subtasks: true,
+  });
 
   // Unsaved-changes flag — lights the LED on the header Save button. Set by any
   // edit to a field that only persists via Save; cleared on submit. Checklist,
@@ -192,6 +208,7 @@ const CardEdit: React.FC<CardEditProps> = ({
     newChecklistText,
     setNewChecklistText,
     handleAddChecklistItem,
+    addItems: addChecklistItems,
     handleToggleItem,
     handleDeleteItem,
     doneCount,
@@ -203,6 +220,57 @@ const CardEdit: React.FC<CardEditProps> = ({
     id,
     reportActionError,
   });
+
+  // "Mark done" on a subtask moves it to the board's done column. Match the backend's
+  // fallback (a "Done"-named column) — correct for default boards; custom done columns
+  // degrade to the legacy is_done flag (still counted in the rollup).
+  const doneSectionId = sections.find(
+    (s) => s.name.trim().toLowerCase() === "done",
+  )?.id;
+
+  const {
+    subtasks,
+    newSubtaskName,
+    setNewSubtaskName,
+    loadingSubtasks,
+    handleAddSubtask,
+    handleMarkDone,
+    isSubtaskDone,
+    doneSubtasks,
+    aiBreakdown,
+    aiBreaking,
+    aiRationale,
+    aiError: subtaskAiError,
+    canAiBreakdown,
+  } = useCardSubtasks({
+    isNew: card === null,
+    isDemo,
+    demoId,
+    boardId,
+    card,
+    id,
+    doneSectionId,
+    reportActionError,
+  });
+
+  // Open a subtask as its own card — prefer the board-provided handler (it merges the
+  // full subtask into board state so it resolves even while hidden); else deep-link.
+  // Runtime subtasks come from the API as full cards, so the cast is safe. Stamp the
+  // epic's ticket key so the opened subtask can label its own "part of …" back-link.
+  const openSubtask = (s: Subtask) => {
+    const enriched = {
+      ...s,
+      parent_ticket_key: card?.ticket_key,
+    } as unknown as CardInterface;
+    if (onOpenSubtask) onOpenSubtask(enriched);
+    else if (boardId) router.push(`/boards/${boardId}?card=${s.id}`);
+  };
+
+  // Open this subtask's parent epic card.
+  const openParent = (parentId: number) => {
+    if (onOpenParent) onOpenParent(parentId);
+    else if (boardId) router.push(`/boards/${boardId}?card=${parentId}`);
+  };
 
   const {
     links,
@@ -390,11 +458,16 @@ const CardEdit: React.FC<CardEditProps> = ({
     setDirty(false);
   };
 
-  const tabs: Array<"details" | "checklist" | "comments" | "whatsapp"> = isNew
+  // Subtasks are one level deep: a card that is itself a subtask shows no subtasks surface.
+  const isSubtask = !!card?.parent_card_id;
+  const allTabs: Array<
+    "details" | "checklist" | "subtasks" | "comments" | "whatsapp"
+  > = isNew
     ? []
     : waThread
-      ? ["details", "checklist", "comments", "whatsapp"]
-      : ["details", "checklist", "comments"];
+      ? ["details", "checklist", "subtasks", "comments", "whatsapp"]
+      : ["details", "checklist", "subtasks", "comments"];
+  const tabs = allTabs.filter((t) => t !== "subtasks" || !isSubtask);
 
   // Measure tab button positions for sliding indicator
   useEffect(() => {
@@ -433,24 +506,44 @@ const CardEdit: React.FC<CardEditProps> = ({
 
   // Big hero title
   const renderTitle = () => (
-    <textarea
-      ref={titleRef}
-      autoFocus={isNew || !isDesktop}
-      placeholder="What needs to be done?"
-      rows={2}
-      disabled={isReadOnly}
-      style={{ color: "var(--cf-text)", caretColor: "var(--cf-phosphor)" }}
-      className="w-full bg-transparent text-2xl lg:text-[28px] font-bold placeholder-white/25 focus:outline-none resize-none leading-tight disabled:opacity-70 flex-shrink-0 px-1 pt-1"
-      value={name}
-      onChange={(e) => {
-        setDirty(true);
-        setName(e.target.value);
-        titleRef.current?.animate(
-          [{ filter: "blur(1.4px)" }, { filter: "blur(0)" }],
-          { duration: 90, easing: "ease-out" },
-        );
-      }}
-    />
+    <div className="flex flex-col gap-1 flex-shrink-0">
+      {/* Subtask → quick link back to its epic card */}
+      {isSubtask && card?.parent_card_id && (
+        <button
+          type="button"
+          onClick={() => openParent(card.parent_card_id as number)}
+          title="Open the epic card"
+          className="cf-mono self-start inline-flex items-center gap-1 rounded px-2 py-0.5 mx-1 transition-[filter] hover:brightness-125"
+          style={{
+            fontSize: "10px",
+            letterSpacing: "0.04em",
+            color: "var(--cf-phosphor)",
+            background: "color-mix(in srgb, var(--cf-phosphor) 12%, transparent)",
+            border: "1px solid color-mix(in srgb, var(--cf-phosphor) 40%, transparent)",
+          }}
+        >
+          ↳ Part of {card.parent_ticket_key ?? "epic"}
+        </button>
+      )}
+      <textarea
+        ref={titleRef}
+        autoFocus={isNew || !isDesktop}
+        placeholder="What needs to be done?"
+        rows={2}
+        disabled={isReadOnly}
+        style={{ color: "var(--cf-text)", caretColor: "var(--cf-phosphor)" }}
+        className="w-full bg-transparent text-2xl lg:text-[28px] font-bold placeholder-white/25 focus:outline-none resize-none leading-tight disabled:opacity-70 flex-shrink-0 px-1 pt-1"
+        value={name}
+        onChange={(e) => {
+          setDirty(true);
+          setName(e.target.value);
+          titleRef.current?.animate(
+            [{ filter: "blur(1.4px)" }, { filter: "blur(0)" }],
+            { duration: 90, easing: "ease-out" },
+          );
+        }}
+      />
+    </div>
   );
 
   // Roomy description — the main writing surface, on a recessed LCD screen.
@@ -467,11 +560,20 @@ const CardEdit: React.FC<CardEditProps> = ({
     </div>
   );
 
-  // AI thread summary — a read-only assist, available on any saved card once a live
-  // backend exists (hidden for new/demo cards, and dark server-side without a key).
-  const summaryPanel =
+  // AI assist for the description area — summary/describe/checklist/tests/rewrite. A
+  // read-only assist available on any saved card once a live backend exists (hidden for
+  // new/demo cards, and dark server-side without a provider key). Description-producing
+  // actions apply straight into the editor.
+  const aiPanel =
     !isNew && !isDemo && !!boardId && !!id ? (
-      <CardSummary boardId={boardId} cardId={id} />
+      <CardAiPanel
+        boardId={boardId}
+        cardId={id}
+        currentText={description}
+        readOnly={isReadOnly}
+        onApplyDescription={dirtify(setDescription)}
+        onAddChecklist={addChecklistItems}
+      />
     ) : null;
 
   // Header status readouts — the card's state at a glance, cockpit style.
@@ -520,6 +622,8 @@ const CardEdit: React.FC<CardEditProps> = ({
       backlogSectionId={backlogSectionId}
       sectionId={sectionId}
       setSectionId={dirtify(setSectionId)}
+      boardId={boardId}
+      cardId={!isNew && !isDemo ? id : undefined}
       priority={priority}
       setPriority={dirtify(setPriority)}
       dueDate={dueDate}
@@ -600,6 +704,26 @@ const CardEdit: React.FC<CardEditProps> = ({
     />
   );
 
+  const subtasksSection = (
+    <SubtasksSection
+      subtasks={subtasks}
+      loadingSubtasks={loadingSubtasks}
+      newSubtaskName={newSubtaskName}
+      setNewSubtaskName={setNewSubtaskName}
+      handleAddSubtask={handleAddSubtask}
+      handleMarkDone={handleMarkDone}
+      isSubtaskDone={isSubtaskDone}
+      doneSubtasks={doneSubtasks}
+      isReadOnly={isReadOnly}
+      onOpenSubtask={openSubtask}
+      aiBreakdown={aiBreakdown}
+      aiBreaking={aiBreaking}
+      aiRationale={aiRationale}
+      aiError={subtaskAiError}
+      canAiBreakdown={canAiBreakdown}
+    />
+  );
+
   const commentsSection = (
     <CommentsSection
       isDemo={isDemo}
@@ -640,6 +764,8 @@ const CardEdit: React.FC<CardEditProps> = ({
       waSending={waSending}
       waError={waError}
       handleSendWaReply={handleSendWaReply}
+      boardId={boardId}
+      cardId={!isNew && !isDemo ? id : undefined}
     />
   );
 
@@ -672,18 +798,86 @@ const CardEdit: React.FC<CardEditProps> = ({
     </div>
   );
 
+  // A collapsible work section: clicking the header toggles it. Starts minimized.
+  const collapsibleSection = (
+    key: string,
+    label: string,
+    chip: string | null,
+    content: React.ReactNode,
+  ) => {
+    const open = !collapsed[key];
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => ({ ...c, [key]: !c[key] }))}
+          aria-expanded={open}
+          className="flex items-center gap-2 mb-2 w-full text-left cursor-pointer"
+        >
+          <span
+            className="cf-led"
+            style={{
+              width: 6,
+              height: 6,
+              background: "var(--cf-phosphor)",
+              boxShadow: "0 0 6px var(--cf-phosphor)",
+            }}
+          />
+          <span
+            className="cf-label uppercase tracking-widest font-bold"
+            style={{ fontSize: "10px", color: "var(--cf-text)" }}
+          >
+            {label}
+          </span>
+          {chip && (
+            <span
+              className="cf-mono"
+              style={{ fontSize: "10px", color: "var(--cf-text-muted)" }}
+            >
+              {chip}
+            </span>
+          )}
+          <span
+            aria-hidden
+            className="ml-auto"
+            style={{
+              fontSize: "9px",
+              color: "var(--cf-text-muted)",
+              transform: open ? "rotate(90deg)" : "none",
+              transition: "transform 150ms ease",
+            }}
+          >
+            ▸
+          </span>
+        </button>
+        {open && content}
+      </>
+    );
+  };
+
   // Work sections stacked in the main column (desktop).
   const renderWork = () => (
     <div className="flex flex-col gap-6">
       <div>
-        {workHeader(
+        {collapsibleSection(
+          "checklist",
           "Checklist",
           checklistItems.length
             ? `${doneCount}/${checklistItems.length}`
             : null,
+          checklistSection,
         )}
-        {checklistSection}
       </div>
+      {!isSubtask && (
+        <div className="border-t pt-6" style={{ borderColor: "var(--cf-edge)" }}>
+          {collapsibleSection(
+            "subtasks",
+            "Subtasks",
+            subtasks.length ? `${doneSubtasks}/${subtasks.length}` : null,
+            subtasksSection,
+          )}
+        </div>
+      )}
       <div className="border-t pt-6" style={{ borderColor: "var(--cf-edge)" }}>
         {workHeader(
           "Comments",
@@ -1004,11 +1198,13 @@ const CardEdit: React.FC<CardEditProps> = ({
                     />
                     {tab === "checklist" && checklistItems.length > 0
                       ? `checklist ${doneCount}/${checklistItems.length}`
-                      : tab === "comments" && comments.length > 0
-                        ? `comments ${comments.length}`
-                        : tab === "whatsapp" && waThread
-                          ? `whatsapp ${waThread.messages.length}`
-                          : tab}
+                      : tab === "subtasks" && subtasks.length > 0
+                        ? `subtasks ${doneSubtasks}/${subtasks.length}`
+                        : tab === "comments" && comments.length > 0
+                          ? `comments ${comments.length}`
+                          : tab === "whatsapp" && waThread
+                            ? `whatsapp ${waThread.messages.length}`
+                            : tab}
                   </button>
                 );
               })}
@@ -1051,7 +1247,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                 <div className="max-w-[720px] mx-auto flex flex-col gap-5">
                   {renderTitle()}
                   {renderDescription()}
-                  {summaryPanel}
+                  {aiPanel}
                   <div
                     className="border-t mt-1 pt-6"
                     style={{ borderColor: "var(--cf-edge)" }}
@@ -1077,12 +1273,13 @@ const CardEdit: React.FC<CardEditProps> = ({
                 <>
                   {renderTitle()}
                   {renderDescription()}
-                  {summaryPanel}
+                  {aiPanel}
                   {propertiesPanel}
                   {renderSave()}
                 </>
               )}
               {!isNew && activeTab === "checklist" && checklistSection}
+              {!isNew && activeTab === "subtasks" && subtasksSection}
               {!isNew && activeTab === "comments" && commentsSection}
               {!isNew && activeTab === "whatsapp" && whatsappSection}
             </div>

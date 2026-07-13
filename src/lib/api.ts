@@ -361,8 +361,10 @@ export async function createBoard(data: {
 export async function fetchBoard(
   id: number,
   signal?: AbortSignal,
+  includeSubtasks = false,
 ): Promise<BoardInterface> {
-  return apiFetch(`/api/boards/${id}`, { method: "GET", signal });
+  const q = includeSubtasks ? "?include_subtasks=1" : "";
+  return apiFetch(`/api/boards/${id}${q}`, { method: "GET", signal });
 }
 
 // --- Sections ---
@@ -1332,19 +1334,101 @@ export async function applyPlanning(
 
 // --- AI assist ---
 
-// Kicks off a streamed card-thread summary. The heavy work runs server-side and
-// streams back over the board channel as ai.token/ai.done frames — this call just
-// arms the job and echoes the request_id. The caller mints the id and sets its
-// listener filter BEFORE calling, so no early token is missed. 202 on success;
-// 503 (ApiError) when the server has no Anthropic key configured.
-export async function summarizeCard(
+export type AiAction =
+  | "summarize"
+  | "describe"
+  | "checklist"
+  | "tests"
+  | "reply"
+  | "rewrite";
+
+export type AiRewriteMode = "improve" | "grammar" | "concise" | "translate";
+
+export interface AiParams {
+  request_id: string;
+  prompt?: string; // describe/reply steer
+  mode?: AiRewriteMode; // rewrite
+  language?: string; // rewrite: translate target
+  text?: string; // unsaved editor content to act on
+}
+
+// Kicks off a streamed AI action on a card. The heavy work runs server-side and streams
+// back over the board channel as ai.token/ai.done frames — this call just arms the job
+// and echoes the request_id. The caller mints the id and sets its listener filter BEFORE
+// calling, so no early token is missed. 202 on success; 503 (ApiError) when the selected
+// provider has no key configured; 404 for an unknown action.
+export async function runCardAi(
   boardId: number,
   cardId: number | string,
+  action: AiAction,
+  params: AiParams,
+): Promise<{ request_id: string }> {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/ai/${action}`, {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
+// Kicks off a board-level standup / sprint summary. Streams back over the board channel
+// as scope:'board' ai.token/ai.done frames; this call just arms the job. 202 on success.
+export async function startStandup(
+  boardId: number,
   requestId: string,
 ): Promise<{ request_id: string }> {
-  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/ai/summarize`, {
+  return apiFetch(`/api/boards/${boardId}/ai/standup`, {
     method: "POST",
     body: JSON.stringify({ request_id: requestId }),
+  });
+}
+
+export interface PointsSuggestion {
+  points: number;
+  rationale: string;
+}
+
+// Synchronous structured suggestion — a story-point estimate on the Fibonacci scale,
+// with a one-line rationale. 200 with the estimate; 503 unconfigured; 422 if the model
+// couldn't produce a usable answer.
+export async function suggestStoryPoints(
+  boardId: number,
+  cardId: number | string,
+): Promise<PointsSuggestion> {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/ai/points`, {
+    method: "POST",
+  });
+}
+
+export interface TriageSuggestion {
+  tag_ids: number[];
+  priority: "low" | "medium" | "high" | null;
+  assignee_id: number | null;
+  rationale: string;
+}
+
+// Synchronous structured suggestion — labels, priority and assignee, each validated
+// server-side against the board's real tags/members (invented ids are dropped).
+export async function suggestTriage(
+  boardId: number,
+  cardId: number | string,
+): Promise<TriageSuggestion> {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/ai/triage`, {
+    method: "POST",
+  });
+}
+
+export interface SubtaskSuggestion {
+  subtasks: string[];
+  rationale: string;
+}
+
+// Synchronous structured suggestion — a short list of subtask titles for the card.
+// The caller creates the child cards; an empty list means the card was too thin.
+export async function suggestSubtasks(
+  boardId: number,
+  cardId: number | string,
+): Promise<SubtaskSuggestion> {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/ai/subtasks`, {
+    method: "POST",
   });
 }
 
@@ -1364,7 +1448,7 @@ export async function getQa(
 export async function createTestCase(
   boardId: number,
   cardId: number | string,
-  data: { title: string; type?: string },
+  data: { title: string; type?: string; gherkin?: string },
 ): Promise<TestCase> {
   return apiFetch(`${qaBase(boardId, cardId)}/cases`, {
     method: "POST",

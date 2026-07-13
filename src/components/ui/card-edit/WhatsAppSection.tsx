@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useCardAi } from "@/hooks/useCardAi";
 import type { WaConversation } from "@/hooks/useWhatsappThread";
 
 const waStatusMark = (status: string | null) => {
@@ -24,10 +26,15 @@ interface WhatsAppSectionProps {
   waSending: boolean;
   waError: string | null;
   handleSendWaReply: () => void;
+  // When present (saved card + live backend), an AI "Draft reply" affordance streams a
+  // suggested reply into the box. Absent on demo/new cards.
+  boardId?: number;
+  cardId?: number | string;
 }
 
 // Presentational WhatsApp tab/section of the card editor — the thread state and
-// realtime subscription live in useWhatsappThread (called from CardEdit).
+// realtime subscription live in useWhatsappThread (called from CardEdit). The one bit
+// of local logic is the optional AI reply draft, which streams into the reply box.
 export function WhatsAppSection({
   waThread,
   newWaReply,
@@ -35,7 +42,15 @@ export function WhatsAppSection({
   waSending,
   waError,
   handleSendWaReply,
+  boardId,
+  cardId,
 }: WhatsAppSectionProps) {
+  const ai = useCardAi(boardId, cardId, !!boardId && !!cardId);
+  // Mirror the streamed reply draft into the box as tokens arrive; after it finishes the
+  // user edits freely (their edits don't change ai.text, so this won't clobber them).
+  useEffect(() => {
+    if (ai.action === "reply") setNewWaReply(ai.text);
+  }, [ai.text, ai.action, setNewWaReply]);
   if (!waThread) return null;
   const windowClosed = !waThread.window_open;
   return (
@@ -147,6 +162,24 @@ export function WhatsAppSection({
         </p>
       ) : (
         <div className="flex flex-col gap-2">
+          {!!boardId && !!cardId && (
+            <button
+              type="button"
+              onClick={() => ai.run("reply")}
+              disabled={ai.streaming || waSending}
+              className="ai-btn self-start"
+            >
+              {ai.streaming ? "Drafting…" : "Draft reply"}
+            </button>
+          )}
+          {ai.error && (
+            <p
+              style={{ fontSize: "11px", color: "var(--cf-red)" }}
+              className="cf-mono"
+            >
+              {ai.error}
+            </p>
+          )}
           <textarea
             value={newWaReply}
             onChange={(e) => setNewWaReply(e.target.value)}
@@ -174,7 +207,7 @@ export function WhatsAppSection({
           )}
           <button
             onClick={handleSendWaReply}
-            disabled={!newWaReply.trim() || waSending}
+            disabled={!newWaReply.trim() || waSending || ai.streaming}
             style={{ fontSize: "11px" }}
             className="aero-btn aero-btn--cyan self-end px-4 py-1.5 font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >

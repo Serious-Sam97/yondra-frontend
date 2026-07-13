@@ -157,6 +157,10 @@ export const Card = memo(function Card({
   ticket_key,
   value,
   story_points,
+  parent_card_id,
+  parent_ticket_key,
+  subtasks_count,
+  done_subtasks_count,
   section_entered_at,
   overlay,
   boardType = "kanban",
@@ -203,7 +207,8 @@ export const Card = memo(function Card({
     aged ||
     (boardType === "scrum" && story_points != null) ||
     priorityColor ||
-    done_at;
+    done_at ||
+    (subtasks_count ?? 0) > 0;
 
   // ── Subtle cursor-follow tilt: card leans toward the cursor, clean light shadow ──
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -299,23 +304,41 @@ export const Card = memo(function Card({
 
       {/* Body */}
       <div className="pl-3.5 pr-3 pt-2.5 pb-3 flex flex-col gap-1.5 flex-1 relative">
-        {/* Ticket key top-left, due date docked top-right */}
-        {(ticket_key || due_date) && (
+        {/* Ticket key (+ ↳ epic for subtasks) top-left, due date docked top-right */}
+        {(ticket_key || due_date || parent_card_id) && (
           <div className="flex items-center justify-between gap-2">
-            {ticket_key ? (
-              <span
-                className="cf-mono font-bold tracking-wider"
-                style={{
-                  color: INK_FAINT,
-                  fontSize: "10px",
-                  letterSpacing: "0.08em",
-                }}
-              >
-                {ticket_key}
-              </span>
-            ) : (
-              <span />
-            )}
+            <span className="flex items-center gap-1.5 min-w-0">
+              {ticket_key && (
+                <span
+                  className="cf-mono font-bold tracking-wider"
+                  style={{
+                    color: INK_FAINT,
+                    fontSize: "10px",
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  {ticket_key}
+                </span>
+              )}
+              {parent_card_id && (
+                <span
+                  className="cf-mono inline-flex items-center rounded truncate flex-shrink-0"
+                  style={{
+                    fontSize: "9px",
+                    letterSpacing: "0.04em",
+                    padding: "1px 5px",
+                    color: "var(--cf-phosphor)",
+                    background:
+                      "color-mix(in srgb, var(--cf-phosphor) 12%, transparent)",
+                    border:
+                      "1px solid color-mix(in srgb, var(--cf-phosphor) 40%, transparent)",
+                  }}
+                  title={`Subtask of epic ${parent_ticket_key ?? ""}`}
+                >
+                  ↳ {parent_ticket_key ?? "epic"}
+                </span>
+              )}
+            </span>
             {due_date && <DueDateBadge dueDate={due_date} />}
           </div>
         )}
@@ -334,6 +357,13 @@ export const Card = memo(function Card({
         {/* One wrapping strip: tags, value, aging, points, priority, done stamp */}
         {hasStrip && (
           <div className="flex flex-wrap gap-1">
+            {(subtasks_count ?? 0) > 0 && (
+              <span className="kc-chip" title="Subtasks done / total">
+                <span style={{ color: "var(--cf-text)" }}>
+                  ↳ {done_subtasks_count ?? 0}/{subtasks_count}
+                </span>
+              </span>
+            )}
             {(tags ?? []).map((tag) => (
               <span key={tag.id} className="kc-chip">
                 <span

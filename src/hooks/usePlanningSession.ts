@@ -90,7 +90,12 @@ export function usePlanningSession(
     ) {
       next = { ...next, my_value: prev.my_value };
     }
-    if (next?.applied_at && next.applied_at !== prev?.applied_at) {
+    // Only surface `applied` when applied_at ADVANCES from a known prior snapshot.
+    // The first snapshot may already carry an applied_at from a past apply — that's
+    // just the loaded baseline (already reflected in the card's story_points), not a
+    // fresh apply, so it must not trigger the mirror-into-points + dirty side effect
+    // that would mark a freshly-opened card dirty.
+    if (next?.applied_at && prev && next.applied_at !== prev.applied_at) {
       setApplied({ value: next.applied_value ?? null, at: next.applied_at });
     }
     snapRef.current = next;
