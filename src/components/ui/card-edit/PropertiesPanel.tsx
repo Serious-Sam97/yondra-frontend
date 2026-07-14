@@ -130,6 +130,13 @@ interface PropertiesPanelProps {
   currency: string;
   value: string;
   setValue: (v: string) => void;
+  // CRM contact (client/lead) — recipient of stage email automations.
+  contactName: string;
+  setContactName: (v: string) => void;
+  contactEmail: string;
+  setContactEmail: (v: string) => void;
+  contactPhone: string;
+  setContactPhone: (v: string) => void;
   storyPoints: string;
   setStoryPoints: (v: string) => void;
   sprintId: number | null;
@@ -194,6 +201,12 @@ export function PropertiesPanel({
   currency,
   value,
   setValue,
+  contactName,
+  setContactName,
+  contactEmail,
+  setContactEmail,
+  contactPhone,
+  setContactPhone,
   storyPoints,
   setStoryPoints,
   sprintId,
@@ -493,6 +506,43 @@ export function PropertiesPanel({
               className="cf-mono flex-1 min-w-0 bg-transparent text-right focus:outline-none tabular-nums disabled:opacity-60 disabled:cursor-not-allowed placeholder:text-[var(--cf-text-dim)]"
             />
           </div>
+        </div>
+      )}
+
+      {/* CRM: Contact — the client this deal represents. Their email is the
+          recipient of any stage-triggered email automation (Settings → Email). */}
+      {boardType === "crm" && (
+        <div
+          className="flex flex-col gap-2 py-4 border-t"
+          style={{
+            borderColor: "color-mix(in srgb, var(--cf-edge) 60%, transparent)",
+          }}
+        >
+          {clusterHead("Contact")}
+          <input
+            type="text"
+            disabled={isReadOnly}
+            value={contactName}
+            onChange={(e) => setContactName(e.target.value)}
+            placeholder="Name"
+            className="glass-input w-full text-xs px-3 py-2 disabled:opacity-60 disabled:cursor-not-allowed"
+          />
+          <input
+            type="email"
+            disabled={isReadOnly}
+            value={contactEmail}
+            onChange={(e) => setContactEmail(e.target.value)}
+            placeholder="client@email.com"
+            className="glass-input w-full text-xs px-3 py-2 disabled:opacity-60 disabled:cursor-not-allowed"
+          />
+          <input
+            type="tel"
+            disabled={isReadOnly}
+            value={contactPhone}
+            onChange={(e) => setContactPhone(e.target.value)}
+            placeholder="Phone (optional)"
+            className="glass-input w-full text-xs px-3 py-2 disabled:opacity-60 disabled:cursor-not-allowed"
+          />
         </div>
       )}
 

@@ -697,6 +697,7 @@ export function Board({
               value: card.value,
               story_points: card.story_points,
               sprint_id: card.sprint_id,
+              contact: card.contact,
             });
         setCards((prev) =>
           prev.some((c) => c.id === saved.id)
@@ -727,6 +728,7 @@ export function Board({
               value: card.value,
               story_points: card.story_points,
               sprint_id: card.sprint_id,
+              contact: card.contact,
             });
         // demoUpdateCard returns null when the card is gone — keep the row as-is
         // instead of replacing it with a husk that has no id/name.

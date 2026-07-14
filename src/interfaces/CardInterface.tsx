@@ -1,5 +1,15 @@
 import type { TagInterface } from "./TagInterface";
 
+// The client/lead a card represents. Where the outbound (email/phone) contact
+// info lives — used by stage-triggered email automations.
+export interface Contact {
+  id: number;
+  board_id?: number;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+}
+
 export interface ChecklistItem {
   id: number;
   text: string;
@@ -109,6 +119,9 @@ export interface CardInterface {
   position?: number;
   // CRM: deal value (board currency). Serialized as a string by Laravel's decimal cast.
   value?: number | string | null;
+  // CRM: the client/lead this card represents (recipient of stage email automations).
+  contact_id?: number | null;
+  contact?: Contact | null;
   // When the card entered its current section — drives CRM SLA aging.
   section_entered_at?: string | null;
   // Scrum: effort estimate + sprint assignment.

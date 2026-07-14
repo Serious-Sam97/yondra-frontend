@@ -8,8 +8,10 @@ import type { BoardInterface } from "@/interfaces/BoardInterface";
 import {
   deleteWhatsappAutomation,
   getWhatsappAutomations,
+  getWhatsappReengagement,
   updateBoard,
   upsertWhatsappAutomation,
+  upsertWhatsappReengagement,
 } from "@/lib/api";
 import { type Feedback, FeedbackBanner, PanelHeading } from "./shared";
 
@@ -115,6 +117,57 @@ export default function WhatsAppTab({ board, onSaved }: Props) {
       .catch(() => setRowError("Could not load automations."))
       .finally(() => setLoadingRows(false));
   }, [board.id]);
+
+  // --- Re-engagement policy ---
+  const [reeng, setReeng] = useState({
+    enabled: false,
+    idle_days: 30,
+    retry_interval_days: 7,
+    max_attempts: 4,
+    template_name: "",
+    language: "pt_BR",
+    lost_section_id: null as number | null,
+  });
+  const [reengSections, setReengSections] = useState<
+    { id: number; name: string }[]
+  >([]);
+  const [reengSaving, setReengSaving] = useState(false);
+  const [reengFeedback, setReengFeedback] = useState<Feedback>(null);
+
+  useEffect(() => {
+    getWhatsappReengagement(board.id)
+      .then((data) => {
+        setReengSections(data.sections ?? []);
+        if (data.policy) {
+          setReeng({
+            enabled: data.policy.enabled,
+            idle_days: data.policy.idle_days,
+            retry_interval_days: data.policy.retry_interval_days,
+            max_attempts: data.policy.max_attempts,
+            template_name: data.policy.template_name ?? "",
+            language: data.policy.language ?? "pt_BR",
+            lost_section_id: data.policy.lost_section_id,
+          });
+        }
+      })
+      .catch(() => {});
+  }, [board.id]);
+
+  const saveReengagement = async () => {
+    setReengFeedback(null);
+    setReengSaving(true);
+    try {
+      await upsertWhatsappReengagement(board.id, reeng);
+      setReengFeedback({ type: "success", message: "Re-engagement saved." });
+    } catch {
+      setReengFeedback({
+        type: "error",
+        message: "Could not save — a template name is required.",
+      });
+    } finally {
+      setReengSaving(false);
+    }
+  };
 
   const patchRow = (sectionId: number, patch: Partial<AutomationRow>) =>
     setRows((prev) =>
@@ -480,6 +533,123 @@ export default function WhatsAppTab({ board, onSaved }: Props) {
               This board has no columns yet.
             </p>
           )}
+        </div>
+      </div>
+
+      {/* Re-engagement */}
+      <div className="glass-panel p-6 flex flex-col gap-4">
+        <PanelHeading>Re-engagement</PanelHeading>
+        <p
+          className="text-sm cf-mono"
+          style={{ color: "var(--cf-text-muted)" }}
+        >
+          After a lead goes quiet, automatically nudge them with a template every
+          few days, then drop the unresponsive ones out of the pipeline. Only
+          opted-in contacts are messaged, and degraded numbers are skipped.
+        </p>
+
+        {reengFeedback && <FeedbackBanner feedback={reengFeedback} />}
+
+        <label
+          className="flex items-center gap-1.5 cf-mono self-start"
+          style={{ fontSize: "10px", color: "var(--cf-text-muted)" }}
+        >
+          <input
+            type="checkbox"
+            checked={reeng.enabled}
+            onChange={(e) =>
+              setReeng((r) => ({ ...r, enabled: e.target.checked }))
+            }
+          />
+          enabled
+        </label>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {(
+            [
+              ["idle_days", "Idle days before first nudge"],
+              ["retry_interval_days", "Days between attempts"],
+              ["max_attempts", "Max attempts before drop"],
+            ] as const
+          ).map(([key, label]) => (
+            <label
+              key={key}
+              className="flex flex-col gap-1 cf-mono"
+              style={{ fontSize: "10px", color: "var(--cf-text-muted)" }}
+            >
+              {label}
+              <input
+                type="number"
+                min={1}
+                value={reeng[key]}
+                onChange={(e) =>
+                  setReeng((r) => ({
+                    ...r,
+                    [key]: Math.max(1, Number(e.target.value) || 1),
+                  }))
+                }
+                className="glass-input"
+                style={{ fontSize: "12px" }}
+              />
+            </label>
+          ))}
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            value={reeng.template_name}
+            onChange={(e) =>
+              setReeng((r) => ({ ...r, template_name: e.target.value }))
+            }
+            placeholder="approved template name"
+            className="glass-input flex-1"
+            style={{ fontSize: "12px" }}
+          />
+          <input
+            value={reeng.language}
+            onChange={(e) =>
+              setReeng((r) => ({ ...r, language: e.target.value }))
+            }
+            placeholder="pt_BR"
+            className="glass-input"
+            style={{ fontSize: "12px", width: 90 }}
+          />
+        </div>
+
+        <label
+          className="flex flex-col gap-1 cf-mono"
+          style={{ fontSize: "10px", color: "var(--cf-text-muted)" }}
+        >
+          Drop leads to
+          <select
+            value={reeng.lost_section_id ?? ""}
+            onChange={(e) =>
+              setReeng((r) => ({
+                ...r,
+                lost_section_id: e.target.value ? Number(e.target.value) : null,
+              }))
+            }
+            className="glass-input"
+            style={{ fontSize: "12px" }}
+          >
+            <option value="">— none (archive) —</option>
+            {reengSections.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className="flex justify-end">
+          <button
+            onClick={saveReengagement}
+            disabled={reengSaving || !reeng.template_name.trim()}
+            className="aero-btn aero-btn--cyan px-4 py-1.5 disabled:opacity-40"
+            style={{ fontSize: "10px" }}
+          >
+            {reengSaving ? "Saving…" : "Save"}
+          </button>
         </div>
       </div>
     </div>

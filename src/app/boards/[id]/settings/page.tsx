@@ -4,6 +4,7 @@ import { faGithub, faWhatsapp } from "@fortawesome/free-brands-svg-icons";
 import {
   faBoxArchive,
   faClockRotateLeft,
+  faEnvelope,
   faSliders,
   faTableColumns,
   faTags,
@@ -16,6 +17,7 @@ import ActivityTab from "@/components/settings/ActivityTab";
 import ArchivedTab from "@/components/settings/ArchivedTab";
 import ColumnsTab from "@/components/settings/ColumnsTab";
 import DangerTab from "@/components/settings/DangerTab";
+import EmailTab from "@/components/settings/EmailTab";
 import GeneralTab from "@/components/settings/GeneralTab";
 import GitHubTab from "@/components/settings/GitHubTab";
 import MembersTab from "@/components/settings/MembersTab";
@@ -108,6 +110,9 @@ export default function BoardSettingsPage({
     if (canManage) t.push({ key: "github", label: "GitHub", icon: faGithub });
     if (canManage)
       t.push({ key: "whatsapp", label: "WhatsApp", icon: faWhatsapp });
+    // Email stage automations are contact-driven; contacts are a CRM-board affordance.
+    if (canManage && board.type === "crm")
+      t.push({ key: "email", label: "Email", icon: faEnvelope });
     t.push({ key: "activity", label: "Activity", icon: faClockRotateLeft });
     if (canManage) {
       t.push({ key: "archived", label: "Archived", icon: faBoxArchive });
@@ -202,6 +207,7 @@ export default function BoardSettingsPage({
           {active === "whatsapp" && (
             <WhatsAppTab board={board} onSaved={patch} />
           )}
+          {active === "email" && <EmailTab board={board} onSaved={patch} />}
           {active === "columns" && (
             <ColumnsTab
               board={board}

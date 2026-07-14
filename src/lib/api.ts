@@ -453,6 +453,7 @@ export async function createCard(
     value?: number | null;
     story_points?: number | null;
     sprint_id?: number | null;
+    contact?: CardContactInput | null;
   },
 ): Promise<CardInterface> {
   return apiFetch(`/api/boards/${boardId}/cards`, {
@@ -476,12 +477,20 @@ export async function updateCard(
     value?: number | null;
     story_points?: number | null;
     sprint_id?: number | null;
+    contact?: CardContactInput | null;
   },
 ): Promise<CardInterface> {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}`, {
     method: "PUT",
     body: JSON.stringify(data),
   });
+}
+
+// Nested contact payload the card endpoints upsert + link (name/email/phone).
+export interface CardContactInput {
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
 }
 
 // --- Sprints (scrum) ---
@@ -801,7 +810,9 @@ export async function getComments(
   cardId: number | string,
   page = 1,
 ): Promise<SimplePaginated<CardComment>> {
-  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/comments?page=${page}`);
+  return apiFetch(
+    `/api/boards/${boardId}/cards/${cardId}/comments?page=${page}`,
+  );
 }
 
 // With parentId the comment lands in that top-level comment's thread (the server
@@ -814,7 +825,10 @@ export async function createComment(
 ): Promise<CardComment> {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}/comments`, {
     method: "POST",
-    body: JSON.stringify({ body, ...(parentId ? { parent_id: parentId } : {}) }),
+    body: JSON.stringify({
+      body,
+      ...(parentId ? { parent_id: parentId } : {}),
+    }),
   });
 }
 
@@ -885,9 +899,7 @@ export async function getGifAvailability(): Promise<{ enabled: boolean }> {
 
 // Empty query returns Tenor's featured feed (the picker's opening state).
 export async function searchGifs(q: string, limit = 24): Promise<GifResult[]> {
-  return apiFetch(
-    `/api/gifs/search?q=${encodeURIComponent(q)}&limit=${limit}`,
-  );
+  return apiFetch(`/api/gifs/search?q=${encodeURIComponent(q)}&limit=${limit}`);
 }
 
 // --- WhatsApp ---
@@ -987,6 +999,101 @@ export async function deleteWhatsappAutomation(
 ): Promise<void> {
   return apiFetch(`/api/boards/${boardId}/whatsapp/automations/${sectionId}`, {
     method: "DELETE",
+  });
+}
+
+// Per-board stage→email-template automation config (owner-level, card #53).
+export interface EmailStageAutomation {
+  id: number;
+  board_id: number;
+  section_id: number;
+  subject: string;
+  body: string;
+  enabled: boolean;
+  paused_at: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface EmailStageSend {
+  id: number;
+  section_id: number;
+  email: string;
+  subject: string;
+  status: "sent" | "failed";
+  sent_at: string | null;
+}
+
+export async function getEmailAutomations(boardId: number): Promise<
+  {
+    section_id: number;
+    section_name: string;
+    automation: EmailStageAutomation | null;
+    last_send: EmailStageSend | null;
+  }[]
+> {
+  return apiFetch(`/api/boards/${boardId}/email/automations`);
+}
+
+export async function upsertEmailAutomation(
+  boardId: number,
+  sectionId: number,
+  data: {
+    subject: string;
+    body: string;
+    enabled?: boolean;
+    resume?: boolean;
+  },
+): Promise<EmailStageAutomation> {
+  return apiFetch(`/api/boards/${boardId}/email/automations/${sectionId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteEmailAutomation(
+  boardId: number,
+  sectionId: number,
+): Promise<void> {
+  return apiFetch(`/api/boards/${boardId}/email/automations/${sectionId}`, {
+    method: "DELETE",
+  });
+}
+
+export interface WhatsappReengagementPolicy {
+  id?: number;
+  board_id?: number;
+  enabled: boolean;
+  idle_days: number;
+  retry_interval_days: number;
+  max_attempts: number;
+  template_name: string;
+  language: string;
+  lost_section_id: number | null;
+}
+
+export async function getWhatsappReengagement(boardId: number): Promise<{
+  policy: WhatsappReengagementPolicy | null;
+  sections: { id: number; name: string }[];
+}> {
+  return apiFetch(`/api/boards/${boardId}/whatsapp/reengagement`);
+}
+
+export async function upsertWhatsappReengagement(
+  boardId: number,
+  data: {
+    enabled?: boolean;
+    idle_days?: number;
+    retry_interval_days?: number;
+    max_attempts?: number;
+    template_name: string;
+    language?: string;
+    lost_section_id?: number | null;
+  },
+): Promise<WhatsappReengagementPolicy> {
+  return apiFetch(`/api/boards/${boardId}/whatsapp/reengagement`, {
+    method: "PUT",
+    body: JSON.stringify(data),
   });
 }
 

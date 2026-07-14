@@ -59,6 +59,8 @@ export interface CardFormData {
   value: number | null;
   story_points: number | null;
   sprint_id: number | null;
+  // CRM contact upsert payload (null on non-CRM boards — leaves contact untouched).
+  contact: { name: string; email: string; phone: string } | null;
 }
 
 export interface CardEditProps {
@@ -152,6 +154,10 @@ const CardEdit: React.FC<CardEditProps> = ({
   );
   // CRM deal value + scrum estimate/sprint (empty string = unset).
   const [value, setValue] = useState("");
+  // CRM contact (client/lead) fields.
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [storyPoints, setStoryPoints] = useState("");
   const [sprintId, setSprintId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<
@@ -338,8 +344,7 @@ const CardEdit: React.FC<CardEditProps> = ({
     card,
     id,
     currentUserId,
-    currentUserName:
-      users.find((u) => u.id === currentUserId)?.name ?? "You",
+    currentUserName: users.find((u) => u.id === currentUserId)?.name ?? "You",
     reportActionError,
   });
 
@@ -418,6 +423,9 @@ const CardEdit: React.FC<CardEditProps> = ({
       setLinks(card.links ?? []);
       setDocuments(card.documents ?? []);
       setValue(formatMoneyInput(card.value));
+      setContactName(card.contact?.name ?? "");
+      setContactEmail(card.contact?.email ?? "");
+      setContactPhone(card.contact?.phone ?? "");
       setStoryPoints(
         card.story_points != null ? String(card.story_points) : "",
       );
@@ -452,6 +460,15 @@ const CardEdit: React.FC<CardEditProps> = ({
         value: parseMoneyInput(value),
         story_points: storyPoints.trim() === "" ? null : Number(storyPoints),
         sprint_id: sprintId,
+        // Only CRM boards surface the contact fields; elsewhere leave contact untouched.
+        contact:
+          boardType === "crm"
+            ? {
+                name: contactName.trim(),
+                email: contactEmail.trim(),
+                phone: contactPhone.trim(),
+              }
+            : null,
       },
       isNew,
     );
@@ -518,8 +535,10 @@ const CardEdit: React.FC<CardEditProps> = ({
             fontSize: "10px",
             letterSpacing: "0.04em",
             color: "var(--cf-phosphor)",
-            background: "color-mix(in srgb, var(--cf-phosphor) 12%, transparent)",
-            border: "1px solid color-mix(in srgb, var(--cf-phosphor) 40%, transparent)",
+            background:
+              "color-mix(in srgb, var(--cf-phosphor) 12%, transparent)",
+            border:
+              "1px solid color-mix(in srgb, var(--cf-phosphor) 40%, transparent)",
           }}
         >
           ↳ Part of {card.parent_ticket_key ?? "epic"}
@@ -632,6 +651,12 @@ const CardEdit: React.FC<CardEditProps> = ({
       currency={currency}
       value={value}
       setValue={dirtify(setValue)}
+      contactName={contactName}
+      setContactName={dirtify(setContactName)}
+      contactEmail={contactEmail}
+      setContactEmail={dirtify(setContactEmail)}
+      contactPhone={contactPhone}
+      setContactPhone={dirtify(setContactPhone)}
       storyPoints={storyPoints}
       setStoryPoints={dirtify(setStoryPoints)}
       sprintId={sprintId}
@@ -869,7 +894,10 @@ const CardEdit: React.FC<CardEditProps> = ({
         )}
       </div>
       {!isSubtask && (
-        <div className="border-t pt-6" style={{ borderColor: "var(--cf-edge)" }}>
+        <div
+          className="border-t pt-6"
+          style={{ borderColor: "var(--cf-edge)" }}
+        >
           {collapsibleSection(
             "subtasks",
             "Subtasks",
