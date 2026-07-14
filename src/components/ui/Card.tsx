@@ -127,7 +127,19 @@ function DueDateBadge({ dueDate }: { dueDate: string }) {
 function firstImageSrc(html?: string): string | null {
   if (!html) return null;
   const m = html.match(/<img[^>]+src="([^"]+)"/i);
-  return m ? m[1] : null;
+  if (!m) return null;
+  // The src is a raw HTML attribute value, so entities are still encoded
+  // (e.g. query params joined with `&amp;`). Unlike the modal, which renders
+  // via dangerouslySetInnerHTML and lets the parser decode them, here we feed
+  // the string straight to React's `src` prop, which does NOT decode entities —
+  // so signed URLs would arrive with a literal `&amp;` and break. Decode them.
+  return m[1]
+    .replace(/&amp;/g, "&")
+    .replace(/&#38;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
 }
 function stripHtml(html?: string): string {
   if (!html) return "";
