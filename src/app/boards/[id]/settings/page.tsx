@@ -5,6 +5,7 @@ import {
   faBoxArchive,
   faClockRotateLeft,
   faEnvelope,
+  faFileImport,
   faSliders,
   faTableColumns,
   faTags,
@@ -20,6 +21,7 @@ import DangerTab from "@/components/settings/DangerTab";
 import EmailTab from "@/components/settings/EmailTab";
 import GeneralTab from "@/components/settings/GeneralTab";
 import GitHubTab from "@/components/settings/GitHubTab";
+import IntakeTab from "@/components/settings/IntakeTab";
 import MembersTab from "@/components/settings/MembersTab";
 import SettingsTabs, { type TabDef } from "@/components/settings/SettingsTabs";
 import TagsTab from "@/components/settings/TagsTab";
@@ -110,6 +112,8 @@ export default function BoardSettingsPage({
     if (canManage) t.push({ key: "github", label: "GitHub", icon: faGithub });
     if (canManage)
       t.push({ key: "whatsapp", label: "WhatsApp", icon: faWhatsapp });
+    if (canManage)
+      t.push({ key: "intake", label: "Intake", icon: faFileImport });
     // Email stage automations are contact-driven; contacts are a CRM-board affordance.
     if (canManage && board.type === "crm")
       t.push({ key: "email", label: "Email", icon: faEnvelope });
@@ -207,6 +211,7 @@ export default function BoardSettingsPage({
           {active === "whatsapp" && (
             <WhatsAppTab board={board} onSaved={patch} />
           )}
+          {active === "intake" && <IntakeTab board={board} onSaved={patch} />}
           {active === "email" && <EmailTab board={board} onSaved={patch} />}
           {active === "columns" && (
             <ColumnsTab

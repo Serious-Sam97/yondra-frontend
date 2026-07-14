@@ -316,6 +316,10 @@ export async function updateBoard(
     whatsapp_token?: string | null;
     whatsapp_app_secret?: string | null;
     whatsapp_verify_token?: string | null;
+    intake_enabled?: boolean;
+    intake_field_map?: { source: string; target: string }[] | null;
+    email_spam_safe?: boolean;
+    require_optin_before_email?: boolean;
   },
 ): Promise<BoardSummaryInterface> {
   return apiFetch(`/api/boards/${id}`, {

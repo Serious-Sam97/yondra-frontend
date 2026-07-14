@@ -14,6 +14,26 @@ export interface SectionData {
 
 export type BoardPermission = "read" | "write" | "owner";
 
+// A single intake field-mapping rule (YON-50): a form-field label (source) routed
+// onto a card attribute (target).
+export type IntakeFieldTarget =
+  | "title"
+  | "description"
+  | "value"
+  | "tags"
+  | "priority"
+  | "story_points"
+  | "due_date"
+  | "contact_name"
+  | "contact_email"
+  | "contact_phone"
+  | "ignore";
+
+export interface IntakeFieldMapRule {
+  source: string;
+  target: IntakeFieldTarget;
+}
+
 export type BoardType = "kanban" | "scrum" | "crm";
 
 export interface SharedUser {
@@ -52,6 +72,11 @@ export interface BoardSummaryInterface {
   whatsapp_waba_id?: string | null;
   whatsapp_connected?: boolean;
   whatsapp_verify_token?: string | null;
+  intake_connected?: boolean;
+  intake_token?: string | null;
+  intake_field_map?: IntakeFieldMapRule[] | null;
+  email_spam_safe?: boolean;
+  require_optin_before_email?: boolean;
   owner?: SharedUser;
   shared_with?: SharedUser[];
   cards_count?: number;

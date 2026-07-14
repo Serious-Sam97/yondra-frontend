@@ -6,6 +6,7 @@ import {
   deleteEmailAutomation,
   type EmailStageSend,
   getEmailAutomations,
+  updateBoard,
   upsertEmailAutomation,
 } from "@/lib/api";
 import {
@@ -41,11 +42,43 @@ const VARIABLES = [
   "ticket_key",
 ];
 
-export default function EmailTab({ board }: Props) {
+export default function EmailTab({ board, onSaved }: Props) {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [savingId, setSavingId] = useState<number | null>(null);
+  const [spamSafe, setSpamSafe] = useState(board.email_spam_safe !== false);
+  const [requireOptin, setRequireOptin] = useState(
+    board.require_optin_before_email === true,
+  );
+  const [savingFlag, setSavingFlag] = useState(false);
+
+  const saveFlag = async (
+    key: "email_spam_safe" | "require_optin_before_email",
+    value: boolean,
+  ) => {
+    // Optimistic: flip local state, revert on failure.
+    if (key === "email_spam_safe") setSpamSafe(value);
+    else setRequireOptin(value);
+    setSavingFlag(true);
+    setFeedback(null);
+    try {
+      const updated = await updateBoard(board.id, { [key]: value });
+      onSaved({
+        email_spam_safe: updated.email_spam_safe,
+        require_optin_before_email: updated.require_optin_before_email,
+      });
+    } catch (e) {
+      if (key === "email_spam_safe") setSpamSafe(!value);
+      else setRequireOptin(!value);
+      setFeedback({
+        type: "error",
+        message: friendlyMessage(e, "Could not update the setting."),
+      });
+    } finally {
+      setSavingFlag(false);
+    }
+  };
 
   useEffect(() => {
     getEmailAutomations(board.id)
@@ -167,6 +200,61 @@ export default function EmailTab({ board }: Props) {
       </div>
 
       <FeedbackBanner feedback={feedback} />
+
+      {/* Deliverability toggles (YON-51 / YON-52) */}
+      <div
+        className="flex flex-col gap-3 rounded-xl p-4"
+        style={{
+          border: "1px solid var(--cf-edge)",
+          background: "rgba(255,255,255,0.02)",
+        }}
+      >
+        <PanelHeading>Deliverability</PanelHeading>
+        <label
+          className="cf-mono text-xs flex items-start gap-2 cursor-pointer"
+          style={{ color: "var(--cf-text-muted)" }}
+        >
+          <input
+            type="checkbox"
+            checked={spamSafe}
+            disabled={savingFlag}
+            onChange={(e) => saveFlag("email_spam_safe", e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            <span style={{ color: "var(--cf-text)", fontWeight: 700 }}>
+              Spam-safe formatting
+            </span>
+            <br />
+            Rewrites currency symbols and quote keywords into a natural,
+            Gmail-friendly form before sending, so quotes land in the inbox
+            instead of spam.
+          </span>
+        </label>
+        <label
+          className="cf-mono text-xs flex items-start gap-2 cursor-pointer"
+          style={{ color: "var(--cf-text-muted)" }}
+        >
+          <input
+            type="checkbox"
+            checked={requireOptin}
+            disabled={savingFlag}
+            onChange={(e) =>
+              saveFlag("require_optin_before_email", e.target.checked)
+            }
+            className="mt-0.5"
+          />
+          <span>
+            <span style={{ color: "var(--cf-text)", fontWeight: 700 }}>
+              Require opt-in before emailing
+            </span>
+            <br />
+            Only send stage emails to contacts who confirmed via the opt-in link
+            sent after their form submission. New form contacts get that email
+            automatically.
+          </span>
+        </label>
+      </div>
 
       <div className="flex flex-col gap-3">
         {rows.map((row) => {
