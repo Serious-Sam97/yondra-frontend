@@ -5,6 +5,7 @@ import {
   faBoxArchive,
   faClipboardList,
   faCommentDots,
+  faFileImport,
   faPalette,
   faTag,
   faWandMagicSparkles,
@@ -22,6 +23,7 @@ export const TOOL_COLORS = {
   background: "#c08bff", // 🎨 artist palette
   config: "#9ca3af", // ⚙ steel gear
   standup: "#9ece6a", // AI phosphor green
+  importer: "#6fe0ff", // 📥 cyan inbound
 } as const;
 
 function ToolBtn({
@@ -44,6 +46,8 @@ function ToolBtn({
         {label}
       </span>
       <button
+        type="button"
+        aria-label={label}
         onClick={onClick}
         className="aero-btn aero-btn--ghost w-10 h-10 flex items-center justify-center cursor-pointer text-lg"
         style={{ color }}
@@ -67,6 +71,7 @@ function MobileToolBtn({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className="aero-btn aero-btn--ghost flex flex-col items-center gap-1.5 py-3 px-4 rounded-xl cursor-pointer"
     >
@@ -94,6 +99,7 @@ interface BoardToolsDockProps {
   onOpenArchived: () => void;
   onOpenBackground: () => void;
   onOpenStandup: () => void;
+  onOpenImport: () => void;
 }
 
 // Board tool launchers: the desktop toolbar (vertical on kanban/list, horizontal
@@ -109,6 +115,7 @@ export function BoardToolsDock({
   onOpenArchived,
   onOpenBackground,
   onOpenStandup,
+  onOpenImport,
 }: BoardToolsDockProps) {
   const touchStartY = useRef<number>(0);
 
@@ -148,6 +155,14 @@ export function BoardToolsDock({
               color={TOOL_COLORS.standup}
               label="Standup"
               onClick={onOpenStandup}
+            />
+          )}
+          {!isDemo && (
+            <ToolBtn
+              icon={faFileImport}
+              color={TOOL_COLORS.importer}
+              label="Import"
+              onClick={onOpenImport}
             />
           )}
           <ToolBtn
@@ -202,6 +217,16 @@ export function BoardToolsDock({
                     color: TOOL_COLORS.standup,
                     label: "Standup",
                     onClick: onOpenStandup,
+                  },
+                ]
+              : []),
+            ...(!isDemo
+              ? [
+                  {
+                    icon: faFileImport,
+                    color: TOOL_COLORS.importer,
+                    label: "Import",
+                    onClick: onOpenImport,
                   },
                 ]
               : []),
@@ -312,6 +337,17 @@ export function BoardToolsDock({
                   label="Standup"
                   onClick={() => {
                     onOpenStandup();
+                    setIsToolbarOpen(false);
+                  }}
+                />
+              )}
+              {!isDemo && (
+                <MobileToolBtn
+                  icon={faFileImport}
+                  color={TOOL_COLORS.importer}
+                  label="Import"
+                  onClick={() => {
+                    onOpenImport();
                     setIsToolbarOpen(false);
                   }}
                 />

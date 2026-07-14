@@ -76,6 +76,7 @@ import { BoardTopBar, type BoardViewMode } from "../ui/BoardTopBar";
 import { CalendarView } from "../ui/CalendarView";
 import { Card } from "../ui/Card";
 import type { CardFormData } from "../ui/CardEdit";
+import { CardImportModal } from "../ui/CardImportModal";
 import { CardWorkspace } from "../ui/CardWorkspace";
 import { CommandPalette } from "../ui/CommandPalette";
 import { CompleteSprintModal } from "../ui/CompleteSprintModal";
@@ -168,6 +169,7 @@ export function Board({
   const [activeCard, setActiveCard] = useState<CardInterface | null>(null);
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const [isStandupOpen, setIsStandupOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [viewMode, setViewMode] = useState<BoardViewMode>("kanban");
   const [isCommandOpen, setIsCommandOpen] = useState(false);
   // Subtasks (child cards) are hidden from the board by default; this toggle reveals them
@@ -1284,7 +1286,44 @@ export function Board({
         onOpenArchived={handleOpenArchived}
         onOpenBackground={() => setIsBgOpen(true)}
         onOpenStandup={() => setIsStandupOpen(true)}
+        onOpenImport={() => setIsImportOpen(true)}
       />
+
+      {/* JSON card importer (YON-121). On success the modal closes and onImported
+          merges the new cards + any tags created on demand into board state. */}
+      {isImportOpen && (
+        <CardImportModal
+          boardId={id}
+          sectionNames={sections.map((s) => s.name)}
+          onClose={() => setIsImportOpen(false)}
+          onImported={(result) => {
+            // Merge the created cards locally (deduped by id) rather than waiting
+            // on the realtime channel, so they're present the instant the modal
+            // closes. The realtime card.created also dedupes, so no double-add.
+            setCards((prev) => {
+              const known = new Set(prev.map((c) => c.id));
+              const fresh = result.created.filter((c) => !known.has(c.id));
+              return fresh.length ? [...prev, ...fresh] : prev;
+            });
+            // Tags created on demand during import aren't on the board's tag list
+            // yet, so a freshly imported card would show no chips until reload.
+            // Merge any new ones (by id) so they render immediately.
+            setTags((prev) => {
+              const known = new Set(prev.map((t) => t.id));
+              const added: TagInterface[] = [];
+              for (const card of result.created) {
+                for (const tag of card.tags ?? []) {
+                  if (!known.has(tag.id)) {
+                    known.add(tag.id);
+                    added.push(tag);
+                  }
+                }
+              }
+              return added.length ? [...prev, ...added] : prev;
+            });
+          }}
+        />
+      )}
 
       {/* AI standup / sprint summary modal */}
       {isStandupOpen && (

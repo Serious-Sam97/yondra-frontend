@@ -466,6 +466,27 @@ export async function createCard(
   });
 }
 
+// Result of a bulk JSON import: cards that were created plus per-row rejections.
+export interface CardImportResult {
+  created: CardInterface[];
+  created_count: number;
+  errors: { index: number; message: string }[];
+  error_count: number;
+}
+
+// POST /api/boards/{id}/cards/import — bulk-create cards from a custom JSON model
+// (YON-121). `payload` is the parsed JSON exactly as the user supplied it: a bare
+// array of card objects, a { cards: [...] } envelope, or a single card object.
+export async function importCards(
+  boardId: number,
+  payload: unknown,
+): Promise<CardImportResult> {
+  return apiFetch(`/api/boards/${boardId}/cards/import`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function updateCard(
   boardId: number,
   cardId: number | string,

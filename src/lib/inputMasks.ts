@@ -16,9 +16,48 @@ export function maskName(value: string): string {
   return value.replace(/[^\p{L}\p{M}\s'’.-]/gu, "").slice(0, NAME_MAX);
 }
 
-/** Digits only, capped — for phone number entry. */
+/** Digits only, capped — the canonical stored form for a national number. */
 export function maskPhone(value: string): string {
   return value.replace(/\D+/g, "").slice(0, PHONE_MAX);
+}
+
+/**
+ * Human-readable display mask for a national number, chosen by dialling code.
+ * Purely presentational — callers keep storing the digits from maskPhone(); this
+ * only formats what's shown in the field. Falls back to space-grouped digits for
+ * codes without a specific pattern.
+ *
+ *  - BR (55): (AA) NNNNN-NNNN mobile / (AA) NNNN-NNNN landline
+ *  - US/CA (1): (AAA) NNN-NNNN
+ */
+export function formatPhone(country: string, value: string): string {
+  const d = maskPhone(value);
+  if (!d) return "";
+
+  if (country === "55") {
+    const area = d.slice(0, 2);
+    if (d.length <= 2) return `(${area}`;
+    const rest = d.slice(2);
+    // Split so the last 4 digits are the suffix once the subscriber part looks
+    // like a full mobile (9 digits → 5-4); shorter reads as a landline (4-4).
+    const splitAt = rest.length >= 9 ? 5 : 4;
+    if (rest.length <= splitAt) return `(${area}) ${rest}`;
+    return `(${area}) ${rest.slice(0, splitAt)}-${rest.slice(splitAt)}`;
+  }
+
+  if (country === "1") {
+    const a = d.slice(0, 3);
+    const b = d.slice(3, 6);
+    const c = d.slice(6, 10);
+    let out = `(${a}`;
+    if (a.length === 3) out += ") ";
+    out += b;
+    if (c) out += `-${c}`;
+    return out;
+  }
+
+  // Generic: group digits in blocks of 3 for legibility.
+  return d.replace(/\d{1,3}(?=(\d{3})+$)/g, "$& ").trim();
 }
 
 /** A dialling code option for the international selector. */

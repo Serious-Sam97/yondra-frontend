@@ -59,7 +59,8 @@ async function mockProfile(page: Page): Promise<() => ProfileUser | null> {
       }
       return json(route, baseUser);
     }
-    if (path.endsWith("/api/boards")) return json(route, { owned: [], shared: [] });
+    if (path.endsWith("/api/boards"))
+      return json(route, { owned: [], shared: [] });
     if (path.endsWith("/api/notifications/preferences"))
       return json(route, { event_types: [], channels: [], preferences: {} });
 
@@ -96,19 +97,42 @@ test.describe("profile input masks", () => {
     await expect(name).toHaveValue("x".repeat(50));
   });
 
-  // YON-114: the WhatsApp field must accept digits only — letters and symbols
-  // are dropped as you type.
-  test("phone field keeps digits only (YON-114)", async ({ page }) => {
+  // YON-114: the WhatsApp field accepts digits only — letters and symbols are
+  // dropped — and the remaining digits are shown through the country mask.
+  test("phone field keeps digits only and masks them (YON-114)", async ({
+    page,
+  }) => {
     const phone = page.locator("#profile-whatsapp");
-    await phone.fill("ab12cd34!!");
-    await expect(phone).toHaveValue("1234");
+    // Letters/symbols dropped; the 11 digits render as a BR mobile number.
+    await phone.fill("ab11cd987654321");
+    await expect(phone).toHaveValue("(11) 98765-4321");
   });
 
-  // YON-114: national number is capped (excludes the dialling code).
+  // The mask follows the selected dialling code: BR mobile vs landline, US, and
+  // a generic space-grouped fallback for codes without a specific pattern.
+  test("phone mask adapts to the dialling code (YON-114)", async ({ page }) => {
+    const country = page.getByLabel("Country code");
+    const phone = page.locator("#profile-whatsapp");
+
+    await phone.fill("1132657890"); // BR landline (10 digits)
+    await expect(phone).toHaveValue("(11) 3265-7890");
+
+    await country.selectOption("1"); // 🇺🇸 +1 — reformats the same digits
+    await phone.fill("4155551234");
+    await expect(phone).toHaveValue("(415) 555-1234");
+
+    await country.selectOption("351"); // 🇵🇹 +351 — generic grouping
+    await phone.fill("912345678");
+    await expect(phone).toHaveValue("912 345 678");
+  });
+
+  // YON-114: national number is capped at 15 digits (excludes the dialling code).
   test("phone field is capped at 15 digits (YON-114)", async ({ page }) => {
     const phone = page.locator("#profile-whatsapp");
     await phone.fill("1234567890123456789");
-    await expect(phone).toHaveValue("123456789012345");
+    // The visible value is masked; the underlying digits are capped at 15.
+    const digits = (await phone.inputValue()).replace(/\D/g, "");
+    expect(digits).toBe("123456789012345");
   });
 
   // YON-114: an international dialling-code selector, Brazil first, so the

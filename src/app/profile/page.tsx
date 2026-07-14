@@ -16,11 +16,11 @@ import {
 import {
   COUNTRY_CODES,
   DEFAULT_COUNTRY,
+  formatPhone,
   joinPhone,
   maskName,
   maskPhone,
   NAME_MAX,
-  PHONE_MAX,
   splitPhone,
 } from "@/lib/inputMasks";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
@@ -478,7 +478,7 @@ export default function ProfilePage() {
               </div>
               <div className="min-w-0">
                 <p
-                  className="text-2xl font-bold leading-tight"
+                  className="text-2xl font-bold leading-tight break-words"
                   style={{ color: "var(--cf-ink)" }}
                 >
                   {user.name}
@@ -625,12 +625,17 @@ export default function ProfilePage() {
                       id="profile-whatsapp"
                       type="tel"
                       inputMode="numeric"
-                      maxLength={PHONE_MAX}
-                      value={whatsappNumber}
+                      // Display is the country-aware mask; state stays raw digits
+                      // (maskPhone) so joinPhone/backend see a plain number.
+                      value={formatPhone(whatsappCountry, whatsappNumber)}
                       onChange={(e) =>
                         setWhatsappNumber(maskPhone(e.target.value))
                       }
-                      placeholder="numbers only, e.g. 11987654321"
+                      placeholder={
+                        whatsappCountry === "55"
+                          ? "(11) 98765-4321"
+                          : "e.g. 11987654321"
+                      }
                       className="glass-input flex-1"
                     />
                   </div>
