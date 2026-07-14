@@ -13,6 +13,16 @@ import {
   updatePassword,
   updateProfile,
 } from "@/lib/auth";
+import {
+  COUNTRY_CODES,
+  DEFAULT_COUNTRY,
+  joinPhone,
+  maskName,
+  maskPhone,
+  NAME_MAX,
+  PHONE_MAX,
+  splitPhone,
+} from "@/lib/inputMasks";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 
 // Turn an ApiError into something a human can read: prefer Laravel's
@@ -229,6 +239,9 @@ export default function ProfilePage() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  // Phone is split into a dialling code + national number for the intl. selector;
+  // recombined into a single digit string (E.164 without "+") on save.
+  const [whatsappCountry, setWhatsappCountry] = useState(DEFAULT_COUNTRY);
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [identState, setIdentState] = useState<ModuleState>({ phase: "idle" });
 
@@ -245,7 +258,9 @@ export default function ProfilePage() {
         setUser(u);
         setName(u.name);
         setEmail(u.email);
-        setWhatsappNumber(u.whatsapp_number ?? "");
+        const [country, national] = splitPhone(u.whatsapp_number ?? "");
+        setWhatsappCountry(country);
+        setWhatsappNumber(national);
       })
       .catch(() => router.push("/login"));
     fetchBoards()
@@ -258,7 +273,8 @@ export default function ProfilePage() {
     !!user &&
     (name !== user.name ||
       email !== user.email ||
-      whatsappNumber !== (user.whatsapp_number ?? ""));
+      joinPhone(whatsappCountry, whatsappNumber) !==
+        (user.whatsapp_number ?? ""));
   const accessDirty = !!(currentPassword || newPassword || confirmPassword);
 
   useEffect(() => {
@@ -307,7 +323,7 @@ export default function ProfilePage() {
       const updated = await updateProfile({
         name,
         email,
-        whatsapp_number: whatsappNumber.trim() || null,
+        whatsapp_number: joinPhone(whatsappCountry, whatsappNumber) || null,
       });
       setUser(updated);
       setIdentState({ phase: "saved" });
@@ -555,13 +571,17 @@ export default function ProfilePage() {
             <div className="p-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="cf-label text-xs block mb-2" htmlFor="profile-name">
+                  <label
+                    className="cf-label text-xs block mb-2"
+                    htmlFor="profile-name"
+                  >
                     Name
                   </label>
                   <input
                     id="profile-name"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    maxLength={NAME_MAX}
+                    onChange={(e) => setName(maskName(e.target.value))}
                     className="glass-input"
                   />
                 </div>
@@ -587,14 +607,33 @@ export default function ProfilePage() {
                   >
                     WhatsApp number
                   </label>
-                  <input
-                    id="profile-whatsapp"
-                    type="tel"
-                    value={whatsappNumber}
-                    onChange={(e) => setWhatsappNumber(e.target.value)}
-                    placeholder="e.g. 5511987654321 (country code + number)"
-                    className="glass-input"
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      aria-label="Country code"
+                      value={whatsappCountry}
+                      onChange={(e) => setWhatsappCountry(e.target.value)}
+                      className="glass-input flex-shrink-0"
+                      style={{ width: "110px" }}
+                    >
+                      {COUNTRY_CODES.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      id="profile-whatsapp"
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={PHONE_MAX}
+                      value={whatsappNumber}
+                      onChange={(e) =>
+                        setWhatsappNumber(maskPhone(e.target.value))
+                      }
+                      placeholder="numbers only, e.g. 11987654321"
+                      className="glass-input flex-1"
+                    />
+                  </div>
                   <p
                     className="text-xs mt-1.5 cf-mono"
                     style={{ color: "var(--cf-text-dim)" }}
@@ -639,7 +678,10 @@ export default function ProfilePage() {
             <div className="p-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
-                  <label className="cf-label text-xs block mb-2" htmlFor="pw-current">
+                  <label
+                    className="cf-label text-xs block mb-2"
+                    htmlFor="pw-current"
+                  >
                     Current password
                   </label>
                   <input
@@ -652,7 +694,10 @@ export default function ProfilePage() {
                   />
                 </div>
                 <div>
-                  <label className="cf-label text-xs block mb-2" htmlFor="pw-new">
+                  <label
+                    className="cf-label text-xs block mb-2"
+                    htmlFor="pw-new"
+                  >
                     New password
                   </label>
                   <input
@@ -666,7 +711,10 @@ export default function ProfilePage() {
                   <SignalBar password={newPassword} />
                 </div>
                 <div>
-                  <label className="cf-label text-xs block mb-2" htmlFor="pw-confirm">
+                  <label
+                    className="cf-label text-xs block mb-2"
+                    htmlFor="pw-confirm"
+                  >
                     Confirm new password
                   </label>
                   <input

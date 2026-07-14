@@ -11,6 +11,7 @@ import {
   postAuthRedirectPath,
   register,
 } from "@/lib/auth";
+import { maskName, NAME_MAX } from "@/lib/inputMasks";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 
 // Matches the backend's `email` rule closely enough for instant client feedback;
@@ -265,9 +266,10 @@ export default function RegisterPage() {
                       className="glass-input"
                       type="text"
                       placeholder="Your name"
+                      maxLength={NAME_MAX}
                       value={name}
                       onChange={(e) => {
-                        setName(e.target.value);
+                        setName(maskName(e.target.value));
                         clearFieldError("name");
                       }}
                       onKeyDown={handleKeyDown}
