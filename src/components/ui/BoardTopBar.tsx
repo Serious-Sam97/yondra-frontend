@@ -22,6 +22,7 @@ export type BoardViewMode =
   | "calendar"
   | "analytics"
   | "backlog"
+  | "roadmap"
   | "plans";
 
 interface BoardTopBarProps {
@@ -128,6 +129,7 @@ export function BoardTopBar({
             { key: "backlog", icon: faLayerGroup, label: "Backlog" },
             { key: "calendar", icon: faCalendarDays, label: "Cal" },
             { key: "analytics", icon: faChartColumn, label: "Stats" },
+            { key: "roadmap", icon: faSitemap, label: "Map" },
             ...(qaEnabled
               ? [{ key: "plans", icon: faSquareCheck, label: "QA" }]
               : []),

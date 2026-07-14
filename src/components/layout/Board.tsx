@@ -44,6 +44,7 @@ import { useSprints } from "@/hooks/useSprints";
 import { useSyncError } from "@/hooks/useSyncError";
 import type {
   BoardInterface,
+  RoadmapConfig,
   SectionData,
   SharedUser,
 } from "@/interfaces/BoardInterface";
@@ -54,6 +55,7 @@ import {
   createCard,
   fetchBoard,
   reorderCards,
+  updateBoard,
   updateCard,
 } from "@/lib/api";
 import { toNumber } from "@/lib/currency";
@@ -82,6 +84,7 @@ import { CommandPalette } from "../ui/CommandPalette";
 import { CompleteSprintModal } from "../ui/CompleteSprintModal";
 import { DueDateBanner } from "../ui/DueDateBanner";
 import { ListView } from "../ui/ListView";
+import { RoadmapView } from "../ui/RoadmapView";
 import { Section } from "../ui/Section";
 import { SprintBacklog } from "../ui/SprintBacklog";
 import { SprintReport } from "../ui/SprintReport";
@@ -106,6 +109,7 @@ const VIEW_ORDER: BoardViewMode[] = [
   "backlog",
   "calendar",
   "analytics",
+  "roadmap",
   "plans",
 ];
 
@@ -145,6 +149,7 @@ export function Board({
   sections: initialSections,
   sprints: initialSprints = [],
   tags: initialTags = [],
+  roadmap_config: initialRoadmapConfig = null,
   isDemo = false,
   demoId = "demo",
   projectId = null,
@@ -161,6 +166,7 @@ export function Board({
   const [sections, setSections] = useState(initialSections);
   const [sprints, setSprints] = useState(initialSprints);
   const [tags, setTags] = useState<TagInterface[]>(initialTags);
+  const [roadmapConfig, setRoadmapConfig] = useState(initialRoadmapConfig);
   const [isCardVisible, setIsCardVisible] = useState(false);
   const [selectedCard, setSelectedCard] = useState<CardInterface | null>(null);
   const [filterUserId, setFilterUserId] = useState<number | null>(null);
@@ -478,6 +484,62 @@ export function Board({
   const handleClick = useCallback(
     (card: CardInterface) => openCard(card),
     [openCard],
+  );
+
+  // Persist a manager-edited roadmap flowchart. Optimistically updates local
+  // state, then saves to the board (demo boards stay client-only).
+  const handleSaveRoadmap = useCallback(
+    async (config: RoadmapConfig) => {
+      setRoadmapConfig(config);
+      if (!isDemo) await updateBoard(id, { roadmap_config: config });
+    },
+    [id, isDemo],
+  );
+
+  // Move a single card to another column from the roadmap drill-in. Appends to
+  // the end of the destination column; reuses the board's reorder persistence
+  // (incl. the QA quality-gate on Done) and rolls back on failure.
+  const handleMoveCard = useCallback(
+    (cardId: number | string, toSectionId: number) => {
+      const card = cardsProp.find((c) => c.id === cardId);
+      if (!card || isReadOnly || card.section_id === toSectionId) return;
+      const snapshot = cardsProp;
+      const destIsDone = toSectionId === doneSection?.id;
+      const destOrdered = cardsProp
+        .filter((c) => c.section_id === toSectionId && c.id !== cardId)
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      const orderedIds = [...destOrdered.map((c) => c.id), cardId];
+      setCards((prev) =>
+        prev.map((c) => {
+          if (c.id === cardId)
+            return {
+              ...c,
+              section_id: toSectionId,
+              position: orderedIds.length - 1,
+              done_at: destIsDone
+                ? (c.done_at ?? new Date().toISOString())
+                : null,
+            };
+          const idx = orderedIds.indexOf(c.id);
+          return idx === -1 ? c : { ...c, position: idx };
+        }),
+      );
+      if (isDemo) {
+        demoUpdateCard(demoId, cardId as number, { section_id: toSectionId });
+        return;
+      }
+      reorderCards(id, toSectionId, orderedIds).catch((e) => {
+        setCards(snapshot);
+        if (e instanceof ApiError && e.status === 422) {
+          reportSyncError(
+            "Quality gate: card has tests that failed or were not run — move to Done blocked",
+          );
+        } else {
+          reportSyncError("Move failed — change reverted");
+        }
+      });
+    },
+    [cardsProp, isReadOnly, isDemo, demoId, id, doneSection, reportSyncError],
   );
 
   // Fetch + merge subtasks once (annotating each with its epic's ticket key for the
@@ -1061,6 +1123,28 @@ export function Board({
           {/* Analytics view */}
           {viewMode === "analytics" && (
             <AnalyticsView cards={boardCards} sections={boardSections} />
+          )}
+
+          {/* Roadmap — flowchart of the workflow, per-column steps + card progress */}
+          {viewMode === "roadmap" && (
+            <RoadmapView
+              sections={boardSections}
+              cards={boardCards}
+              config={roadmapConfig}
+              canEdit={!isReadOnly}
+              onSave={handleSaveRoadmap}
+              onCardClick={handleClick}
+              onMoveCard={isReadOnly ? undefined : handleMoveCard}
+              onMoveToSprint={
+                isReadOnly
+                  ? undefined
+                  : (cardId, sprintId) =>
+                      handleAssignSprint(cardId as number, sprintId)
+              }
+              boardType={type}
+              sprints={sprints}
+              currency={currency}
+            />
           )}
 
           {/* QA — test-plan overview (cross-card suites) */}

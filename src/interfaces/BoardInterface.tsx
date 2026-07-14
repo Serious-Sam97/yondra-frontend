@@ -34,6 +34,25 @@ export interface IntakeFieldMapRule {
   target: IntakeFieldTarget;
 }
 
+// Roadmap flowchart config (YON-120). Each node maps one column (section) to a
+// positioned step; edges are directed links between steps. null/undefined =
+// auto-layout (linear chain from section order).
+export interface RoadmapNode {
+  section_id: number;
+  x: number;
+  y: number;
+}
+
+export interface RoadmapEdge {
+  from: number;
+  to: number;
+}
+
+export interface RoadmapConfig {
+  nodes: RoadmapNode[];
+  edges: RoadmapEdge[];
+}
+
 export type BoardType = "kanban" | "scrum" | "crm";
 
 export interface SharedUser {
@@ -77,6 +96,8 @@ export interface BoardSummaryInterface {
   intake_field_map?: IntakeFieldMapRule[] | null;
   email_spam_safe?: boolean;
   require_optin_before_email?: boolean;
+  // Manager-defined roadmap flowchart (YON-120); null = auto-layout.
+  roadmap_config?: RoadmapConfig | null;
   owner?: SharedUser;
   shared_with?: SharedUser[];
   cards_count?: number;

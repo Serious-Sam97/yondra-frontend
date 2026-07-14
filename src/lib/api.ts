@@ -3,6 +3,7 @@ import type {
   BoardPermission,
   BoardSummaryInterface,
   BoardType,
+  RoadmapConfig,
   SectionData,
 } from "@/interfaces/BoardInterface";
 import type {
@@ -320,6 +321,7 @@ export async function updateBoard(
     intake_field_map?: { source: string; target: string }[] | null;
     email_spam_safe?: boolean;
     require_optin_before_email?: boolean;
+    roadmap_config?: RoadmapConfig | null;
   },
 ): Promise<BoardSummaryInterface> {
   return apiFetch(`/api/boards/${id}`, {
