@@ -223,6 +223,7 @@
   text-align: left;
   width: 100%;
   font-family: var(--yd-mono);
+  text-decoration: none;
 }
 .yd-nav:hover {
   background: rgba(158, 196, 106, 0.05);
@@ -1330,4 +1331,13 @@
   padding: 2px 6px;
   background: rgba(255, 255, 255, 0.22);
   pointer-events: none;
+}
+
+/* CRM panel → revenue report link (YON-64) */
+.yd-crmlink {
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.yd-crmlink:hover {
+  color: #cfe6a6;
 }

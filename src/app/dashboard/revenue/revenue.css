@@ -1,0 +1,167 @@
+/* Revenue report (YON-64). Reuses the /dashboard LCD tokens + .yd-* classes
+   (dashboard.css is imported alongside this file); rv-* covers page-specific
+   layout: the period toolbar, the SVG bar chart, and the breakdown table. */
+
+.rv-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* toolbar */
+.rv-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 4px;
+}
+.rv-title {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.rv-title h1 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #e7e2d4;
+  margin: 0;
+}
+.rv-back {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #8f897a;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.rv-back:hover {
+  color: var(--yd-phosphor);
+}
+
+.rv-presets {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.rv-preset {
+  font-family: var(--yd-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #b7b1a1;
+  padding: 7px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--yd-edge);
+  background: linear-gradient(180deg, var(--yd-graphite-hi), var(--yd-graphite));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+.rv-preset:hover {
+  color: #e7e2d4;
+  border-color: #5c5749;
+}
+.rv-preset.on {
+  color: var(--yd-lcd-ink);
+  background: var(--yd-phosphor);
+  border-color: var(--yd-phosphor);
+  box-shadow:
+    0 0 8px rgba(158, 196, 106, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+/* headline stats — 3 tiles, not the dashboard's 5 */
+.rv-vit {
+  grid-template-columns: repeat(3, 1fr);
+}
+@media (max-width: 560px) {
+  .rv-vit {
+    grid-template-columns: 1fr;
+  }
+  .rv-tile + .rv-tile {
+    border-left: none;
+    border-top: 1px solid rgba(74, 70, 63, 0.35);
+  }
+}
+.rv-readout {
+  color: #8f897a;
+  font-variant-numeric: tabular-nums;
+}
+
+/* bar chart */
+.rv-scr {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: var(--yd-lcd);
+  border: 1px solid #767f61;
+  border-radius: 6px;
+  box-shadow:
+    inset 0 1px 4px rgba(0, 0, 0, 0.32),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+.rv-bar {
+  fill: var(--yd-lcd-ink);
+  transition:
+    fill 0.12s,
+    opacity 0.12s;
+}
+.rv-bar.on {
+  fill: #4a5a20;
+}
+.rv-mean {
+  stroke: rgba(38, 46, 24, 0.55);
+  stroke-width: 1;
+}
+.rv-xl {
+  fill: rgba(38, 46, 24, 0.6);
+  font-family: var(--yd-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+.rv-xl.on {
+  fill: var(--yd-lcd-ink);
+  font-weight: 700;
+}
+
+/* breakdown table */
+.rv-table {
+  padding: 4px 0 6px;
+}
+.rv-tr {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 0.7fr 0.7fr;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #cfcabc;
+  font-variant-numeric: tabular-nums;
+  border-top: 1px solid rgba(0, 0, 0, 0.22);
+}
+.rv-tr span:nth-child(n + 2) {
+  text-align: right;
+}
+.rv-tr.dim {
+  color: #6f6a5a;
+}
+.rv-th {
+  border-top: none;
+  color: #8f897a;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+.rv-money {
+  color: var(--yd-phosphor);
+  font-weight: 700;
+}
+.rv-tr.dim .rv-money {
+  color: #6f6a5a;
+  font-weight: 400;
+}

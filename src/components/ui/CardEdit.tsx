@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChecklistSection } from "@/components/ui/card-edit/ChecklistSection";
 import { CommentsSection } from "@/components/ui/card-edit/CommentsSection";
 import { Lightbox } from "@/components/ui/card-edit/Lightbox";
+import { PaymentsSection } from "@/components/ui/card-edit/PaymentsSection";
 import { PropertiesPanel } from "@/components/ui/card-edit/PropertiesPanel";
 import { SubtasksSection } from "@/components/ui/card-edit/SubtasksSection";
 import { WhatsAppSection } from "@/components/ui/card-edit/WhatsAppSection";
@@ -920,6 +921,21 @@ const CardEdit: React.FC<CardEditProps> = ({
         >
           {workHeader("WhatsApp", String(waThread.messages.length))}
           {whatsappSection}
+        </div>
+      )}
+      {/* Payments ledger + milestone automations (YON-63) — CRM, saved cards only. */}
+      {boardType === "crm" && !isDemo && boardId && card?.id != null && (
+        <div
+          className="border-t pt-6"
+          style={{ borderColor: "var(--cf-edge)" }}
+        >
+          {workHeader("Payments", null)}
+          <PaymentsSection
+            boardId={boardId}
+            cardId={Number(card.id)}
+            currency={currency ?? "BRL"}
+            isReadOnly={isReadOnly}
+          />
         </div>
       )}
     </div>

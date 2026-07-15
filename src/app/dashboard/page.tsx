@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "./dashboard.css";
@@ -242,6 +243,9 @@ function CrmPanel({
       <div className="yd-hd yd-crmhd">
         <span className="yd-led a" />
         <span className="yd-label">Pipeline · CRM</span>
+        <Link href="/dashboard/revenue" className="yd-count yd-crmlink">
+          Revenue →
+        </Link>
       </div>
       <div className="yd-crmval">
         <div>

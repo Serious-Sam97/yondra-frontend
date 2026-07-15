@@ -6,6 +6,7 @@ import {
   faClockRotateLeft,
   faEnvelope,
   faFileImport,
+  faMoneyBillWave,
   faSliders,
   faTableColumns,
   faTags,
@@ -23,6 +24,7 @@ import GeneralTab from "@/components/settings/GeneralTab";
 import GitHubTab from "@/components/settings/GitHubTab";
 import IntakeTab from "@/components/settings/IntakeTab";
 import MembersTab from "@/components/settings/MembersTab";
+import PaymentsTab from "@/components/settings/PaymentsTab";
 import SettingsTabs, { type TabDef } from "@/components/settings/SettingsTabs";
 import TagsTab from "@/components/settings/TagsTab";
 import WhatsAppTab from "@/components/settings/WhatsAppTab";
@@ -117,6 +119,9 @@ export default function BoardSettingsPage({
     // Email stage automations are contact-driven; contacts are a CRM-board affordance.
     if (canManage && board.type === "crm")
       t.push({ key: "email", label: "Email", icon: faEnvelope });
+    // Payment milestones (YON-63) — the 50%/100% flow lives on CRM deals.
+    if (canManage && board.type === "crm")
+      t.push({ key: "payments", label: "Payments", icon: faMoneyBillWave });
     t.push({ key: "activity", label: "Activity", icon: faClockRotateLeft });
     if (canManage) {
       t.push({ key: "archived", label: "Archived", icon: faBoxArchive });
@@ -213,6 +218,7 @@ export default function BoardSettingsPage({
           )}
           {active === "intake" && <IntakeTab board={board} onSaved={patch} />}
           {active === "email" && <EmailTab board={board} onSaved={patch} />}
+          {active === "payments" && <PaymentsTab board={board} />}
           {active === "columns" && (
             <ColumnsTab
               board={board}

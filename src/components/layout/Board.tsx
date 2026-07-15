@@ -129,6 +129,13 @@ interface BoardProps extends BoardInterface {
   qaEnabled?: boolean;
   settingsOpen?: boolean;
   onSettingsClose?: () => void;
+  // Merged board-header identity tier (rendered inside BoardTopBar)
+  onBack?: () => void;
+  backTitle?: string;
+  canManage?: boolean;
+  showShare?: boolean;
+  onOpenSettings?: () => void;
+  onOpenShare?: () => void;
   onBoardMetaSaved?: (
     name: string,
     description: string,
@@ -159,6 +166,12 @@ export function Board({
   qaEnabled = false,
   settingsOpen = false,
   onSettingsClose,
+  onBack,
+  backTitle,
+  canManage = false,
+  showShare = false,
+  onOpenSettings,
+  onOpenShare,
   onBoardMetaSaved,
   onDeleteBoard,
 }: BoardProps) {
@@ -1080,6 +1093,15 @@ export function Board({
           setViewMode(key);
         }}
         onOpenCommand={() => setIsCommandOpen(true)}
+        boardName={name}
+        boardType={type}
+        memberCount={boardUsers.length}
+        backTitle={backTitle}
+        onBack={() => onBack?.()}
+        canManage={canManage}
+        showShare={showShare}
+        onOpenSettings={onOpenSettings}
+        onOpenShare={onOpenShare}
       />
 
       {/* Due date banner — always visible when there are overdue/due-today cards */}

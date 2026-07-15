@@ -17,6 +17,7 @@ import type {
 import type { DashboardPayload } from "@/interfaces/DashboardInterface";
 import type { PlanningSnapshot } from "@/interfaces/PlanningInterface";
 import type { ProjectInterface } from "@/interfaces/ProjectInterface";
+import type { RevenueReport } from "@/interfaces/RevenueReportInterface";
 import type {
   GherkinLine,
   ReusableStep,
@@ -156,6 +157,20 @@ export async function fetchProjects(): Promise<{
 
 export async function fetchDashboard(): Promise<DashboardPayload> {
   return apiFetch("/api/dashboard");
+}
+
+// GET /api/reports/revenue — monthly won-deal revenue + approved-quote/client
+// counts across the user's CRM boards. Omit params to let the server default to
+// the last 12 months; both bound to "YYYY-MM".
+export async function fetchRevenueReport(params?: {
+  from?: string;
+  to?: string;
+}): Promise<RevenueReport> {
+  const q = new URLSearchParams();
+  if (params?.from) q.set("from", params.from);
+  if (params?.to) q.set("to", params.to);
+  const qs = q.toString();
+  return apiFetch(`/api/reports/revenue${qs ? `?${qs}` : ""}`);
 }
 
 // Workspace omnisearch hits (SearchController) — boards + cards across every
@@ -1121,6 +1136,73 @@ export async function upsertWhatsappReengagement(
   return apiFetch(`/api/boards/${boardId}/whatsapp/reengagement`, {
     method: "PUT",
     body: JSON.stringify(data),
+  });
+}
+
+// --- Payments (YON-63) ---
+
+export async function fetchCardPayments(
+  boardId: number,
+  cardId: number,
+): Promise<import("@/interfaces/PaymentInterface").CardPaymentsPayload> {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/payments`);
+}
+
+export async function addCardPayment(
+  boardId: number,
+  cardId: number,
+  data: { amount: number; note?: string | null; paid_at?: string | null },
+): Promise<import("@/interfaces/PaymentInterface").CardPaymentsPayload> {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/payments`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteCardPayment(
+  boardId: number,
+  cardId: number,
+  paymentId: number,
+): Promise<import("@/interfaces/PaymentInterface").CardPaymentsPayload> {
+  return apiFetch(
+    `/api/boards/${boardId}/cards/${cardId}/payments/${paymentId}`,
+    { method: "DELETE" },
+  );
+}
+
+export async function getPaymentMilestones(
+  boardId: number,
+): Promise<import("@/interfaces/PaymentInterface").PaymentMilestonesConfig> {
+  return apiFetch(`/api/boards/${boardId}/payment-milestones`);
+}
+
+export async function createPaymentMilestone(
+  boardId: number,
+  data: Record<string, unknown>,
+): Promise<import("@/interfaces/PaymentInterface").PaymentMilestone> {
+  return apiFetch(`/api/boards/${boardId}/payment-milestones`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updatePaymentMilestone(
+  boardId: number,
+  milestoneId: number,
+  data: Record<string, unknown>,
+): Promise<import("@/interfaces/PaymentInterface").PaymentMilestone> {
+  return apiFetch(`/api/boards/${boardId}/payment-milestones/${milestoneId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deletePaymentMilestone(
+  boardId: number,
+  milestoneId: number,
+): Promise<void> {
+  return apiFetch(`/api/boards/${boardId}/payment-milestones/${milestoneId}`, {
+    method: "DELETE",
   });
 }
 

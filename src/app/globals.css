@@ -81,7 +81,11 @@ body {
    quiet until the writer is actually in the field (focus) or reaching for it
    (hover) — no chrome floating over an empty card. */
 .cf-screen-editor {
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.18));
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.32),
+    rgba(0, 0, 0, 0.18)
+  );
   border: 1px solid color-mix(in srgb, var(--cf-edge) 80%, black);
   border-radius: 8px;
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.45);
@@ -810,22 +814,346 @@ input[type="number"]:focus {
   font-family: var(--cf-mono);
 }
 
-/* ── Board header "faceplate" (BoardTopBar.tsx) ────────────────────────────── */
+/* ── Card import modal — "Cartridge Loader" (CardImportModal.tsx, YON-121) ───
+   A graphite hardware panel with three instrument zones: SOURCE (a dashed
+   cartridge bay that is the file drop target), BUFFER (the recessed LCD screen
+   holding the editable JSON), and STATUS (an LCD readout strip with LEDs). Reuses
+   .cf-screw/.cf-led/.aero-btn; these .ci-* rules add only the new structure. */
+.ci-panel {
+  position: relative;
+  border-radius: 12px;
+  background: linear-gradient(
+    180deg,
+    #33322c 0%,
+    var(--cf-graphite) 8%,
+    var(--cf-graphite-2) 100%
+  );
+  border: 1.5px solid var(--cf-edge);
+  box-shadow:
+    inset 0 1px 0 var(--cf-edge-lit),
+    inset 0 -18px 40px rgba(0, 0, 0, 0.45),
+    0 30px 70px rgba(0, 0, 0, 0.6);
+}
+.ci-zone {
+  font-family: var(--cf-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--cf-text-dim);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ci-zone::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--cf-edge), transparent);
+}
+
+/* SOURCE — cartridge bay (the drop target) */
+.ci-bay {
+  border-radius: 9px;
+  padding: 16px;
+  text-align: center;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.015) 0 2px,
+      transparent 2px 10px
+    ), linear-gradient(180deg, #201f1a, #191813);
+  border: 1.5px dashed
+    color-mix(in srgb, var(--cf-phosphor) 40%, var(--cf-edge));
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+.ci-bay--drag {
+  border-color: var(--cf-phosphor);
+  background: linear-gradient(180deg, #23271d, #1a1d15);
+}
+.ci-slot {
+  width: 46px;
+  height: 30px;
+  margin: 0 auto;
+  border-radius: 3px;
+  position: relative;
+  background: linear-gradient(180deg, #0a0f0b, #060906);
+  border: 1px solid #34382c;
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.8),
+    inset 0 0 0 3px #14170f;
+}
+.ci-slot::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 6px;
+  height: 3px;
+  background: color-mix(in srgb, var(--cf-phosphor) 55%, transparent);
+  box-shadow: 0 0 6px var(--cf-phosphor);
+}
+
+/* LED on-states (paired with .cf-led) */
+.ci-led--off {
+  background: #3a3730;
+  box-shadow: inset 0 0 2px rgba(0, 0, 0, 0.8);
+}
+.ci-led--green {
+  background: var(--cf-phosphor);
+  box-shadow: 0 0 8px var(--cf-phosphor);
+}
+.ci-led--amber {
+  background: var(--cf-amber);
+  box-shadow: 0 0 8px var(--cf-amber);
+}
+.ci-led--red {
+  background: var(--cf-red);
+  box-shadow: 0 0 8px var(--cf-red);
+}
+
+/* STATUS — LCD readout strip */
+.ci-status {
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, #0f1610, #0b110c);
+  border: 1px solid #23271d;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+/* Field-spec chips */
+.ci-chip {
+  font-family: var(--cf-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  padding: 3px 7px;
+  border-radius: 4px;
+  color: var(--cf-text-muted);
+  background: #201f1a;
+  border: 1px solid #35332c;
+}
+.ci-chip--req {
+  color: var(--cf-ink);
+  background: var(--cf-cream);
+  border-color: var(--cf-cream);
+  font-weight: 700;
+}
+/* A field the current buffer actually uses — lit phosphor. */
+.ci-chip--on {
+  color: var(--cf-phosphor);
+  background: color-mix(in srgb, var(--cf-phosphor) 14%, #1a1e15);
+  border-color: color-mix(in srgb, var(--cf-phosphor) 45%, transparent);
+}
+
+/* ── Board "faceplate": one fused control deck (BoardTopBar.tsx) ────────────── */
 .bh-deck {
   position: relative;
+  border-radius: 12px;
+  border: 1.5px solid var(--cf-edge);
+  background: linear-gradient(to bottom, #312f29, #262420 60%, #1f1d18);
+  box-shadow:
+    inset 0 1px 0 var(--cf-edge-lit),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.45),
+    0 8px 22px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+/* neon status rail welded to the deck's top edge — no separate strip, no gap */
+.bh-rail {
+  display: flex;
+  gap: 0;
+  height: 6px;
+  width: 100%;
+}
+.bh-rail i {
+  flex: 1;
+  background: var(--neon);
+  opacity: 0.55;
+  filter: saturate(1.1) brightness(0.82);
+  box-shadow:
+    0 0 4px color-mix(in srgb, var(--neon) 55%, transparent),
+    0 1px 9px color-mix(in srgb, var(--neon) 32%, transparent);
+  animation: bh-rail-breathe 5s ease-in-out infinite;
+}
+@keyframes bh-rail-breathe {
+  0%,
+  100% {
+    opacity: 0.42;
+  }
+  50% {
+    opacity: 0.62;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bh-rail i {
+    animation: none;
+  }
+}
+
+/* the deck body: four channel-strip zones split by dividers */
+.bh-body {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 14px;
   padding: 12px 16px;
-  border-radius: 12px;
-  border: 1.5px solid var(--cf-edge);
-  background: linear-gradient(to bottom, #312f29, #262420);
-  box-shadow:
-    inset 0 1px 0 var(--cf-edge-lit),
-    inset 0 -3px 8px rgba(0, 0, 0, 0.45),
-    0 8px 22px rgba(0, 0, 0, 0.5);
 }
+.bh-zone {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.bh-chan {
+  align-self: stretch;
+  width: 1.5px;
+  margin: 2px 0;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--cf-edge) 22%,
+    var(--cf-edge) 78%,
+    transparent
+  );
+  flex: 0 0 auto;
+}
+
+/* identity zone: back key + board name/type readout */
+.bh-back {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--cf-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cf-text-muted);
+  background: linear-gradient(to bottom, #35322b, #26241f);
+  border: 1px solid #0f0e0b;
+  border-radius: 7px;
+  padding: 8px 11px;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 var(--cf-edge-lit);
+  transition:
+    filter 0.13s,
+    color 0.13s;
+}
+.bh-back:hover {
+  color: var(--cf-text);
+  filter: brightness(1.2);
+}
+.bh-idtext {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.bh-idtop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.bh-idled {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--cf-amber);
+  box-shadow: 0 0 7px var(--cf-amber);
+}
+.bh-title {
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.bh-sub {
+  font-family: var(--cf-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--cf-text-dim);
+  white-space: nowrap;
+}
+
+/* center zone: search grows, LCD meter fixed */
+.bh-center {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+
+/* action zone: icon keys + shortcut hint */
+.bh-acts {
+  margin-left: auto;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.bh-ikey {
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  position: relative;
+  flex: 0 0 auto;
+  background: linear-gradient(to bottom, #35322b, #26241f);
+  border: 1px solid #0f0e0b;
+  box-shadow: inset 0 1px 0 var(--cf-edge-lit);
+  color: var(--cf-text-muted);
+  font-size: 14px;
+  transition:
+    filter 0.13s,
+    color 0.13s;
+}
+.bh-ikey:hover {
+  color: var(--cf-cream);
+  filter: brightness(1.2);
+}
+.bh-ikey.hot {
+  color: var(--cf-cyan);
+}
+.bh-ikey.on {
+  color: var(--cf-text);
+  border-color: rgba(154, 166, 126, 0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 10px rgba(154, 166, 126, 0.28);
+}
+/* subtasks waiting to be revealed → phosphor glow to stay discoverable */
+.bh-ikey.alert {
+  color: var(--cf-phosphor);
+  border-color: color-mix(in srgb, var(--cf-phosphor) 55%, transparent);
+  box-shadow: 0 0 9px rgba(154, 166, 126, 0.3);
+}
+.bh-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-family: var(--cf-mono);
+  font-size: 9px;
+  font-weight: 700;
+  background: var(--cf-phosphor);
+  color: var(--cf-screen);
+  box-shadow: 0 0 6px rgba(154, 166, 126, 0.5);
+}
+.bh-ikey.on .bh-badge {
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--cf-text);
+  box-shadow: none;
+}
+
 .bh-screw {
   position: absolute;
   width: 9px;
@@ -853,20 +1181,11 @@ input[type="number"]:focus {
   right: 8px;
 }
 
-.bh-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  /* Size to content instead of growing — otherwise the left zone (and the search
-     inside it) eats all free space on wide screens. bh-right's margin-left:auto
-     pushes the shortcut hints to the far edge. */
-  flex: 0 1 auto;
-}
 .bh-search {
   position: relative;
   flex: 1 1 300px;
-  min-width: 150px;
-  max-width: 360px;
+  min-width: 120px;
+  max-width: 420px;
 }
 .bh-search .bh-mag {
   position: absolute;
@@ -995,23 +1314,11 @@ input[type="number"]:focus {
   box-shadow: 0 0 6px var(--cf-phosphor);
 }
 
-/* right zone: keycap shortcut hints */
-.bh-right {
-  align-items: center;
-  gap: 9px;
-  flex: 0 0 auto;
-  margin-left: auto;
-  color: var(--cf-text-dim);
-}
+/* command-palette shortcut hint (⌘K keycap) */
 .bh-hint {
-  display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-family: var(--cf-mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--cf-text-dim);
+  flex: 0 0 auto;
   background: none;
   border: none;
   cursor: pointer;
@@ -1027,14 +1334,14 @@ input[type="number"]:focus {
   padding: 3px 7px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
-.bh-div {
-  width: 1px;
-  height: 16px;
-  background: var(--cf-edge);
-}
-@media (max-width: 720px) {
-  .bh-left {
+@media (max-width: 860px) {
+  /* Stack the deck: search zone takes a full row, the rest wraps under it. */
+  .bh-center {
+    order: 5;
     flex: 1 1 100%;
+  }
+  .bh-chan {
+    display: none;
   }
   .bh-selector {
     flex-wrap: wrap;
@@ -1235,7 +1542,11 @@ input[type="number"]:focus {
   margin-bottom: 4px;
   border: 1px solid rgba(74, 70, 63, 0.55);
   border-radius: 8px;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.025), transparent);
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.025),
+    transparent
+  );
 }
 .mp-chip {
   font-family: var(--cf-mono);
@@ -1552,34 +1863,33 @@ input[type="number"]:focus {
   gap: 6px;
   padding: 8px 26px 10px;
   background:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.013) 0 1px, transparent 1px 3px),
-    linear-gradient(to bottom, #2f2d27, #1d1b17);
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.013) 0 1px,
+      transparent 1px 3px
+    ), linear-gradient(to bottom, #2f2d27, #1d1b17);
   border: 1px solid var(--cf-edge);
   border-radius: 14px;
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55), inset 0 1px 0 var(--cf-edge-lit);
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 var(--cf-edge-lit);
 }
-.ydc-rack::after {
-  content: "";
-  position: absolute;
-  left: 18px;
-  right: 18px;
-  bottom: -2px;
-  height: 2px;
-  border-radius: 2px;
-  background: linear-gradient(90deg, #9aa67e, #6fe0ff, #ffb000, #ff5a4d, #9aa67e);
-  background-size: 220% 100%;
-  filter: drop-shadow(0 0 7px rgba(255, 176, 0, 0.45));
-  animation: ydc-flow 8s linear infinite;
+@keyframes ydc-blink {
+  50% {
+    opacity: 0;
+  }
 }
-@keyframes ydc-flow { to { background-position: -220% 0; } }
-@keyframes ydc-blink { 50% { opacity: 0; } }
 .ydc-ruler {
   position: absolute;
   left: 26px;
   right: 26px;
   bottom: 3px;
   height: 4px;
-  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.09) 0 1px, transparent 1px 12px);
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.09) 0 1px,
+    transparent 1px 12px
+  );
   pointer-events: none;
 }
 .ydc-ear {
@@ -1591,8 +1901,12 @@ input[type="number"]:focus {
   background: linear-gradient(to bottom, #34322b, #23211c);
   border: 1px solid var(--cf-edge);
 }
-.ydc-ear.l { left: 6px; }
-.ydc-ear.r { right: 6px; }
+.ydc-ear.l {
+  left: 6px;
+}
+.ydc-ear.r {
+  right: 6px;
+}
 
 .ydc-row {
   /* display comes from Tailwind classes (hidden/md:flex) — setting it here
@@ -1600,8 +1914,12 @@ input[type="number"]:focus {
   align-items: stretch;
   gap: 6px;
 }
-.ydc-row.main { height: 62px; }
-.ydc-row.sub { height: 42px; }
+.ydc-row.main {
+  height: 62px;
+}
+.ydc-row.sub {
+  height: 42px;
+}
 
 .ydc-module {
   /* display comes from Tailwind classes (flex / hidden lg:flex). */
@@ -1637,7 +1955,9 @@ input[type="number"]:focus {
   cursor: pointer;
   background: radial-gradient(circle at 35% 30%, #3f3c34, #26241f 60%, #17150f);
   border: 1px solid #55514a;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.7), 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.7),
+    0 1px 0 rgba(255, 255, 255, 0.1);
 }
 .ydc-jack::after {
   content: "";
@@ -1653,11 +1973,18 @@ input[type="number"]:focus {
   margin-left: -6.5px;
   opacity: 0.8;
 }
-.ydc-jack.aux::after { inset: 3.5px; }
-.ydc-jack.dim { opacity: 0.45; cursor: default; }
+.ydc-jack.aux::after {
+  inset: 3.5px;
+}
+.ydc-jack.dim {
+  opacity: 0.45;
+  cursor: default;
+}
 .ydc-jack.on {
   border-color: var(--cf-amber);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.7), 0 0 11px rgba(255, 176, 0, 0.5);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.7),
+    0 0 11px rgba(255, 176, 0, 0.5);
 }
 .ydc-jack.on::after {
   background: radial-gradient(circle at 40% 35%, var(--cf-amber), #7a5200);
@@ -1678,8 +2005,14 @@ input[type="number"]:focus {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.ydc-jlabel.on { color: var(--cf-amber); text-shadow: 0 0 8px rgba(255, 176, 0, 0.6); }
-.ydc-jlabel.dim { opacity: 0.5; cursor: default; }
+.ydc-jlabel.on {
+  color: var(--cf-amber);
+  text-shadow: 0 0 8px rgba(255, 176, 0, 0.6);
+}
+.ydc-jlabel.dim {
+  opacity: 0.5;
+  cursor: default;
+}
 
 /* MODE keys */
 .ydc-mode {
@@ -1695,14 +2028,18 @@ input[type="number"]:focus {
   cursor: pointer;
   background: linear-gradient(to bottom, #2c2a24, #211f1a);
   border: 1px solid var(--cf-edge);
-  box-shadow: inset 0 1px 0 var(--cf-edge-lit), 0 2px 0 #0e0d09;
+  box-shadow:
+    inset 0 1px 0 var(--cf-edge-lit),
+    0 2px 0 #0e0d09;
   font-family: var(--font-geist-mono, monospace);
   font-size: 6.5px;
   letter-spacing: 0.1em;
   color: var(--cf-text-dim);
   text-transform: uppercase;
 }
-.ydc-mode:hover { color: var(--cf-text-muted); }
+.ydc-mode:hover {
+  color: var(--cf-text-muted);
+}
 .ydc-mode i {
   width: 5px;
   height: 5px;
@@ -1715,9 +2052,13 @@ input[type="number"]:focus {
   font-weight: 700;
   background: linear-gradient(to bottom, #ffc65c, #e89b12);
   border-color: #8a6408;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 0 11px rgba(255, 176, 0, 0.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 0 11px rgba(255, 176, 0, 0.35);
 }
-.ydc-mode.on i { background: #241d05; }
+.ydc-mode.on i {
+  background: #241d05;
+}
 
 /* scope screen (pale positive LCD + CRT overlay) */
 .ydc-scope {
@@ -1728,7 +2069,9 @@ input[type="number"]:focus {
   background: linear-gradient(to bottom, #b4bfa0, #a5b08e);
   border-radius: 7px;
   cursor: pointer;
-  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.25);
+  box-shadow:
+    inset 0 3px 8px rgba(0, 0, 0, 0.45),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.25);
   overflow: hidden;
 }
 .ydc-scope::after {
@@ -1738,10 +2081,23 @@ input[type="number"]:focus {
   border-radius: 7px;
   pointer-events: none;
   background:
-    repeating-linear-gradient(0deg, transparent 0 2px, rgba(38, 46, 24, 0.07) 2px 3px),
-    radial-gradient(ellipse 120% 120% at 50% 50%, transparent 62%, rgba(38, 46, 24, 0.2) 100%);
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 2px,
+      rgba(38, 46, 24, 0.07) 2px 3px
+    ),
+    radial-gradient(
+      ellipse 120% 120% at 50% 50%,
+      transparent 62%,
+      rgba(38, 46, 24, 0.2) 100%
+    );
 }
-.ydc-scope canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ydc-scope canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
 
 /* dark inset screens (alert / quick-add / context) */
 .ydc-screen {
@@ -1759,13 +2115,27 @@ input[type="number"]:focus {
   cursor: pointer;
   background: linear-gradient(to bottom, #2c2a24, #211f1a);
   border: 1px solid var(--cf-edge);
-  box-shadow: inset 0 1px 0 var(--cf-edge-lit), 0 2px 0 #0e0d09;
+  box-shadow:
+    inset 0 1px 0 var(--cf-edge-lit),
+    0 2px 0 #0e0d09;
   color: var(--cf-text-muted);
 }
-.ydc-key:hover { color: var(--cf-text); }
-.ydc-key:active { transform: translateY(1px); box-shadow: inset 0 1px 0 var(--cf-edge-lit); }
-.ydc-key:disabled { opacity: 0.4; cursor: default; transform: none; }
-.ydc-key.rec { color: var(--cf-red); text-shadow: 0 0 6px rgba(255, 90, 77, 0.7); }
+.ydc-key:hover {
+  color: var(--cf-text);
+}
+.ydc-key:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 1px 0 var(--cf-edge-lit);
+}
+.ydc-key:disabled {
+  opacity: 0.4;
+  cursor: default;
+  transform: none;
+}
+.ydc-key.rec {
+  color: var(--cf-red);
+  text-shadow: 0 0 6px rgba(255, 90, 77, 0.7);
+}
 .ydc-key.rec.armed {
   background: linear-gradient(to bottom, #6e2019, #4a1510);
   border-color: #8a2a20;
@@ -1814,7 +2184,9 @@ input[type="number"]:focus {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ydc-fader:hover .fl { color: var(--cf-text-muted); }
+.ydc-fader:hover .fl {
+  color: var(--cf-text-muted);
+}
 
 /* mains rocker (logout) */
 .ydc-rocker {
@@ -1824,7 +2196,10 @@ input[type="number"]:focus {
   border-radius: 4px;
   background: linear-gradient(to bottom, #8a2a20, #5c1c15);
   border: 1px solid #3a120d;
-  box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.15), inset 0 -3px 4px rgba(0, 0, 0, 0.5), 0 2px 0 #0e0d09;
+  box-shadow:
+    inset 0 2px 3px rgba(255, 255, 255, 0.15),
+    inset 0 -3px 4px rgba(0, 0, 0, 0.5),
+    0 2px 0 #0e0d09;
   cursor: pointer;
 }
 .ydc-rocker::after {
@@ -1849,16 +2224,34 @@ input[type="number"]:focus {
   flex: none;
   background: radial-gradient(circle at 34% 28%, #3f3c34, #26241f 55%, #15130e);
   border: 1px solid #55514a;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 .ydc-knob::before {
   content: "";
   position: absolute;
   inset: -5px;
   border-radius: 50%;
-  background: conic-gradient(from 210deg, var(--cf-phosphor), var(--cf-amber) 160deg, #f0891c 240deg, transparent 240deg);
-  -webkit-mask: radial-gradient(circle, transparent 22px, #000 22.5px 24px, transparent 24.5px);
-  mask: radial-gradient(circle, transparent 22px, #000 22.5px 24px, transparent 24.5px);
+  background: conic-gradient(
+    from 210deg,
+    var(--cf-phosphor),
+    var(--cf-amber) 160deg,
+    #f0891c 240deg,
+    transparent 240deg
+  );
+  -webkit-mask: radial-gradient(
+    circle,
+    transparent 22px,
+    #000 22.5px 24px,
+    transparent 24.5px
+  );
+  mask: radial-gradient(
+    circle,
+    transparent 22px,
+    #000 22.5px 24px,
+    transparent 24.5px
+  );
 }
 .ydc-knob .notch {
   position: absolute;
@@ -1895,10 +2288,17 @@ input[type="number"]:focus {
   font-family: var(--font-geist-mono, monospace);
   font-size: 11px;
 }
-.ydc-qadd { border: 1px solid #3a3831; transition: border-color 0.15s, box-shadow 0.15s; }
+.ydc-qadd {
+  border: 1px solid #3a3831;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
 .ydc-qadd.armed {
   border-color: rgba(255, 90, 77, 0.55);
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.7), 0 0 12px rgba(255, 90, 77, 0.18);
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.7),
+    0 0 12px rgba(255, 90, 77, 0.18);
 }
 .ydc-find {
   background: linear-gradient(to bottom, #b4bfa0, #a5b08e);
@@ -1919,7 +2319,9 @@ input[type="number"]:focus {
   cursor: pointer;
   padding: 0;
 }
-.ydc-latch:hover { border-color: var(--cf-amber); }
+.ydc-latch:hover {
+  border-color: var(--cf-amber);
+}
 .ydc-latch i {
   position: absolute;
   left: 2px;
@@ -1942,7 +2344,9 @@ input[type="number"]:focus {
   background: linear-gradient(to bottom, #2c2a24, #1d1b17);
   border: 1px solid var(--cf-edge);
   border-radius: 10px;
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.6), inset 0 1px 0 var(--cf-edge-lit);
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 var(--cf-edge-lit);
   overflow: hidden;
   max-height: 320px;
   overflow-y: auto;
@@ -1969,11 +2373,16 @@ input[type="number"]:focus {
   font-size: 11.5px;
   color: var(--cf-text);
 }
-.ydc-pop .row.onrow, .ydc-pop .row:hover { background: rgba(255, 176, 0, 0.08); }
-.ydc-pop .row .sub { font-size: 9.5px; color: var(--cf-text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-@media (prefers-reduced-motion: reduce) {
-  .ydc-rack::after { animation: none; }
+.ydc-pop .row.onrow,
+.ydc-pop .row:hover {
+  background: rgba(255, 176, 0, 0.08);
+}
+.ydc-pop .row .sub {
+  font-size: 9.5px;
+  color: var(--cf-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -2105,7 +2514,9 @@ input[type="number"]:focus {
   height: 6px;
   border-radius: 1px;
   background: #33463a;
-  transition: background 0.25s, box-shadow 0.25s;
+  transition:
+    background 0.25s,
+    box-shadow 0.25s;
 }
 .pp-meter__seg--on {
   background: var(--cf-phosphor);
@@ -2186,7 +2597,10 @@ input[type="number"]:focus {
   background: #1c1a16;
   color: var(--cf-text);
   border: 1px solid var(--cf-edge);
-  transition: background 0.15s, box-shadow 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s,
+    color 0.15s;
 }
 .pp-final--hint {
   border-color: color-mix(in srgb, var(--cf-amber) 55%, var(--cf-edge));
@@ -2305,7 +2719,10 @@ input[type="number"]:focus {
   cursor: pointer;
   background: var(--cf-graphite-2);
   border: 1px solid var(--cf-edge);
-  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
 }
 .pp-deck:hover {
   transform: translateY(-2px);
@@ -2378,7 +2795,9 @@ input[type="number"]:focus {
   background: #1c1a16;
   color: var(--cf-text-muted);
   border: 1px solid var(--cf-edge);
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 }
 .pp-timer-set__chip:hover:not(:disabled) {
   color: var(--cf-phosphor);
@@ -2518,7 +2937,9 @@ input[type="number"]:focus {
   padding: 11px 13px;
   color: var(--cf-text-dim);
   font-size: 13px;
-  transition: border-color 0.18s, box-shadow 0.18s;
+  transition:
+    border-color 0.18s,
+    box-shadow 0.18s;
 }
 .cm-composer-pill:hover {
   border-color: color-mix(in srgb, var(--cf-phosphor) 40%, var(--cf-edge));
@@ -2588,7 +3009,9 @@ input[type="number"]:focus {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
   opacity: 0;
   transform: translateY(3px);
-  transition: opacity 0.16s, transform 0.16s;
+  transition:
+    opacity 0.16s,
+    transform 0.16s;
   pointer-events: none;
 }
 .cm-row:hover > div > .cm-actions,
@@ -2609,7 +3032,9 @@ input[type="number"]:focus {
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
 }
 .cm-ab:hover {
   background: rgba(154, 166, 126, 0.16);
@@ -2635,7 +3060,9 @@ input[type="number"]:focus {
   color: var(--cf-phosphor);
   border: 1px solid color-mix(in srgb, var(--cf-phosphor) 30%, var(--cf-edge));
   background: rgba(154, 166, 126, 0.06);
-  transition: background 0.15s, box-shadow 0.15s;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
 }
 .cm-thread-toggle:hover {
   background: rgba(154, 166, 126, 0.14);
@@ -2726,7 +3153,10 @@ input[type="number"]:focus {
   color: var(--cf-text-muted);
   background: rgba(0, 0, 0, 0.22);
   border: 1px solid var(--cf-edge);
-  transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.1s;
 }
 .cm-chip:hover {
   border-color: color-mix(in srgb, var(--cf-phosphor) 45%, var(--cf-edge));
@@ -2799,7 +3229,9 @@ input[type="number"]:focus {
   padding: 4px;
   border-radius: 5px;
   cursor: pointer;
-  transition: background 0.12s, transform 0.12s;
+  transition:
+    background 0.12s,
+    transform 0.12s;
 }
 .cm-picker__emoji:hover {
   background: rgba(154, 166, 126, 0.15);
@@ -2908,7 +3340,9 @@ emoji-picker.cm-emoji-picker {
   overflow: hidden;
   cursor: pointer;
   border: 1px solid transparent;
-  transition: border-color 0.12s, transform 0.12s;
+  transition:
+    border-color 0.12s,
+    transform 0.12s;
   background: rgba(0, 0, 0, 0.25);
 }
 .cm-gif__item:hover {
@@ -3570,7 +4004,7 @@ emoji-picker.cm-emoji-picker {
       rgba(154, 166, 126, 0.06) 1px,
       transparent 0
     )
-      0 0 / 22px 22px,
+    0 0 / 22px 22px,
     linear-gradient(to bottom, #0e120e, #080a07 70%, #0b0d09);
   box-shadow:
     inset 0 0 0 1px rgba(74, 70, 63, 0.45),
@@ -4250,12 +4684,7 @@ emoji-picker.cm-emoji-picker {
 .rm-link-flow {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--cf-cyan),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, var(--cf-cyan), transparent);
   background-size: 40% 100%;
   background-repeat: no-repeat;
   animation: rm-slide 1.6s linear infinite;
@@ -4361,8 +4790,12 @@ emoji-picker.cm-emoji-picker {
   border: 1.5px solid var(--cf-edge);
   border-radius: 10px;
   background:
-    radial-gradient(circle at 1px 1px, rgba(154, 166, 126, 0.06) 1px, transparent 0)
-      0 0 / 18px 18px,
+    radial-gradient(
+      circle at 1px 1px,
+      rgba(154, 166, 126, 0.06) 1px,
+      transparent 0
+    )
+    0 0 / 18px 18px,
     linear-gradient(to bottom, #211f1b, #191813);
   padding: 12px;
   animation: rm-rise 320ms ease backwards;

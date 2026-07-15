@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import * as React from "react";
 import YondraIcon from "@/components/icons/yondra.png";
 import NotificationsPanel from "@/components/layout/NotificationsPanel";
@@ -44,6 +45,17 @@ const IconActivity = () => (
     aria-hidden
   >
     <path d="M3 12h4l2-6 4 14 2-8h6" />
+  </svg>
+);
+const IconRevenue = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    aria-hidden
+  >
+    <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
   </svg>
 );
 
@@ -187,6 +199,10 @@ export default function DashboardSidebar({
         <IconActivity />
         Activity
       </button>
+      <Link className="yd-nav" href="/dashboard/revenue">
+        <IconRevenue />
+        Revenue
+      </Link>
 
       <div className="yd-sp" />
 

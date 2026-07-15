@@ -1,10 +1,8 @@
 "use client";
 
-import { faGear } from "@fortawesome/free-solid-svg-icons";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
 import { Board } from "@/components/layout/Board";
-import Icon from "@/components/ui/Icon";
 import type { BoardInterface } from "@/interfaces/BoardInterface";
 import { ApiError, deleteBoard, fetchBoard } from "@/lib/api";
 import { fetchUser } from "@/lib/auth";
@@ -14,16 +12,6 @@ import {
   loadDemoBoards,
 } from "@/lib/demoStorage";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
-
-// Status-LED indicator strip (cassette-futurism front panel)
-const STRIPE_COLORS = [
-  "var(--cf-phosphor)",
-  "var(--cf-amber)",
-  "var(--cf-cyan)",
-  "var(--cf-red)",
-  "var(--cf-amber)",
-  "var(--cf-phosphor)",
-];
 
 type Params = { id: string };
 
@@ -189,83 +177,9 @@ export default function BoardPage({ params }: { params: Promise<Params> }) {
   }
 
   return (
-    <div className="min-h-screen px-4 py-6 md:px-8 md:py-8">
-      {/* Status-LED indicator strip */}
-      <div className="flex gap-1 mb-3">
-        {STRIPE_COLORS.map((c, i) => (
-          <div
-            key={i}
-            style={{ background: c, boxShadow: `0 0 5px ${c}` }}
-            className="h-1 flex-1 rounded-sm"
-          />
-        ))}
-      </div>
-
-      {/* Header — compact single row */}
-      <div className="glass-panel flex items-center justify-between gap-3 mb-4 md:mb-5 flex-wrap px-4 py-2.5">
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            onClick={() =>
-              router.push(
-                isDemo
-                  ? "/demo"
-                  : board.project_id
-                    ? `/projects/${board.project_id}`
-                    : "/dashboard",
-              )
-            }
-            className="btn-physical cf-mono text-[11px] uppercase tracking-widest flex items-center gap-1 cursor-pointer transition-colors duration-150 hover:brightness-125 flex-shrink-0"
-            style={{ color: "var(--cf-text-muted)" }}
-            title={
-              isDemo
-                ? "Back to demo"
-                : board.project_id
-                  ? "Back to project"
-                  : "Back to boards"
-            }
-          >
-            ← Back
-          </button>
-          <span style={{ color: "var(--cf-edge)" }} className="flex-shrink-0">
-            ·
-          </span>
-          <p className="chrome-text text-base md:text-lg font-bold truncate">
-            {board.name || "..."}
-          </p>
-          {board.description && (
-            <p
-              className="cf-mono text-xs truncate hidden lg:block"
-              style={{ color: "var(--cf-text-muted)" }}
-            >
-              {board.description}
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {canManage && (
-            <button
-              onClick={() =>
-                isDemo
-                  ? setSettingsOpen(true)
-                  : router.push(`/boards/${id}/settings`)
-              }
-              className="aero-btn aero-btn--ghost text-[10px] uppercase tracking-widest font-bold px-3 py-1.5 cursor-pointer inline-flex items-center gap-1.5"
-            >
-              <Icon icon={faGear} /> Settings
-            </button>
-          )}
-          {canManage && !isDemo && (
-            <button
-              onClick={() => router.push(`/boards/${id}/settings?tab=members`)}
-              className="aero-btn aero-btn--ghost text-[10px] uppercase tracking-widest font-bold px-3 py-1.5 cursor-pointer"
-            >
-              Share
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Board */}
+    <div className="min-h-screen px-4 pt-3 pb-6 md:px-8 md:pt-4 md:pb-8">
+      {/* Board — the neon status rail + identity (Back · name · Settings · Share)
+          now live fused into the board faceplate itself (BoardTopBar). */}
       <Board
         id={board.id}
         name={board.name}
@@ -287,6 +201,32 @@ export default function BoardPage({ params }: { params: Promise<Params> }) {
         qaEnabled={board.qa_enabled ?? false}
         settingsOpen={settingsOpen}
         onSettingsClose={() => setSettingsOpen(false)}
+        canManage={canManage}
+        showShare={!isDemo}
+        backTitle={
+          isDemo
+            ? "Back to demo"
+            : board.project_id
+              ? "Back to project"
+              : "Back to boards"
+        }
+        onBack={() =>
+          router.push(
+            isDemo
+              ? "/demo"
+              : board.project_id
+                ? `/projects/${board.project_id}`
+                : "/dashboard",
+          )
+        }
+        onOpenSettings={() =>
+          isDemo
+            ? setSettingsOpen(true)
+            : router.push(`/boards/${id}/settings`)
+        }
+        onOpenShare={() =>
+          router.push(`/boards/${id}/settings?tab=members`)
+        }
         onBoardMetaSaved={(n, d, prefix) =>
           setBoard((b) => ({
             ...b,

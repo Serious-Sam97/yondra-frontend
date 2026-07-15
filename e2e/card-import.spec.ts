@@ -14,9 +14,12 @@ const importTool = (page: Page) =>
   page.getByRole("button", { name: "Import", exact: true });
 
 const importDialog = (page: Page) =>
-  page.locator(".aero-menu").filter({ hasText: "Import cards from JSON" });
+  page.locator(".ci-panel").filter({ hasText: "Import Cards" });
 
-const jsonBox = (page: Page) => page.getByPlaceholder("Paste JSON here…");
+const jsonBox = (page: Page) => page.getByPlaceholder(/Paste JSON here/);
+
+const fileInput = (page: Page) =>
+  importDialog(page).locator('input[type="file"]');
 
 const importButton = (page: Page) =>
   importDialog(page).getByRole("button", { name: /^Import(ing)?/ });
@@ -51,10 +54,10 @@ test.describe("card importer — mocked board", () => {
     await mockBoard(page);
     await openBoardAndImporter(page);
     await expect(
-      importDialog(page).getByText("Import cards from JSON"),
+      importDialog(page).getByText("Import Cards · JSON Loader"),
     ).toBeVisible();
     // The board's column names are surfaced as a hint.
-    await expect(importDialog(page).getByText(/To Do/)).toBeVisible();
+    await expect(importDialog(page).getByText(/To Do/).first()).toBeVisible();
   });
 
   test("keeps Import disabled and shows an error on malformed JSON", async ({
@@ -64,7 +67,7 @@ test.describe("card importer — mocked board", () => {
     await openBoardAndImporter(page);
 
     await jsonBox(page).fill('{ "name": "no closing brace"');
-    await expect(importDialog(page).getByText(/JSON error/)).toBeVisible();
+    await expect(importDialog(page).getByText(/Syntax error/)).toBeVisible();
     await expect(importButton(page)).toBeDisabled();
   });
 
@@ -78,7 +81,9 @@ test.describe("card importer — mocked board", () => {
       .getByRole("button", { name: "Insert sample" })
       .click();
     await expect(jsonBox(page)).toContainText("Design landing page");
-    await expect(importDialog(page).getByText(/JSON error/)).toHaveCount(0);
+    // STATUS reads the two-card sample back as ready; no syntax error.
+    await expect(importDialog(page).getByText(/2 cards ready/)).toBeVisible();
+    await expect(importDialog(page).getByText(/Syntax error/)).toHaveCount(0);
     await expect(importButton(page)).toBeEnabled();
   });
 
@@ -172,7 +177,9 @@ test.describe("card importer — mocked board", () => {
     await importDialog(page)
       .getByRole("button", { name: "Canvas sample" })
       .click();
-    await expect(importDialog(page).getByText(/JSON error/)).toHaveCount(0);
+    // A canvas doc reads back as a single ready card; no syntax error.
+    await expect(importDialog(page).getByText(/1 card ready/)).toBeVisible();
+    await expect(importDialog(page).getByText(/Syntax error/)).toHaveCount(0);
     await importButton(page).click();
 
     // Success closes the modal; the posted body is the canvas doc, untouched.
@@ -209,6 +216,85 @@ test.describe("card importer — mocked board", () => {
     await expect(
       importDialog(page).getByText('Row 3: Unknown column "Nowhere".'),
     ).toBeVisible();
+  });
+
+  // YON-121 multi-file: selecting several .json files at once flattens each file's
+  // cards (bare object, { cards: [...] } envelope, or array) into one merged batch.
+  test("merges several selected .json files into one batch", async ({
+    page,
+  }) => {
+    await mockBoard(page);
+    const stub = await stubImport(page, {
+      created: [
+        { ...boardFixture().cards[0], id: 701, name: "A1" },
+        { ...boardFixture().cards[0], id: 702, name: "B1" },
+        { ...boardFixture().cards[0], id: 703, name: "B2" },
+      ],
+      created_count: 3,
+      errors: [],
+      error_count: 0,
+    });
+    await openBoardAndImporter(page);
+
+    await fileInput(page).setInputFiles([
+      {
+        name: "a.json",
+        mimeType: "application/json",
+        buffer: Buffer.from(JSON.stringify({ name: "A1" })),
+      },
+      {
+        name: "b.json",
+        mimeType: "application/json",
+        buffer: Buffer.from(
+          JSON.stringify({ cards: [{ name: "B1" }, { title: "B2" }] }),
+        ),
+      },
+    ]);
+
+    // The load summary reports the merge and the box holds every card.
+    await expect(
+      importDialog(page).getByText("Merged 3 cards from 2 files."),
+    ).toBeVisible();
+    await expect(jsonBox(page)).toContainText("A1");
+
+    await importButton(page).click();
+    await expect(importDialog(page)).toBeHidden();
+
+    // A single POST carries the flattened array of all three cards.
+    expect(stub.lastBody()).toEqual([
+      { name: "A1" },
+      { name: "B1" },
+      { title: "B2" },
+    ]);
+  });
+
+  // A malformed file among several is skipped (never aborts the merge) and named
+  // in the summary; the valid files still import.
+  test("skips an invalid file and merges the rest", async ({ page }) => {
+    await mockBoard(page);
+    await openBoardAndImporter(page);
+
+    await fileInput(page).setInputFiles([
+      {
+        name: "good.json",
+        mimeType: "application/json",
+        buffer: Buffer.from(JSON.stringify([{ name: "Keep me" }])),
+      },
+      {
+        name: "broken.json",
+        mimeType: "application/json",
+        buffer: Buffer.from('{ "name": "no closing brace"'),
+      },
+    ]);
+
+    await expect(
+      importDialog(page).getByText("Merged 1 card from 1 file."),
+    ).toBeVisible();
+    await expect(
+      importDialog(page).getByText(/Skipped broken\.json/),
+    ).toBeVisible();
+    // The surviving card is valid JSON, so Import is enabled.
+    await expect(importButton(page)).toBeEnabled();
   });
 
   test("shows the server message when the whole payload is rejected", async ({
