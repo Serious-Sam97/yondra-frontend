@@ -39,6 +39,8 @@ const VortexAssistant: React.FC = () => {
   const [popN, setPopN] = useState(0);
   const [chatOpen, setChatOpen] = useState(false);
   const [draft, setDraft] = useState("");
+  // peek: pointer/focus is on him — slides him out of the border
+  const [peek, setPeek] = useState(false);
 
   const lastQuip = useRef(0);
   const lastSpoke = useRef(0);
@@ -49,6 +51,7 @@ const VortexAssistant: React.FC = () => {
   const chatOpenRef = useRef(false);
   chatOpenRef.current = chatOpen;
   const logRef = useRef<HTMLDivElement>(null);
+  const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const chat = useVortexChat(user?.id, enabled && isLogged);
 
@@ -143,6 +146,20 @@ const VortexAssistant: React.FC = () => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
     setChatOpen(true);
   };
+
+  /* border dock — he tucks into the left edge (a small sliver stays visible)
+     so he never sits over the page. He slides out while hovered/focused, while
+     speaking, or while the chat is open; the mouseleave linger keeps him from
+     flapping when the cursor grazes past. */
+  const holdPeek = () => {
+    if (peekTimer.current) clearTimeout(peekTimer.current);
+    setPeek(true);
+  };
+  const releasePeek = () => {
+    if (peekTimer.current) clearTimeout(peekTimer.current);
+    peekTimer.current = setTimeout(() => setPeek(false), 700);
+  };
+  const docked = !peek && !speech && !chatOpen;
 
   const sendDraft = () => {
     if (draft.trim() === "" || chat.streaming) return;
@@ -253,83 +270,93 @@ const VortexAssistant: React.FC = () => {
       )}
 
       {/* wrapper div + sibling buttons: the face and the hide dot are both real
-          <button>s, and buttons can't nest. */}
-      <div className="vxa-sprite">
-        <button
-          type="button"
-          className="vxa-hide"
-          title="Hide Vortex"
-          onClick={() => setVortexEnabled(false)}
-        >
-          ×
-        </button>
-        <div className="vxa-glow" />
-        <button
-          type="button"
-          className="vxa-face vxa-pop"
-          key={popN}
-          title={chatOpen ? "Close the chat" : "Vortex — click for a tip"}
-          onClick={() => {
-            if (chatOpen) setChatOpen(false);
-            else speak({ text: randomTip() });
-          }}
-        >
-          <svg
-            viewBox="0 0 100 100"
-            style={{ display: "block", width: "100%", height: "100%" }}
+          <button>s, and buttons can't nest. The outer .vxa-dock carries the
+          tuck-into-the-border transform; the bob animation transforms
+          .vxa-sprite, so the two never fight over one element's transform. */}
+      <div
+        className={`vxa-dock${docked ? " vxa-dock--in" : ""}`}
+        onMouseEnter={holdPeek}
+        onMouseLeave={releasePeek}
+        onFocus={holdPeek}
+        onBlur={releasePeek}
+      >
+        <div className="vxa-sprite">
+          <button
+            type="button"
+            className="vxa-hide"
+            title="Hide Vortex"
+            onClick={() => setVortexEnabled(false)}
           >
-            <title>Vortex</title>
-            <defs>
-              <radialGradient id="vxa-body" cx="42%" cy="36%" r="70%">
-                <stop offset="0%" stopColor="#ff8fd4" />
-                <stop offset="45%" stopColor="#ff2d95" />
-                <stop offset="100%" stopColor="#3a0a6b" />
-              </radialGradient>
-              <linearGradient id="vxa-rim" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#ff2d95" />
-                <stop offset="100%" stopColor="#00e5d0" />
-              </linearGradient>
-            </defs>
+            ×
+          </button>
+          <div className="vxa-glow" />
+          <button
+            type="button"
+            className="vxa-face vxa-pop"
+            key={popN}
+            title={chatOpen ? "Close the chat" : "Vortex — click for a tip"}
+            onClick={() => {
+              if (chatOpen) setChatOpen(false);
+              else speak({ text: randomTip() });
+            }}
+          >
+            <svg
+              viewBox="0 0 100 100"
+              style={{ display: "block", width: "100%", height: "100%" }}
+            >
+              <title>Vortex</title>
+              <defs>
+                <radialGradient id="vxa-body" cx="42%" cy="36%" r="70%">
+                  <stop offset="0%" stopColor="#ff8fd4" />
+                  <stop offset="45%" stopColor="#ff2d95" />
+                  <stop offset="100%" stopColor="#3a0a6b" />
+                </radialGradient>
+                <linearGradient id="vxa-rim" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#ff2d95" />
+                  <stop offset="100%" stopColor="#00e5d0" />
+                </linearGradient>
+              </defs>
 
-            {/* body */}
-            <circle
-              cx="50"
-              cy="50"
-              r="33"
-              fill="url(#vxa-body)"
-              stroke="url(#vxa-rim)"
-              strokeWidth="3"
-            />
-            {/* inner swirl — the vortex motif */}
-            <path
-              className="vxa-swirl"
-              d="M50 30 A20 20 0 1 1 30 50"
-              fill="none"
-              stroke="#ffffff"
-              strokeWidth="3"
-              strokeLinecap="round"
-              opacity="0.55"
-            />
-            {/* eyes */}
-            <g className="vxa-eyes">
-              <ellipse cx="40" cy="46" rx="7" ry="9" fill="#fff" />
-              <ellipse cx="60" cy="46" rx="7" ry="9" fill="#fff" />
-              <circle cx="41.5" cy="47" r="3.4" fill="#1a0033" />
-              <circle cx="61.5" cy="47" r="3.4" fill="#1a0033" />
-              <circle cx="43" cy="45" r="1.1" fill="#fff" />
-              <circle cx="63" cy="45" r="1.1" fill="#fff" />
-            </g>
-            {/* smile */}
-            <path
-              d="M42 62 Q50 69 58 62"
-              fill="none"
-              stroke="#fff"
-              strokeWidth="2.6"
-              strokeLinecap="round"
-              opacity="0.85"
-            />
-          </svg>
-        </button>
+              {/* body */}
+              <circle
+                cx="50"
+                cy="50"
+                r="33"
+                fill="url(#vxa-body)"
+                stroke="url(#vxa-rim)"
+                strokeWidth="3"
+              />
+              {/* inner swirl — the vortex motif */}
+              <path
+                className="vxa-swirl"
+                d="M50 30 A20 20 0 1 1 30 50"
+                fill="none"
+                stroke="#ffffff"
+                strokeWidth="3"
+                strokeLinecap="round"
+                opacity="0.55"
+              />
+              {/* eyes */}
+              <g className="vxa-eyes">
+                <ellipse cx="40" cy="46" rx="7" ry="9" fill="#fff" />
+                <ellipse cx="60" cy="46" rx="7" ry="9" fill="#fff" />
+                <circle cx="41.5" cy="47" r="3.4" fill="#1a0033" />
+                <circle cx="61.5" cy="47" r="3.4" fill="#1a0033" />
+                <circle cx="43" cy="45" r="1.1" fill="#fff" />
+                <circle cx="63" cy="45" r="1.1" fill="#fff" />
+              </g>
+              {/* smile */}
+              <path
+                d="M42 62 Q50 69 58 62"
+                fill="none"
+                stroke="#fff"
+                strokeWidth="2.6"
+                strokeLinecap="round"
+                opacity="0.85"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   );

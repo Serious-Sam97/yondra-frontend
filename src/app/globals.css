@@ -5223,3 +5223,25 @@ emoji-picker.cm-emoji-picker {
   border: none;
   cursor: pointer;
 }
+
+/* border dock — default state tucks Vortex into the left edge so he never
+   covers content; a ~32px sliver stays peeking. Sliding out is driven by
+   .vxa-dock--in being REMOVED (hover/focus/speech/chat, see VortexAssistant). */
+.vxa-dock {
+  transition:
+    transform 380ms cubic-bezier(0.2, 1.4, 0.4, 1),
+    opacity 300ms ease;
+}
+.vxa-dock--in {
+  /* sprite is 84px wide at left:20 — shift 72px leaves a 32px sliver */
+  transform: translateX(-72px);
+  opacity: 0.75;
+}
+.vxa-dock--in:hover {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vxa-dock {
+    transition: none;
+  }
+}
