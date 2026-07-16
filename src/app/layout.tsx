@@ -10,6 +10,7 @@ config.autoAddCss = false;
 
 import MenuAppBar from "@/components/layout/MenuAppBar"; // make sure this is a client component
 import { SpringTrail } from "@/components/ui/SpringTrail";
+import VortexAssistant from "@/components/vortex/VortexAssistant";
 import { ConsoleProvider } from "@/contexts/ConsoleContext";
 import { HeaderBusProvider } from "@/contexts/HeaderBusContext";
 import { SystemProvider } from "@/contexts/SystemContext";
@@ -48,6 +49,7 @@ export default function RootLayout({
               <MenuAppBar />
               {children}
               <SpringTrail />
+              <VortexAssistant />
             </ToastProvider>
             </HeaderBusProvider>
           </ConsoleProvider>

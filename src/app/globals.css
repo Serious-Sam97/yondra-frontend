@@ -4962,3 +4962,264 @@ emoji-picker.cm-emoji-picker {
   color: var(--cf-text-dim);
   text-transform: capitalize;
 }
+
+/* ============================== Vortex — the mascot assistant ==============
+   An original animated portal sprite (SVG in VortexAssistant.tsx) that bobs in
+   the corner with a paper speech bubble — deliberately toy-like against the
+   synthwave chrome, like a sticker on a rack unit. Hidden on small screens. */
+@keyframes vxa-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes vxa-glow-pulse {
+  0%, 100% { opacity: 0.45; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.12); }
+}
+@keyframes vxa-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.08); }
+}
+@keyframes vxa-swirl-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes vxa-bounce-in {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes vxa-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.16) rotate(-4deg); }
+  100% { transform: scale(1); }
+}
+
+.vxa-layer {
+  position: fixed;
+  left: 20px;
+  bottom: 50px;
+  z-index: 45; /* under modals (z-50), over page chrome */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  pointer-events: none;
+}
+@media (max-width: 639px) {
+  .vxa-layer { display: none; }
+}
+
+.vxa-bubble {
+  display: block; /* it's an <output>, inline by default */
+  pointer-events: auto;
+  position: relative;
+  max-width: 250px;
+  background: #fffef2;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  padding: 11px 13px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #1a1a1a;
+  box-shadow: 3px 4px 0 rgba(0, 0, 0, 0.25);
+  animation: vxa-bounce-in 0.28s cubic-bezier(0.18, 0.9, 0.3, 1.2);
+}
+/* little tail toward the sprite (bottom-left) */
+.vxa-bubble::after {
+  content: "";
+  position: absolute;
+  left: 26px;
+  bottom: -9px;
+  width: 14px;
+  height: 14px;
+  background: #fffef2;
+  border-right: 1px solid #2a2a2a;
+  border-bottom: 1px solid #2a2a2a;
+  transform: rotate(45deg);
+}
+
+.vxa-name {
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  margin-bottom: 3px;
+  background: linear-gradient(90deg, #d6177f, #0aa89a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.vxa-actions {
+  margin-top: 9px;
+  display: flex;
+  gap: 8px;
+}
+.vxa-btn {
+  font-size: 12px;
+  padding: 3px 11px;
+  color: #1a1a1a;
+  background: #f2e9ff;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+.vxa-btn:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.2); }
+.vxa-btn:disabled { opacity: 0.5; cursor: default; }
+.vxa-link {
+  font-size: 12px;
+  background: none;
+  border: none;
+  color: #555;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 3px 2px;
+}
+.vxa-link:hover { color: #000; }
+
+.vxa-sprite {
+  pointer-events: auto;
+  position: relative;
+  width: 84px;
+  height: 84px;
+  cursor: pointer;
+  animation: vxa-bob 3.4s ease-in-out infinite;
+}
+.vxa-pop {
+  width: 100%;
+  height: 100%;
+  animation: vxa-pop 0.5s ease; /* re-keyed on each speak */
+}
+.vxa-glow {
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ff2d9577 0%, #00e5d000 70%);
+  animation: vxa-glow-pulse 2.6s ease-in-out infinite;
+  pointer-events: none;
+}
+.vxa-hide {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid #000;
+  background: #fffef2;
+  color: #1a1a1a;
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 2;
+}
+.vxa-sprite:hover .vxa-hide { opacity: 1; }
+.vxa-eyes {
+  transform-origin: 50px 46px;
+  animation: vxa-blink 4.5s infinite;
+}
+.vxa-swirl {
+  transform-origin: 50px 50px;
+  animation: vxa-swirl-spin 7s linear infinite;
+}
+
+/* ---- the chat panel: Vortex's paper world, sized like a big bubble ---- */
+.vxa-chat {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  width: 320px;
+  max-height: min(440px, 60vh);
+  background: #fffef2;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  box-shadow: 3px 4px 0 rgba(0, 0, 0, 0.25);
+  animation: vxa-bounce-in 0.28s cubic-bezier(0.18, 0.9, 0.3, 1.2);
+  overflow: hidden;
+}
+.vxa-chat-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  border-bottom: 1px dashed #c9c4ae;
+}
+.vxa-chat-sub {
+  font-size: 10px;
+  color: #8a8571;
+  letter-spacing: 0.3px;
+}
+.vxa-chat-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 16px;
+  line-height: 1;
+  color: #555;
+  cursor: pointer;
+}
+.vxa-chat-close:hover { color: #000; }
+.vxa-chat-log {
+  flex: 1;
+  min-height: 120px;
+  overflow-y: auto;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.vxa-msg {
+  max-width: 92%;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 7px 10px;
+  border-radius: 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.vxa-msg--vortex {
+  align-self: flex-start;
+  background: #f6f0dc;
+  border: 1px solid #e0d9bd;
+  color: #1a1a1a;
+}
+.vxa-msg--you {
+  align-self: flex-end;
+  background: #ffe3f2;
+  border: 1px solid #f4b7da;
+  color: #401a30;
+}
+.vxa-thinking { letter-spacing: 3px; }
+.vxa-chat-error {
+  font-size: 12px;
+  color: #b3261e;
+}
+.vxa-chat-inrow {
+  display: flex;
+  gap: 8px;
+  padding: 9px 10px;
+  border-top: 1px dashed #c9c4ae;
+}
+.vxa-chat-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  padding: 6px 9px;
+  background: #fff;
+  color: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  outline: none;
+}
+.vxa-chat-input:focus { box-shadow: 0 0 0 2px #ff2d9544; }
+.vxa-face {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}

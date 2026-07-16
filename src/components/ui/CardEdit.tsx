@@ -166,10 +166,11 @@ const CardEdit: React.FC<CardEditProps> = ({
   >("details");
   // Top-level switch between the card, Planning Poker, and Sentinel (QA).
   const [topTab, setTopTab] = useState<"card" | "planning" | "qa">("card");
-  // Desktop worklog: Checklist + Subtasks are collapsible, starting minimized.
+  // Desktop worklog: Checklist + Subtasks + Payments are collapsible, starting minimized.
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
     checklist: true,
     subtasks: true,
+    payments: true,
   });
 
   // Unsaved-changes flag — lights the LED on the header Save button. Set by any
@@ -876,7 +877,29 @@ const CardEdit: React.FC<CardEditProps> = ({
             ▸
           </span>
         </button>
-        {open && content}
+        {/* grid-rows 0fr→1fr animates the reveal to natural height; content
+            stays mounted so closing animates too. inert keeps the collapsed
+            content out of the tab order. */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateRows: open ? "1fr" : "0fr",
+            transition: "grid-template-rows 260ms ease",
+          }}
+        >
+          <div
+            inert={!open}
+            style={{
+              overflow: "hidden",
+              minHeight: 0,
+              opacity: open ? 1 : 0,
+              transform: open ? "translateY(0)" : "translateY(-6px)",
+              transition: "opacity 200ms ease, transform 260ms ease",
+            }}
+          >
+            {content}
+          </div>
+        </div>
       </>
     );
   };
@@ -907,13 +930,6 @@ const CardEdit: React.FC<CardEditProps> = ({
           )}
         </div>
       )}
-      <div className="border-t pt-6" style={{ borderColor: "var(--cf-edge)" }}>
-        {workHeader(
-          "Comments",
-          comments.length ? String(comments.length) : null,
-        )}
-        {commentsSection}
-      </div>
       {waThread && (
         <div
           className="border-t pt-6"
@@ -929,15 +945,26 @@ const CardEdit: React.FC<CardEditProps> = ({
           className="border-t pt-6"
           style={{ borderColor: "var(--cf-edge)" }}
         >
-          {workHeader("Payments", null)}
-          <PaymentsSection
-            boardId={boardId}
-            cardId={Number(card.id)}
-            currency={currency ?? "BRL"}
-            isReadOnly={isReadOnly}
-          />
+          {collapsibleSection(
+            "payments",
+            "Payments",
+            null,
+            <PaymentsSection
+              boardId={boardId}
+              cardId={Number(card.id)}
+              currency={currency ?? "BRL"}
+              isReadOnly={isReadOnly}
+            />,
+          )}
         </div>
       )}
+      <div className="border-t pt-6" style={{ borderColor: "var(--cf-edge)" }}>
+        {workHeader(
+          "Comments",
+          comments.length ? String(comments.length) : null,
+        )}
+        {commentsSection}
+      </div>
     </div>
   );
 

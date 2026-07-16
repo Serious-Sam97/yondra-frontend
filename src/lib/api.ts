@@ -1777,6 +1777,19 @@ export async function startCrmChat(
   });
 }
 
+// Sends one turn of the Vortex workspace chat (the mascot assistant). Same contract as
+// the CRM chat — post the whole transcript, get a 202, and the reply streams back — but
+// user-scoped: frames arrive on the caller's own private channel as scope:'vortex-chat'.
+export async function startVortexChat(
+  requestId: string,
+  messages: CrmChatMessage[],
+): Promise<{ request_id: string }> {
+  return apiFetch(`/api/ai/vortex-chat`, {
+    method: "POST",
+    body: JSON.stringify({ request_id: requestId, messages }),
+  });
+}
+
 export interface PointsSuggestion {
   points: number;
   rationale: string;

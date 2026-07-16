@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ModuleHead, StatusLcd } from "@/components/ui/ConsoleModule";
+import { ModuleHead, StatusLcd, Toggle } from "@/components/ui/ConsoleModule";
 import {
   getNotificationPreferences,
   type NotificationMatrix,
@@ -18,53 +18,6 @@ const CHANNEL_LEDS: Record<string, string> = {
   push: "var(--cf-amber)",
   whatsapp: "var(--cf-cyan)",
 };
-
-// A single on/off switch styled to the cassette-futurism palette.
-function Toggle({
-  on,
-  onChange,
-  label,
-}: {
-  on: boolean;
-  onChange: () => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      aria-label={label}
-      onClick={onChange}
-      className="btn-physical cursor-pointer relative flex-shrink-0"
-      style={{
-        width: 40,
-        height: 22,
-        borderRadius: 999,
-        border: "1.5px solid var(--cf-edge)",
-        background: on ? "var(--cf-phosphor)" : "#2a2823",
-        boxShadow: on
-          ? "0 0 8px rgba(154,166,126,0.5), inset 0 1px 2px rgba(0,0,0,0.3)"
-          : "inset 0 1px 3px rgba(0,0,0,0.5)",
-        transition: "background 160ms ease, box-shadow 160ms ease",
-      }}
-    >
-      <span
-        aria-hidden
-        style={{
-          position: "absolute",
-          top: 2,
-          left: on ? 20 : 2,
-          width: 16,
-          height: 16,
-          borderRadius: "50%",
-          background: on ? "#14130f" : "#cfcabb",
-          transition: "left 160ms var(--ease-expo, ease)",
-        }}
-      />
-    </button>
-  );
-}
 
 export default function NotificationPreferences() {
   const [catalog, setCatalog] = useState<NotificationPreferenceCatalog | null>(

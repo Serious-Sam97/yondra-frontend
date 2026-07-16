@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DirtyLed, ModuleHead, StatusLcd } from "@/components/ui/ConsoleModule";
 import NotificationPreferences from "@/components/ui/NotificationPreferences";
+import VortexPreference from "@/components/vortex/VortexPreference";
 import type { UserInterface } from "@/interfaces/UserInterface";
 import { ApiError } from "@/lib/api";
 import {
@@ -762,6 +763,9 @@ export default function ProfilePage() {
 
           {/* COMMS MATRIX — notification preferences */}
           <NotificationPreferences />
+
+          {/* COMPANION — the Vortex mascot assistant on/off switch */}
+          <VortexPreference />
 
           {/* SESSION */}
           <section className="glass-panel relative overflow-hidden flex items-center gap-5 p-5">
