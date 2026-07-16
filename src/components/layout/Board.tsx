@@ -77,6 +77,7 @@ import { BacklogView } from "../ui/BacklogView";
 import BoardChat from "../ui/BoardChat";
 import { ArchiveCardModal, DeleteSectionModal } from "../ui/BoardConfirmModals";
 import { BoardFilterStrip } from "../ui/BoardFilterStrip";
+import { BoardCrmChatModal } from "../ui/BoardCrmChatModal";
 import { BoardStandupModal } from "../ui/BoardStandupModal";
 import { BoardToolsDock } from "../ui/BoardToolsDock";
 import { BoardTopBar, type BoardViewMode } from "../ui/BoardTopBar";
@@ -193,6 +194,7 @@ export function Board({
   const [activeCard, setActiveCard] = useState<CardInterface | null>(null);
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const [isStandupOpen, setIsStandupOpen] = useState(false);
+  const [isCrmChatOpen, setIsCrmChatOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [viewMode, setViewMode] = useState<BoardViewMode>("kanban");
   const [isCommandOpen, setIsCommandOpen] = useState(false);
@@ -1489,6 +1491,7 @@ export function Board({
       <BoardToolsDock
         viewMode={viewMode}
         isDemo={isDemo}
+        isCrm={isCrm}
         isToolbarOpen={isToolbarOpen}
         setIsToolbarOpen={setIsToolbarOpen}
         onOpenTags={() => setIsTagsOpen(true)}
@@ -1498,6 +1501,7 @@ export function Board({
         onOpenBackground={() => setIsBgOpen(true)}
         onOpenStandup={() => setIsStandupOpen(true)}
         onOpenImport={() => setIsImportOpen(true)}
+        onOpenCrmChat={() => setIsCrmChatOpen(true)}
       />
 
       {/* JSON card importer (YON-121). On success the modal closes and onImported
@@ -1542,6 +1546,14 @@ export function Board({
         <BoardStandupModal
           boardId={id}
           onClose={() => setIsStandupOpen(false)}
+        />
+      )}
+
+      {/* CRM-aware AI assistant chat (YON-69) — grounded in the board's pipeline */}
+      {isCrmChatOpen && (
+        <BoardCrmChatModal
+          boardId={id}
+          onClose={() => setIsCrmChatOpen(false)}
         />
       )}
 

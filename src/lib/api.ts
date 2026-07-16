@@ -1758,6 +1758,25 @@ export async function startStandup(
   });
 }
 
+export interface CrmChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+// Sends one turn of the CRM assistant chat (YON-69). The whole conversation so far is
+// posted each time; the reply streams back over the board channel as scope:'crm-chat'
+// ai.token/ai.done frames. This call just arms the job. 202 on success.
+export async function startCrmChat(
+  boardId: number,
+  requestId: string,
+  messages: CrmChatMessage[],
+): Promise<{ request_id: string }> {
+  return apiFetch(`/api/boards/${boardId}/ai/crm-chat`, {
+    method: "POST",
+    body: JSON.stringify({ request_id: requestId, messages }),
+  });
+}
+
 export interface PointsSuggestion {
   points: number;
   rationale: string;

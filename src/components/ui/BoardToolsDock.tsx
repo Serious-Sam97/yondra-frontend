@@ -7,6 +7,7 @@ import {
   faCommentDots,
   faFileImport,
   faPalette,
+  faRobot,
   faTag,
   faWandMagicSparkles,
 } from "@fortawesome/free-solid-svg-icons";
@@ -24,6 +25,7 @@ export const TOOL_COLORS = {
   config: "#9ca3af", // ⚙ steel gear
   standup: "#9ece6a", // AI phosphor green
   importer: "#6fe0ff", // 📥 cyan inbound
+  crmchat: "#f7768e", // AI CRM assistant — warm pipeline pink
 } as const;
 
 function ToolBtn({
@@ -91,6 +93,7 @@ function MobileToolBtn({
 interface BoardToolsDockProps {
   viewMode: BoardViewMode;
   isDemo: boolean;
+  isCrm: boolean;
   isToolbarOpen: boolean;
   setIsToolbarOpen: Dispatch<SetStateAction<boolean>>;
   onOpenTags: () => void;
@@ -100,6 +103,7 @@ interface BoardToolsDockProps {
   onOpenBackground: () => void;
   onOpenStandup: () => void;
   onOpenImport: () => void;
+  onOpenCrmChat: () => void;
 }
 
 // Board tool launchers: the desktop toolbar (vertical on kanban/list, horizontal
@@ -107,6 +111,7 @@ interface BoardToolsDockProps {
 export function BoardToolsDock({
   viewMode,
   isDemo,
+  isCrm,
   isToolbarOpen,
   setIsToolbarOpen,
   onOpenTags,
@@ -116,6 +121,7 @@ export function BoardToolsDock({
   onOpenBackground,
   onOpenStandup,
   onOpenImport,
+  onOpenCrmChat,
 }: BoardToolsDockProps) {
   const touchStartY = useRef<number>(0);
 
@@ -155,6 +161,14 @@ export function BoardToolsDock({
               color={TOOL_COLORS.standup}
               label="Standup"
               onClick={onOpenStandup}
+            />
+          )}
+          {!isDemo && isCrm && (
+            <ToolBtn
+              icon={faRobot}
+              color={TOOL_COLORS.crmchat}
+              label="Ask CRM"
+              onClick={onOpenCrmChat}
             />
           )}
           {!isDemo && (
@@ -217,6 +231,16 @@ export function BoardToolsDock({
                     color: TOOL_COLORS.standup,
                     label: "Standup",
                     onClick: onOpenStandup,
+                  },
+                ]
+              : []),
+            ...(!isDemo && isCrm
+              ? [
+                  {
+                    icon: faRobot,
+                    color: TOOL_COLORS.crmchat,
+                    label: "Ask CRM",
+                    onClick: onOpenCrmChat,
                   },
                 ]
               : []),
@@ -337,6 +361,17 @@ export function BoardToolsDock({
                   label="Standup"
                   onClick={() => {
                     onOpenStandup();
+                    setIsToolbarOpen(false);
+                  }}
+                />
+              )}
+              {!isDemo && isCrm && (
+                <MobileToolBtn
+                  icon={faRobot}
+                  color={TOOL_COLORS.crmchat}
+                  label="Ask CRM"
+                  onClick={() => {
+                    onOpenCrmChat();
                     setIsToolbarOpen(false);
                   }}
                 />
