@@ -58,6 +58,44 @@ const IconRevenue = () => (
     <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
   </svg>
 );
+// Funnel — narrowing pipeline down to the won deals.
+const IconConversion = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    aria-hidden
+  >
+    <path d="M3 4h18l-7 8v7l-4 2v-9L3 4z" />
+  </svg>
+);
+// Document with a down-arrow — export the pipeline to a file.
+const IconExport = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    aria-hidden
+  >
+    <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6z" />
+    <path d="M12 11v6M9.5 14.5 12 17l2.5-2.5" />
+  </svg>
+);
+// Circle-slash — deals that fell out of the pipeline.
+const IconLoss = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    aria-hidden
+  >
+    <circle cx="12" cy="12" r="9" />
+    <path d="M5.6 5.6l12.8 12.8" />
+  </svg>
+);
 
 /** Left rail for the dashboard home base. Absorbs the header's notifications
  *  bell + user menu (both driven by the shared useNotifications hook). */
@@ -202,6 +240,18 @@ export default function DashboardSidebar({
       <Link className="yd-nav" href="/dashboard/revenue">
         <IconRevenue />
         Revenue
+      </Link>
+      <Link className="yd-nav" href="/dashboard/conversion">
+        <IconConversion />
+        Conversion
+      </Link>
+      <Link className="yd-nav" href="/dashboard/export">
+        <IconExport />
+        Export
+      </Link>
+      <Link className="yd-nav" href="/dashboard/loss">
+        <IconLoss />
+        Loss
       </Link>
 
       <div className="yd-sp" />

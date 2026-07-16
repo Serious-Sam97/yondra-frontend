@@ -1,9 +1,40 @@
 "use client";
 
+import { useDroppable } from "@dnd-kit/core";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import Icon from "@/components/ui/Icon";
 import type { ProjectInterface } from "@/interfaces/ProjectInterface";
 import { boardProgress } from "@/lib/ui";
+
+// Drop-target ID for a project channel; the page's handleDragEnd parses this to
+// move the dragged board into project <id> (YON-125).
+export const projectDropId = (projectId: number) => `proj-${projectId}`;
+
+// Wraps a channel as a board drop-zone. Only rendered for *other* projects while
+// board-dragging is enabled, so useDroppable always runs inside the page DndContext.
+function DroppableChannel({
+  projectId,
+  children,
+}: {
+  projectId: number;
+  children: React.ReactNode;
+}) {
+  const { isOver, setNodeRef } = useDroppable({ id: projectDropId(projectId) });
+  return (
+    <div
+      ref={setNodeRef}
+      className={isOver ? "pr-board-drop-over" : ""}
+      style={{
+        borderRadius: 6,
+        outline: isOver ? "2px dashed var(--cf-phosphor)" : "none",
+        outlineOffset: -2,
+        transition: "outline-color 120ms ease",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 function projectPct(p: ProjectInterface): number | null {
   const boards = p.boards ?? [];
@@ -101,13 +132,37 @@ export default function ProjectRail({
   activeId,
   onSelect,
   onNewProject,
+  enableBoardDrop = false,
 }: {
   owned: ProjectInterface[];
   member: ProjectInterface[];
   activeId: number;
   onSelect: (id: number) => void;
   onNewProject: () => void;
+  // When true, non-active owned channels become board drop targets (YON-125).
+  enableBoardDrop?: boolean;
 }) {
+  // A board can only be dropped onto another project the user owns (the move
+  // reuses updateBoard, which the backend gates on board ownership).
+  const channel = (p: ProjectInterface, isMember?: boolean) => {
+    const active = p.id === activeId;
+    const tab = (
+      <ChannelTab
+        project={p}
+        active={active}
+        isMember={isMember}
+        onClick={() => onSelect(p.id)}
+      />
+    );
+    return enableBoardDrop && !active && !isMember ? (
+      <DroppableChannel key={p.id} projectId={p.id}>
+        {tab}
+      </DroppableChannel>
+    ) : (
+      <span key={p.id}>{tab}</span>
+    );
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto py-1">
@@ -119,14 +174,7 @@ export default function ProjectRail({
             >
               Yours
             </p>
-            {owned.map((p) => (
-              <ChannelTab
-                key={p.id}
-                project={p}
-                active={p.id === activeId}
-                onClick={() => onSelect(p.id)}
-              />
-            ))}
+            {owned.map((p) => channel(p))}
           </>
         )}
         {member.length > 0 && (
@@ -137,15 +185,7 @@ export default function ProjectRail({
             >
               Shared
             </p>
-            {member.map((p) => (
-              <ChannelTab
-                key={p.id}
-                project={p}
-                active={p.id === activeId}
-                isMember
-                onClick={() => onSelect(p.id)}
-              />
-            ))}
+            {member.map((p) => channel(p, true))}
           </>
         )}
       </div>

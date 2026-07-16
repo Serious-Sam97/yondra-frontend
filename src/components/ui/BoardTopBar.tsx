@@ -4,6 +4,7 @@ import {
   faBars,
   faCalendarDays,
   faChartColumn,
+  faFileExport,
   faGear,
   faLayerGroup,
   faMagnifyingGlass,
@@ -71,6 +72,8 @@ interface BoardTopBarProps {
   showShare?: boolean;
   onOpenSettings?: () => void;
   onOpenShare?: () => void;
+  // CRM boards only: jump to the deals export prefiltered to this pipeline.
+  onExport?: () => void;
 }
 
 // Board faceplate: a single fused control deck. The neon status rail is the deck's
@@ -100,6 +103,7 @@ export function BoardTopBar({
   showShare,
   onOpenSettings,
   onOpenShare,
+  onExport,
 }: BoardTopBarProps) {
   // Task-board progress rendered as a 12-segment LCD tape meter.
   const litSegs =
@@ -122,7 +126,10 @@ export function BoardTopBar({
           <i
             key={s.id}
             style={
-              { "--neon": s.color, animationDelay: s.delay } as React.CSSProperties
+              {
+                "--neon": s.color,
+                animationDelay: s.delay,
+              } as React.CSSProperties
             }
           />
         ))}
@@ -262,6 +269,17 @@ export function BoardTopBar({
             >
               <Icon icon={faSitemap} />
               <span className="bh-badge">{subtaskTotal}</span>
+            </button>
+          )}
+          {isCrm && onExport && (
+            <button
+              type="button"
+              onClick={onExport}
+              title="Export deals"
+              aria-label="Export deals"
+              className="bh-ikey"
+            >
+              <Icon icon={faFileExport} />
             </button>
           )}
           {canManage && (

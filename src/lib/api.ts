@@ -14,10 +14,19 @@ import type {
   ChecklistItem,
   SubtaskCard,
 } from "@/interfaces/CardInterface";
+import type { ConversionReport } from "@/interfaces/ConversionReportInterface";
 import type { DashboardPayload } from "@/interfaces/DashboardInterface";
+import type {
+  DealsExport,
+  DealsExportParams,
+} from "@/interfaces/DealsExportInterface";
+import type {
+  ImportModelInput,
+  ImportModelInterface,
+} from "@/interfaces/ImportModelInterface";
+import type { LossReport } from "@/interfaces/LossReportInterface";
 import type { PlanningSnapshot } from "@/interfaces/PlanningInterface";
 import type { ProjectInterface } from "@/interfaces/ProjectInterface";
-import type { RevenueReport } from "@/interfaces/RevenueReportInterface";
 import type {
   GherkinLine,
   ReusableStep,
@@ -27,6 +36,7 @@ import type {
   TestPlanOverview,
   Verdict,
 } from "@/interfaces/QAInterface";
+import type { RevenueReport } from "@/interfaces/RevenueReportInterface";
 import type {
   SprintInterface,
   SprintReportData,
@@ -173,6 +183,81 @@ export async function fetchRevenueReport(params?: {
   return apiFetch(`/api/reports/revenue${qs ? `?${qs}` : ""}`);
 }
 
+// GET /api/reports/conversion — monthly conversion rate (cards won that month ÷
+// total cards on the user's CRM boards). Omit params to default to the last 12
+// months; both bound to "YYYY-MM".
+export async function fetchConversionReport(params?: {
+  from?: string;
+  to?: string;
+}): Promise<ConversionReport> {
+  const q = new URLSearchParams();
+  if (params?.from) q.set("from", params.from);
+  if (params?.to) q.set("to", params.to);
+  const qs = q.toString();
+  return apiFetch(`/api/reports/conversion${qs ? `?${qs}` : ""}`);
+}
+
+// GET /api/reports/loss — deals lost per month + a by-reason breakdown across
+// the user's CRM boards (YON-66). Omit params to default to the last 12 months;
+// both bound to "YYYY-MM".
+export async function fetchLossReport(params?: {
+  from?: string;
+  to?: string;
+}): Promise<LossReport> {
+  const q = new URLSearchParams();
+  if (params?.from) q.set("from", params.from);
+  if (params?.to) q.set("to", params.to);
+  const qs = q.toString();
+  return apiFetch(`/api/reports/loss${qs ? `?${qs}` : ""}`);
+}
+
+// GET /api/reports/deals — a flat ledger of CRM deals for export (YON-67).
+// Omit params to default to all deals over the last 12 months across every CRM
+// board the user can see. status narrows to won/lost/open; board_id restricts
+// to one pipeline.
+export async function fetchDealsExport(
+  params?: DealsExportParams,
+): Promise<DealsExport> {
+  const q = dealsExportQuery(params);
+  return apiFetch(`/api/reports/deals${q ? `?${q}` : ""}`);
+}
+
+// GET /api/reports/deals?format=csv — same filters, streamed as a CSV file.
+// Like document downloads, the Bearer token can't ride a plain <a href>, so we
+// pull the blob with the auth header and trigger a client-side "Save as".
+export async function downloadDealsCsv(
+  params?: DealsExportParams,
+): Promise<void> {
+  const token = localStorage.getItem("token");
+  const q = dealsExportQuery({ ...params });
+  const sep = q ? "&" : "";
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API}/api/reports/deals?${q}${sep}format=csv`,
+    { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+  );
+  if (!res.ok) throw new ApiError(res.status, await res.text().catch(() => ""));
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `deals-${params?.status ?? "all"}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// Shared query-string builder for both deals-export endpoints so the JSON
+// preview and the CSV download can never drift on their filters.
+function dealsExportQuery(params?: DealsExportParams): string {
+  const q = new URLSearchParams();
+  if (params?.from) q.set("from", params.from);
+  if (params?.to) q.set("to", params.to);
+  if (params?.status) q.set("status", params.status);
+  if (params?.board_id != null) q.set("board_id", String(params.board_id));
+  return q.toString();
+}
+
 // Workspace omnisearch hits (SearchController) — boards + cards across every
 // board the current user can see.
 export interface SearchBoardResult {
@@ -317,6 +402,8 @@ export async function updateBoard(
     type?: "kanban" | "scrum" | "crm";
     currency?: string;
     done_section_id?: number | null;
+    lost_section_id?: number | null;
+    loss_reasons?: string[] | null;
     qa_enabled?: boolean;
     description?: string;
     project_id?: number | null;
@@ -337,6 +424,9 @@ export async function updateBoard(
     email_spam_safe?: boolean;
     require_optin_before_email?: boolean;
     roadmap_config?: RoadmapConfig | null;
+    invoice_issuer?:
+      | import("@/interfaces/PaymentInterface").InvoiceIssuer
+      | null;
   },
 ): Promise<BoardSummaryInterface> {
   return apiFetch(`/api/boards/${id}`, {
@@ -430,6 +520,17 @@ export async function reorderSections(
   });
 }
 
+// Persist a drag-reordered board list within a project (YON-125).
+export async function reorderBoards(
+  projectId: number,
+  boardIds: number[],
+): Promise<void> {
+  return apiFetch(`/api/projects/${projectId}/boards/reorder`, {
+    method: "POST",
+    body: JSON.stringify({ board_ids: boardIds }),
+  });
+}
+
 // --- Tags ---
 
 export async function createTag(
@@ -494,13 +595,54 @@ export interface CardImportResult {
 // POST /api/boards/{id}/cards/import — bulk-create cards from a custom JSON model
 // (YON-121). `payload` is the parsed JSON exactly as the user supplied it: a bare
 // array of card objects, a { cards: [...] } envelope, or a single card object.
+// When `modelId` is given (YON-122), the body becomes a { model_id, payload }
+// envelope so the server applies that project import model to arbitrary JSON.
 export async function importCards(
   boardId: number,
   payload: unknown,
+  modelId?: number,
 ): Promise<CardImportResult> {
+  const body = modelId != null ? { model_id: modelId, payload } : payload;
   return apiFetch(`/api/boards/${boardId}/cards/import`, {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
+  });
+}
+
+// ── Custom JSON import models (YON-122) — project-scoped CRUD ─────────────────
+export async function listImportModels(
+  projectId: number,
+): Promise<ImportModelInterface[]> {
+  return apiFetch(`/api/projects/${projectId}/import-models`);
+}
+
+export async function createImportModel(
+  projectId: number,
+  body: ImportModelInput,
+): Promise<ImportModelInterface> {
+  return apiFetch(`/api/projects/${projectId}/import-models`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateImportModel(
+  projectId: number,
+  modelId: number,
+  body: ImportModelInput,
+): Promise<ImportModelInterface> {
+  return apiFetch(`/api/projects/${projectId}/import-models/${modelId}`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteImportModel(
+  projectId: number,
+  modelId: number,
+): Promise<void> {
+  return apiFetch(`/api/projects/${projectId}/import-models/${modelId}`, {
+    method: "DELETE",
   });
 }
 
@@ -520,6 +662,8 @@ export async function updateCard(
     story_points?: number | null;
     sprint_id?: number | null;
     contact?: CardContactInput | null;
+    // Required when this update moves a CRM deal into the Lost stage (YON-66).
+    loss_reason?: string;
   },
 ): Promise<CardInterface> {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}`, {
@@ -635,10 +779,16 @@ export async function reorderCards(
   boardId: number,
   sectionId: number,
   orderedIds: (number | string)[],
+  // Required by the backend when the destination is the CRM Lost stage (YON-66).
+  lossReason?: string,
 ): Promise<{ ok: true }> {
   return apiFetch(`/api/boards/${boardId}/cards/reorder`, {
     method: "PUT",
-    body: JSON.stringify({ section_id: sectionId, ordered_ids: orderedIds }),
+    body: JSON.stringify({
+      section_id: sectionId,
+      ordered_ids: orderedIds,
+      ...(lossReason ? { loss_reason: lossReason } : {}),
+    }),
   });
 }
 
@@ -1168,6 +1318,17 @@ export async function deleteCardPayment(
     `/api/boards/${boardId}/cards/${cardId}/payments/${paymentId}`,
     { method: "DELETE" },
   );
+}
+
+// Issue / re-issue the deal's nota fiscal invoice (YON-68). Returns the refreshed
+// Payments payload (summary + ledger + events + the newly-attached invoice).
+export async function issueCardInvoice(
+  boardId: number,
+  cardId: number,
+): Promise<import("@/interfaces/PaymentInterface").CardPaymentsPayload> {
+  return apiFetch(`/api/boards/${boardId}/cards/${cardId}/invoice`, {
+    method: "POST",
+  });
 }
 
 export async function getPaymentMilestones(

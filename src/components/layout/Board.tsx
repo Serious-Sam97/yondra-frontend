@@ -24,9 +24,14 @@ import {
   faPlus,
   faTriangleExclamation,
 } from "@fortawesome/free-solid-svg-icons";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BoardSettings } from "@/components/ui/BoardSettings";
 import Icon from "@/components/ui/Icon";
+import {
+  LossReasonModal,
+  parseLossReasonError,
+} from "@/components/ui/LossReasonModal";
 import { triggerInkSplash } from "@/components/ui/SpringTrail";
 import { useConsole } from "@/contexts/ConsoleContext";
 import { useHeaderBus } from "@/contexts/HeaderBusContext";
@@ -214,8 +219,45 @@ export function Board({
 
   const storageKey = isDemo ? demoId : String(id);
 
+  const router = useRouter();
+
   // Sync failure feedback — shown when a server mutation fails and local state was reverted.
   const { syncError, reportSyncError } = useSyncError();
+
+  // Required-loss-reason prompt (YON-66): when the backend blocks a move into the
+  // Lost stage for want of a reason, we open this picker and retry with the choice.
+  const [lossPrompt, setLossPrompt] = useState<{
+    reasons: string[];
+    onConfirm: (reason: string) => void;
+    onCancel: () => void;
+  } | null>(null);
+
+  // Returns true when `e` is a loss-reason gate 422 (and opens the picker), so the
+  // caller can skip its generic error handling. `retry` re-runs the move with the
+  // chosen reason; `revert` undoes the optimistic change if the user cancels.
+  const handleLossGate = useCallback(
+    (
+      e: unknown,
+      retry: (reason: string) => void,
+      revert: () => void,
+    ): boolean => {
+      const reasons = parseLossReasonError(e);
+      if (!reasons) return false;
+      setLossPrompt({
+        reasons,
+        onConfirm: (reason) => {
+          setLossPrompt(null);
+          retry(reason);
+        },
+        onCancel: () => {
+          setLossPrompt(null);
+          revert();
+        },
+      });
+      return true;
+    },
+    [],
+  );
 
   // ── feed the header console: track where the user is + what they're doing ──
   const { setLocation, pushActivity } = useConsole();
@@ -542,6 +584,18 @@ export function Board({
         return;
       }
       reorderCards(id, toSectionId, orderedIds).catch((e) => {
+        if (
+          handleLossGate(
+            e,
+            (reason) =>
+              reorderCards(id, toSectionId, orderedIds, reason).catch(() => {
+                setCards(snapshot);
+                reportSyncError("Move failed — change reverted");
+              }),
+            () => setCards(snapshot),
+          )
+        )
+          return;
         setCards(snapshot);
         if (e instanceof ApiError && e.status === 422) {
           reportSyncError(
@@ -552,7 +606,16 @@ export function Board({
         }
       });
     },
-    [cardsProp, isReadOnly, isDemo, demoId, id, doneSection, reportSyncError],
+    [
+      cardsProp,
+      isReadOnly,
+      isDemo,
+      demoId,
+      id,
+      doneSection,
+      reportSyncError,
+      handleLossGate,
+    ],
   );
 
   // Fetch + merge subtasks once (annotating each with its epic's ticket key for the
@@ -817,7 +880,44 @@ export function Board({
           ),
         );
       }
-    } catch {
+    } catch (e) {
+      // Moving a CRM deal to the Lost stage needs a reason (YON-66): prompt, then
+      // retry the save with the chosen reason.
+      if (
+        handleLossGate(
+          e,
+          async (reason) => {
+            try {
+              const saved = await updateCard(id, card.id, {
+                section_id: card.section_id,
+                assigned_user_id: card.assigned_user_id,
+                tag_ids: card.tag_ids,
+                name: card.name,
+                description: card.description,
+                due_date: card.due_date,
+                priority: card.priority,
+                value: card.value,
+                story_points: card.story_points,
+                sprint_id: card.sprint_id,
+                contact: card.contact,
+                loss_reason: reason,
+              });
+              setCards((prev) =>
+                prev.map((c) =>
+                  c.id === card.id && saved
+                    ? { ...saved, checklist_items: card.checklist_items }
+                    : c,
+                ),
+              );
+              closeCard();
+            } catch {
+              reportSyncError("Could not save card — try again");
+            }
+          },
+          () => {},
+        )
+      )
+        return;
       // Keep the editor open so nothing the user typed is lost.
       reportSyncError("Could not save card — try again");
       return;
@@ -1102,6 +1202,11 @@ export function Board({
         showShare={showShare}
         onOpenSettings={onOpenSettings}
         onOpenShare={onOpenShare}
+        onExport={
+          isDemo
+            ? undefined
+            : () => router.push(`/dashboard/export?board=${id}`)
+        }
       />
 
       {/* Due date banner — always visible when there are overdue/due-today cards */}
@@ -1401,6 +1506,7 @@ export function Board({
         <CardImportModal
           boardId={id}
           sectionNames={sections.map((s) => s.name)}
+          projectId={projectId}
           onClose={() => setIsImportOpen(false)}
           onImported={(result) => {
             // Merge the created cards locally (deduped by id) rather than waiting
@@ -1658,6 +1764,15 @@ export function Board({
         </Modal>
       )}
 
+      {/* Required loss reason when a deal enters the Lost stage (YON-66) */}
+      {lossPrompt && (
+        <LossReasonModal
+          reasons={lossPrompt.reasons}
+          onConfirm={lossPrompt.onConfirm}
+          onCancel={lossPrompt.onCancel}
+        />
+      )}
+
       {/* Sprint report */}
       {reportSprint && (
         <Modal mobileFullscreen onClose={() => setReportSprint(null)}>
@@ -1770,6 +1885,18 @@ export function Board({
         return;
       }
       reorderCards(id, destSection, orderedIds).catch((e) => {
+        if (
+          handleLossGate(
+            e,
+            (reason) =>
+              reorderCards(id, destSection, orderedIds, reason).catch(() => {
+                setCards(snapshot);
+                reportSyncError("Move failed — change reverted");
+              }),
+            () => setCards(snapshot),
+          )
+        )
+          return;
         setCards(snapshot);
         if (e instanceof ApiError && e.status === 422) {
           reportSyncError(

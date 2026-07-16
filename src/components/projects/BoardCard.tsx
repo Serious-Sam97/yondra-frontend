@@ -20,7 +20,8 @@ export default function BoardCard({
   projectColor: string;
   editMode?: boolean;
   isOwner?: boolean;
-  onClick: () => void;
+  // Optional so a non-interactive DragOverlay copy can render the card (YON-125).
+  onClick?: () => void;
 }) {
   const ac = boardColor(board, projectColor);
   const flow = boardFlow(board);

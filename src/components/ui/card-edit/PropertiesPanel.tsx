@@ -165,7 +165,12 @@ interface PropertiesPanelProps {
   users: { id: number; name: string }[];
   assignedUserId: number | null;
   setAssignedUserId: (v: number | null) => void;
-  tags: { id: number; name: string; color: string }[];
+  tags: {
+    id: number;
+    name: string;
+    color: string;
+    kind?: "channel" | "custom";
+  }[];
   selectedTagIds: number[];
   toggleTag: (tagId: number) => void;
   // Templates (useCardTemplates)
@@ -1054,28 +1059,51 @@ export function PropertiesPanel({
           }}
         >
           {clusterHead("Tags")}
-          <div className="flex gap-1.5 flex-wrap">
-            {tags.map((tag) => {
-              const isActive = selectedTagIds.includes(tag.id);
-              return (
-                <button
-                  key={tag.id}
-                  disabled={isReadOnly}
-                  onClick={() => toggleTag(tag.id)}
+          {(
+            [
+              ["Channel", tags.filter((t) => t.kind === "channel")],
+              ["Custom", tags.filter((t) => t.kind !== "channel")],
+            ] as const
+          ).map(([label, group]) =>
+            group.length === 0 ? null : (
+              <div key={label} className="flex flex-col gap-1.5">
+                <span
+                  className="cf-mono uppercase"
                   style={{
-                    borderColor: tag.color,
-                    backgroundColor: isActive ? tag.color : "transparent",
-                    color: isActive ? "#1c1a16" : tag.color,
-                    boxShadow: isActive ? `0 0 8px ${tag.color}55` : "none",
-                    fontSize: "10px",
+                    fontSize: "8px",
+                    letterSpacing: "0.18em",
+                    color: "var(--cf-text-dim)",
                   }}
-                  className="cf-mono uppercase tracking-widest px-2.5 py-1 rounded-sm border cursor-pointer font-bold disabled:opacity-60 disabled:cursor-not-allowed transition-all"
                 >
-                  {tag.name}
-                </button>
-              );
-            })}
-          </div>
+                  {label}
+                </span>
+                <div className="flex gap-1.5 flex-wrap">
+                  {group.map((tag) => {
+                    const isActive = selectedTagIds.includes(tag.id);
+                    return (
+                      <button
+                        key={tag.id}
+                        disabled={isReadOnly}
+                        onClick={() => toggleTag(tag.id)}
+                        style={{
+                          borderColor: tag.color,
+                          backgroundColor: isActive ? tag.color : "transparent",
+                          color: isActive ? "#1c1a16" : tag.color,
+                          boxShadow: isActive
+                            ? `0 0 8px ${tag.color}55`
+                            : "none",
+                          fontSize: "10px",
+                        }}
+                        className="cf-mono uppercase tracking-widest px-2.5 py-1 rounded-sm border cursor-pointer font-bold disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                      >
+                        {tag.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ),
+          )}
         </div>
       )}
 

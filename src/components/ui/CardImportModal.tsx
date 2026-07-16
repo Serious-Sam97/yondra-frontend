@@ -1,13 +1,22 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Modal from "@/components/shared/Modal";
-import { ApiError, type CardImportResult, importCards } from "@/lib/api";
+import type { ImportModelInterface } from "@/interfaces/ImportModelInterface";
+import {
+  ApiError,
+  type CardImportResult,
+  importCards,
+  listImportModels,
+} from "@/lib/api";
 
 interface CardImportModalProps {
   boardId: number;
   // Column names shown as hints so the user knows what `section` values map to.
   sectionNames: string[];
+  // The board's project, if any — its custom import models (YON-122) are offered
+  // as sources here. Omitted / null → only the built-in flat + canvas shapes.
+  projectId?: number | null;
   onClose: () => void;
   // Fired once per successful import so the parent can surface a toast / count.
   onImported?: (result: CardImportResult) => void;
@@ -179,6 +188,7 @@ function StatusDetail({ children }: { children: string }) {
 export function CardImportModal({
   boardId,
   sectionNames,
+  projectId,
   onClose,
   onImported,
 }: CardImportModalProps) {
@@ -188,6 +198,10 @@ export function CardImportModal({
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<CardImportResult | null>(null);
   const [dragging, setDragging] = useState(false);
+  // The project's custom import models, and which one is active. null = Auto (the
+  // built-in flat/canvas shapes); a model id routes through that model server-side.
+  const [models, setModels] = useState<ImportModelInterface[]>([]);
+  const [modelId, setModelId] = useState<number | null>(null);
   // Readout after a multi-file drop/upload: how many files merged, how many cards,
   // and which files were skipped (with why). Null for a single file / plain paste.
   const [loadSummary, setLoadSummary] = useState<{
@@ -197,6 +211,22 @@ export function CardImportModal({
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaId = useId();
+
+  // Load the project's custom models so they can be picked as the import source.
+  useEffect(() => {
+    if (projectId == null) return;
+    let alive = true;
+    listImportModels(projectId)
+      .then((m) => alive && setModels(m))
+      .catch(() => {
+        /* no models offered if the list fails — Auto still works */
+      });
+    return () => {
+      alive = false;
+    };
+  }, [projectId]);
+
+  const selectedModel = models.find((m) => m.id === modelId) ?? null;
 
   // Read one file and drop its raw text into the box, preserving the user's exact
   // formatting. Used for the single-file case; multiple files go through mergeFiles.
@@ -314,7 +344,12 @@ export function CardImportModal({
     setSubmitError(null);
     setResult(null);
     try {
-      const res = await importAll(parsed);
+      // A custom model maps arbitrary JSON server-side, so send it whole (no
+      // client chunking); Auto keeps the flat batch + auto-chunk behaviour.
+      const res =
+        modelId != null
+          ? await importCards(boardId, parsed, modelId)
+          : await importAll(parsed);
       onImported?.(res);
       // Fully successful → close; the new cards are already on the board (and
       // their tags merged via onImported). Keep the modal open only when some
@@ -399,7 +434,7 @@ export function CardImportModal({
         <div className="flex items-center gap-3 flex-shrink-0 px-1">
           <div className="flex gap-1.5" aria-hidden="true">
             <span
-              className={`cf-led ${readyCount > 0 ? "ci-led--green" : "ci-led--off"}`}
+              className={`cf-led ${(modelId == null ? readyCount > 0 : text.trim() !== "" && !parseError) ? "ci-led--green" : "ci-led--off"}`}
             />
             <span
               className={`cf-led ${loadSummary ? "ci-led--amber" : "ci-led--off"}`}
@@ -451,6 +486,48 @@ export function CardImportModal({
             if (e.dataTransfer.files?.length) loadFiles(e.dataTransfer.files);
           }}
         >
+          {/* MODEL — pick a custom project model or the built-in Auto shapes */}
+          {models.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <p className="ci-zone">Model</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setModelId(null)}
+                  className="aero-btn aero-btn--ghost text-[10px] uppercase tracking-widest px-3 py-2"
+                  style={
+                    modelId == null
+                      ? {
+                          borderColor: "var(--cf-phosphor)",
+                          color: "var(--cf-phosphor)",
+                        }
+                      : undefined
+                  }
+                >
+                  Auto (flat / canvas)
+                </button>
+                {models.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setModelId(m.id)}
+                    className="aero-btn aero-btn--ghost text-[10px] uppercase tracking-widest px-3 py-2"
+                    style={
+                      modelId === m.id
+                        ? {
+                            borderColor: "var(--cf-phosphor)",
+                            color: "var(--cf-phosphor)",
+                          }
+                        : undefined
+                    }
+                  >
+                    {m.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* SOURCE — cartridge bay */}
           <div className="flex flex-col gap-2">
             <p className="ci-zone">Source · drop or paste</p>
@@ -474,7 +551,9 @@ export function CardImportModal({
                 className="cf-mono text-center"
                 style={{ fontSize: 10, color: "var(--cf-text-dim)" }}
               >
-                one file or many — dropped files merge into one batch
+                {selectedModel
+                  ? `Paste the JSON “${selectedModel.name}” expects — it maps on import`
+                  : "one file or many — dropped files merge into one batch"}
               </p>
               <div className="flex flex-wrap justify-center gap-2 pt-0.5">
                 <input
@@ -496,20 +575,38 @@ export function CardImportModal({
                 >
                   ⤓ Browse files
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setContent(SAMPLE)}
-                  className="aero-btn aero-btn--ghost text-[10px] uppercase tracking-widest px-3 py-2"
-                >
-                  Insert sample
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setContent(CANVAS_SAMPLE)}
-                  className="aero-btn aero-btn--ghost text-[10px] uppercase tracking-widest px-3 py-2"
-                >
-                  Canvas sample
-                </button>
+                {selectedModel ? (
+                  selectedModel.sample != null && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setContent(
+                          JSON.stringify(selectedModel.sample, null, 2),
+                        )
+                      }
+                      className="aero-btn aero-btn--ghost text-[10px] uppercase tracking-widest px-3 py-2"
+                    >
+                      Load model sample
+                    </button>
+                  )
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setContent(SAMPLE)}
+                      className="aero-btn aero-btn--ghost text-[10px] uppercase tracking-widest px-3 py-2"
+                    >
+                      Insert sample
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setContent(CANVAS_SAMPLE)}
+                      className="aero-btn aero-btn--ghost text-[10px] uppercase tracking-widest px-3 py-2"
+                    >
+                      Canvas sample
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -534,29 +631,31 @@ export function CardImportModal({
                 padding: "12px 14px",
               }}
             />
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span
-                className="cf-mono"
-                style={{
-                  fontSize: 9,
-                  letterSpacing: "0.2em",
-                  textTransform: "uppercase",
-                  color: "var(--cf-text-dim)",
-                  marginRight: 2,
-                }}
-              >
-                Fields
-              </span>
-              <span className="ci-chip ci-chip--req">name*</span>
-              {OPTIONAL_FIELDS.map((f) => (
+            {modelId == null && (
+              <div className="flex flex-wrap items-center gap-1.5">
                 <span
-                  key={f}
-                  className={`ci-chip ${presentFields?.has(f) ? "ci-chip--on" : ""}`}
+                  className="cf-mono"
+                  style={{
+                    fontSize: 9,
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase",
+                    color: "var(--cf-text-dim)",
+                    marginRight: 2,
+                  }}
                 >
-                  {f}
+                  Fields
                 </span>
-              ))}
-            </div>
+                <span className="ci-chip ci-chip--req">name*</span>
+                {OPTIONAL_FIELDS.map((f) => (
+                  <span
+                    key={f}
+                    className={`ci-chip ${presentFields?.has(f) ? "ci-chip--on" : ""}`}
+                  >
+                    {f}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* STATUS — LCD readout */}
@@ -597,7 +696,11 @@ export function CardImportModal({
                     <StatusDetail key={s}>{`Skipped ${s}`}</StatusDetail>
                   ))}
                 </>
-              ) : readyCount > 0 ? (
+              ) : selectedModel && text.trim() !== "" ? (
+                <StatusRow tone="green">
+                  {`Ready — maps via “${selectedModel.name}” on import`}
+                </StatusRow>
+              ) : readyCount > 0 && modelId == null ? (
                 <StatusRow tone="green">
                   {`${readyCount} card${readyCount === 1 ? "" : "s"} ready`}
                 </StatusRow>
@@ -640,7 +743,7 @@ export function CardImportModal({
           >
             {busy
               ? "Importing…"
-              : `Import${readyCount > 0 ? ` ${readyCount}` : ""} ▸`}
+              : `Import${modelId == null && readyCount > 0 ? ` ${readyCount}` : ""} ▸`}
           </button>
         </div>
       </div>

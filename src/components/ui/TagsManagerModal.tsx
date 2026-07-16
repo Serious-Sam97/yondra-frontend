@@ -58,41 +58,65 @@ export function TagsManagerModal({
               No tags yet. Create one below.
             </p>
           )}
-          {tags.map((tag) => (
-            <div
-              key={tag.id}
-              className="flex items-center justify-between rounded-lg px-3 py-2.5"
-              style={{ background: "var(--cf-graphite)" }}
-            >
-              <div className="flex items-center gap-2">
-                <div
-                  style={{ backgroundColor: tag.color }}
-                  className="w-3 h-3 rounded-full flex-shrink-0"
-                />
+          {(
+            [
+              ["Channel", tags.filter((t) => t.kind === "channel")],
+              ["Custom", tags.filter((t) => t.kind !== "channel")],
+            ] as const
+          ).map(([label, group]) =>
+            group.length === 0 ? null : (
+              <div key={label} className="flex flex-col gap-2">
                 <span
-                  style={{ color: tag.color }}
-                  className="cf-mono text-sm font-bold uppercase tracking-wide"
+                  className="cf-mono uppercase"
+                  style={{
+                    fontSize: "8px",
+                    letterSpacing: "0.18em",
+                    color: "var(--cf-text-muted)",
+                  }}
                 >
-                  {tag.name}
+                  {label}
                 </span>
+                {group.map((tag) => {
+                  const isChannel = tag.kind === "channel";
+                  return (
+                    <div
+                      key={tag.id}
+                      className="flex items-center justify-between rounded-lg px-3 py-2.5"
+                      style={{ background: "var(--cf-graphite)" }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div
+                          style={{ backgroundColor: tag.color }}
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                        />
+                        <span
+                          style={{ color: tag.color }}
+                          className="cf-mono text-sm font-bold uppercase tracking-wide"
+                        >
+                          {tag.name}
+                        </span>
+                      </div>
+                      {!isReadOnly && !isChannel && (
+                        <button
+                          onClick={() => onDeleteTag(tag.id)}
+                          className="text-xs cursor-pointer transition-colors ml-2 hover:opacity-100"
+                          style={{ color: "var(--cf-text-muted)" }}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.color = "var(--cf-red)")
+                          }
+                          onMouseLeave={(e) =>
+                            (e.currentTarget.style.color = "var(--cf-text-muted)")
+                          }
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              {!isReadOnly && (
-                <button
-                  onClick={() => onDeleteTag(tag.id)}
-                  className="text-xs cursor-pointer transition-colors ml-2 hover:opacity-100"
-                  style={{ color: "var(--cf-text-muted)" }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.color = "var(--cf-red)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.color = "var(--cf-text-muted)")
-                  }
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-          ))}
+            ),
+          )}
         </div>
 
         {!isReadOnly && (

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { BoardInterface } from "@/interfaces/BoardInterface";
 import type {
+  InvoiceIssuer,
   PaymentChannel,
   PaymentMilestone,
 } from "@/interfaces/PaymentInterface";
@@ -10,6 +11,7 @@ import {
   createPaymentMilestone,
   deletePaymentMilestone,
   getPaymentMilestones,
+  updateBoard,
   updatePaymentMilestone,
 } from "@/lib/api";
 import {
@@ -50,6 +52,7 @@ function draftRow(): Row {
     email_subject: "",
     email_body: "",
     move_to_section_id: null,
+    generate_invoice: false,
     enabled: true,
     position: 0,
   };
@@ -61,6 +64,31 @@ export default function PaymentsTab({ board }: Props) {
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [savingId, setSavingId] = useState<number | null>(null);
+
+  // Invoice issuer (emitente) block — board-level, stamped on every nota fiscal.
+  const [issuer, setIssuer] = useState<InvoiceIssuer>(
+    board.invoice_issuer ?? {},
+  );
+  const [savingIssuer, setSavingIssuer] = useState(false);
+
+  const patchIssuer = (patch: Partial<InvoiceIssuer>) =>
+    setIssuer((prev) => ({ ...prev, ...patch }));
+
+  const saveIssuer = async () => {
+    setSavingIssuer(true);
+    setFeedback(null);
+    try {
+      await updateBoard(board.id, { invoice_issuer: issuer });
+      setFeedback({ type: "success", message: "Saved the invoice issuer." });
+    } catch (e) {
+      setFeedback({
+        type: "error",
+        message: friendlyMessage(e, "Could not save the issuer."),
+      });
+    } finally {
+      setSavingIssuer(false);
+    }
+  };
 
   useEffect(() => {
     getPaymentMilestones(board.id)
@@ -97,6 +125,7 @@ export default function PaymentsTab({ board }: Props) {
       email_subject: row.email_subject || null,
       email_body: row.email_body || null,
       move_to_section_id: row.move_to_section_id,
+      generate_invoice: row.generate_invoice,
       enabled: row.enabled,
     };
     try {
@@ -174,6 +203,82 @@ export default function PaymentsTab({ board }: Props) {
 
       <FeedbackBanner feedback={feedback} />
 
+      {/* Invoice issuer (emitente) — appears on every generated nota fiscal (YON-68). */}
+      <div
+        className="flex flex-col gap-2.5 rounded-xl p-4"
+        style={{
+          border: "1px solid var(--cf-edge)",
+          background: "rgba(255,255,255,0.02)",
+        }}
+      >
+        <div className="flex flex-col gap-1">
+          <PanelHeading>Nota fiscal issuer</PanelHeading>
+          <p
+            className="cf-mono text-xs"
+            style={{ color: "var(--cf-text-muted)" }}
+          >
+            Your details as the emitter — stamped on every generated nota
+            fiscal. This is a simplified invoice document, not a
+            SEFAZ-registered NF-e.
+          </p>
+        </div>
+        <input
+          type="text"
+          value={issuer.name ?? ""}
+          onChange={(e) => patchIssuer({ name: e.target.value })}
+          placeholder="Company / your name (defaults to the board name)"
+          className="glass-input text-xs px-3 py-2 w-full"
+        />
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            type="text"
+            value={issuer.tax_id ?? ""}
+            onChange={(e) => patchIssuer({ tax_id: e.target.value })}
+            placeholder="CNPJ / CPF"
+            className="glass-input text-xs px-3 py-2 flex-1 min-w-[140px]"
+          />
+          <input
+            type="text"
+            value={issuer.phone ?? ""}
+            onChange={(e) => patchIssuer({ phone: e.target.value })}
+            placeholder="Phone"
+            className="glass-input text-xs px-3 py-2 flex-1 min-w-[140px]"
+          />
+        </div>
+        <input
+          type="text"
+          value={issuer.email ?? ""}
+          onChange={(e) => patchIssuer({ email: e.target.value })}
+          placeholder="Email"
+          className="glass-input text-xs px-3 py-2 w-full"
+        />
+        <input
+          type="text"
+          value={issuer.address ?? ""}
+          onChange={(e) => patchIssuer({ address: e.target.value })}
+          placeholder="Address"
+          className="glass-input text-xs px-3 py-2 w-full"
+        />
+        <input
+          type="text"
+          value={issuer.footer ?? ""}
+          onChange={(e) => patchIssuer({ footer: e.target.value })}
+          placeholder="Footer note — e.g. payment terms, thank-you line"
+          className="glass-input text-xs px-3 py-2 w-full"
+        />
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            onClick={saveIssuer}
+            disabled={savingIssuer}
+            className="btn-physical cf-mono text-xs uppercase font-bold cursor-pointer disabled:opacity-50"
+            style={{ color: "var(--cf-phosphor)" }}
+          >
+            {savingIssuer ? "Saving…" : "Save issuer"}
+          </button>
+        </div>
+      </div>
+
       <div className="flex flex-col gap-3">
         {rows.map((row) => {
           const busy = savingId === row.id;
@@ -235,7 +340,9 @@ export default function PaymentsTab({ board }: Props) {
                 <input
                   type="checkbox"
                   checked={row.notify}
-                  onChange={(e) => patchRow(row.id, { notify: e.target.checked })}
+                  onChange={(e) =>
+                    patchRow(row.id, { notify: e.target.checked })
+                  }
                 />
                 Send a message
               </label>
@@ -340,6 +447,21 @@ export default function PaymentsTab({ board }: Props) {
                   ))}
                 </select>
               </div>
+
+              {/* Nota fiscal action (YON-68) */}
+              <label
+                className="cf-mono text-xs flex items-center gap-1.5 cursor-pointer"
+                style={{ color: "var(--cf-text-muted)" }}
+              >
+                <input
+                  type="checkbox"
+                  checked={row.generate_invoice}
+                  onChange={(e) =>
+                    patchRow(row.id, { generate_invoice: e.target.checked })
+                  }
+                />
+                Generate a nota fiscal (invoice)
+              </label>
 
               <div className="flex items-center justify-end gap-2">
                 <button

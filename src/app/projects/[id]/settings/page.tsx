@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  faPlug,
   faSliders,
   faTableColumns,
   faTriangleExclamation,
@@ -11,6 +12,7 @@ import { use, useEffect, useMemo, useState } from "react";
 import BoardsTab from "@/components/project-settings/BoardsTab";
 import DangerTab from "@/components/project-settings/DangerTab";
 import GeneralTab from "@/components/project-settings/GeneralTab";
+import ImportModelsTab from "@/components/project-settings/ImportModelsTab";
 import MembersTab from "@/components/project-settings/MembersTab";
 import SettingsTabs, { type TabDef } from "@/components/settings/SettingsTabs";
 import type {
@@ -99,6 +101,8 @@ export default function ProjectSettingsPage({
       t.push({ key: "general", label: "General", icon: faSliders });
     t.push({ key: "members", label: "Members", icon: faUsers });
     t.push({ key: "boards", label: "Boards", icon: faTableColumns });
+    if (canManage)
+      t.push({ key: "import-models", label: "Import models", icon: faPlug });
     if (canManage)
       t.push({ key: "danger", label: "Danger", icon: faTriangleExclamation });
     return t;
@@ -211,6 +215,7 @@ export default function ProjectSettingsPage({
               onChange={(b: ProjectBoard[]) => patch({ boards: b })}
             />
           )}
+          {active === "import-models" && <ImportModelsTab project={project} />}
           {active === "danger" && <DangerTab project={project} />}
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { faGithub, faWhatsapp } from "@fortawesome/free-brands-svg-icons";
 import {
   faBoxArchive,
+  faCircleXmark,
   faClockRotateLeft,
   faEnvelope,
   faFileImport,
@@ -23,6 +24,7 @@ import EmailTab from "@/components/settings/EmailTab";
 import GeneralTab from "@/components/settings/GeneralTab";
 import GitHubTab from "@/components/settings/GitHubTab";
 import IntakeTab from "@/components/settings/IntakeTab";
+import LossTab from "@/components/settings/LossTab";
 import MembersTab from "@/components/settings/MembersTab";
 import PaymentsTab from "@/components/settings/PaymentsTab";
 import SettingsTabs, { type TabDef } from "@/components/settings/SettingsTabs";
@@ -122,6 +124,9 @@ export default function BoardSettingsPage({
     // Payment milestones (YON-63) — the 50%/100% flow lives on CRM deals.
     if (canManage && board.type === "crm")
       t.push({ key: "payments", label: "Payments", icon: faMoneyBillWave });
+    // Loss reasons + Lost stage (YON-66) — CRM deal-loss config.
+    if (canManage && board.type === "crm")
+      t.push({ key: "loss", label: "Loss", icon: faCircleXmark });
     t.push({ key: "activity", label: "Activity", icon: faClockRotateLeft });
     if (canManage) {
       t.push({ key: "archived", label: "Archived", icon: faBoxArchive });
@@ -219,6 +224,7 @@ export default function BoardSettingsPage({
           {active === "intake" && <IntakeTab board={board} onSaved={patch} />}
           {active === "email" && <EmailTab board={board} onSaved={patch} />}
           {active === "payments" && <PaymentsTab board={board} />}
+          {active === "loss" && <LossTab board={board} onSaved={patch} />}
           {active === "columns" && (
             <ColumnsTab
               board={board}

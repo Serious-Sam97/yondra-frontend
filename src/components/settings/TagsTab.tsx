@@ -2,6 +2,7 @@
 
 import {
   faCheck,
+  faLock,
   faPen,
   faPlus,
   faTrash,
@@ -57,6 +58,21 @@ function Swatches({
   );
 }
 
+function GroupLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      className="cf-mono uppercase"
+      style={{
+        fontSize: "9px",
+        letterSpacing: "0.18em",
+        color: "var(--cf-text-dim)",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
 interface Props {
   board: BoardInterface;
   onChange: (tags: TagInterface[]) => void;
@@ -71,6 +87,9 @@ export default function TagsTab({ board, onChange }: Props) {
   const [editColor, setEditColor] = useState(TAG_PALETTE[0]);
   const [confirmId, setConfirmId] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
+
+  const channelTags = tags.filter((t) => t.kind === "channel");
+  const customTags = tags.filter((t) => t.kind !== "channel");
 
   const sync = (next: TagInterface[]) => {
     setTags(next);
@@ -102,7 +121,10 @@ export default function TagsTab({ board, onChange }: Props) {
 
   const handleSaveEdit = async () => {
     if (editId == null) return;
-    const name = editName.trim();
+    const editing = tags.find((t) => t.id === editId);
+    const isChannel = editing?.kind === "channel";
+    // Channel tags have locked names — only the colour is editable.
+    const name = isChannel ? (editing?.name ?? "") : editName.trim();
     if (!name) return;
     const prev = tags;
     const next = tags.map((t) =>
@@ -111,7 +133,11 @@ export default function TagsTab({ board, onChange }: Props) {
     sync(next);
     setEditId(null);
     try {
-      await updateTag(board.id, editId, { name, color: editColor });
+      await updateTag(
+        board.id,
+        editId,
+        isChannel ? { color: editColor } : { name, color: editColor },
+      );
     } catch {
       sync(prev);
       setFeedback({ type: "error", message: "Could not update tag." });
@@ -130,6 +156,177 @@ export default function TagsTab({ board, onChange }: Props) {
     }
   };
 
+  const renderTag = (tag: TagInterface) => {
+    const isChannel = tag.kind === "channel";
+    return (
+      <div
+        key={tag.id}
+        className="flex flex-col gap-2 rounded-xl px-3 py-2.5"
+        style={{ background: "#211f1b", border: "1px solid #38352e" }}
+      >
+        {editId === tag.id ? (
+          <>
+            <div className="flex items-center gap-2">
+              <span
+                className="rounded-full flex-shrink-0"
+                style={{
+                  width: 12,
+                  height: 12,
+                  background: editColor,
+                  boxShadow: `0 0 6px ${editColor}`,
+                }}
+              />
+              {isChannel ? (
+                <span
+                  className="flex-1 truncate font-bold inline-flex items-center gap-1.5"
+                  style={{ fontSize: "12px", color: "var(--cf-text)" }}
+                >
+                  {tag.name}
+                  <Icon
+                    icon={faLock}
+                    style={{ fontSize: "9px", color: "var(--cf-text-dim)" }}
+                  />
+                </span>
+              ) : (
+                <input
+                  autoFocus
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveEdit();
+                    if (e.key === "Escape") setEditId(null);
+                  }}
+                  className="glass-input cf-lcd text-sm flex-1 py-1"
+                />
+              )}
+              <button
+                onClick={handleSaveEdit}
+                aria-label="Save tag"
+                className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer"
+                style={{
+                  background: "rgba(154,166,126,0.16)",
+                  border: "1px solid rgba(154,166,126,0.5)",
+                  color: "var(--cf-phosphor)",
+                }}
+              >
+                <Icon icon={faCheck} style={{ fontSize: "10px" }} />
+              </button>
+              <button
+                onClick={() => setEditId(null)}
+                aria-label="Cancel"
+                className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer"
+                style={{
+                  border: "1px solid var(--cf-edge)",
+                  color: "var(--cf-text-muted)",
+                }}
+              >
+                <Icon icon={faXmark} style={{ fontSize: "10px" }} />
+              </button>
+            </div>
+            <Swatches value={editColor} onPick={setEditColor} />
+          </>
+        ) : (
+          <div className="flex items-center gap-3">
+            <span
+              className="rounded-full flex-shrink-0"
+              style={{
+                width: 12,
+                height: 12,
+                background: tag.color,
+                boxShadow: `0 0 6px ${tag.color}`,
+              }}
+            />
+            <span
+              className="flex-1 truncate font-bold inline-flex items-center gap-1.5"
+              style={{ fontSize: "12px", color: "var(--cf-text)" }}
+            >
+              {tag.name}
+              {isChannel && (
+                <Icon
+                  icon={faLock}
+                  title="Built-in channel — name locked"
+                  style={{ fontSize: "9px", color: "var(--cf-text-dim)" }}
+                />
+              )}
+            </span>
+            {confirmId === tag.id ? (
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <span
+                  className="uppercase"
+                  style={{
+                    fontSize: "9px",
+                    letterSpacing: "0.1em",
+                    color: "var(--cf-red)",
+                  }}
+                >
+                  Delete?
+                </span>
+                <button
+                  onClick={() => handleDelete(tag.id)}
+                  aria-label="Confirm"
+                  className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer"
+                  style={{
+                    background: "rgba(255,90,77,0.16)",
+                    border: "1px solid rgba(255,90,77,0.55)",
+                    color: "var(--cf-red)",
+                  }}
+                >
+                  <Icon icon={faCheck} style={{ fontSize: "10px" }} />
+                </button>
+                <button
+                  onClick={() => setConfirmId(null)}
+                  aria-label="Cancel"
+                  className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer"
+                  style={{
+                    border: "1px solid var(--cf-edge)",
+                    color: "var(--cf-text-muted)",
+                  }}
+                >
+                  <Icon icon={faXmark} style={{ fontSize: "10px" }} />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={() => startEdit(tag)}
+                  aria-label={`Edit ${tag.name}`}
+                  title={isChannel ? "Recolour" : "Edit"}
+                  className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer"
+                  style={{ color: "var(--cf-text-dim)" }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = "var(--cf-cyan)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = "var(--cf-text-dim)")
+                  }
+                >
+                  <Icon icon={faPen} style={{ fontSize: "10px" }} />
+                </button>
+                {!isChannel && (
+                  <button
+                    onClick={() => setConfirmId(tag.id)}
+                    aria-label={`Delete ${tag.name}`}
+                    title="Delete"
+                    className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer"
+                    style={{ color: "var(--cf-text-dim)" }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.color = "var(--cf-red)")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.color = "var(--cf-text-dim)")
+                    }
+                  >
+                    <Icon icon={faTrash} style={{ fontSize: "11px" }} />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="glass-panel p-6 flex flex-col gap-5">
       <PanelHeading>Tags</PanelHeading>
@@ -144,160 +341,26 @@ export default function TagsTab({ board, onChange }: Props) {
         </p>
       )}
 
-      <div className="flex flex-col gap-2">
-        {tags.map((tag) => (
-          <div
-            key={tag.id}
-            className="flex flex-col gap-2 rounded-xl px-3 py-2.5"
-            style={{ background: "#211f1b", border: "1px solid #38352e" }}
-          >
-            {editId === tag.id ? (
-              <>
-                <div className="flex items-center gap-2">
-                  <span
-                    className="rounded-full flex-shrink-0"
-                    style={{
-                      width: 12,
-                      height: 12,
-                      background: editColor,
-                      boxShadow: `0 0 6px ${editColor}`,
-                    }}
-                  />
-                  <input
-                    autoFocus
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleSaveEdit();
-                      if (e.key === "Escape") setEditId(null);
-                    }}
-                    className="glass-input cf-lcd text-sm flex-1 py-1"
-                  />
-                  <button
-                    onClick={handleSaveEdit}
-                    aria-label="Save tag"
-                    className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer"
-                    style={{
-                      background: "rgba(154,166,126,0.16)",
-                      border: "1px solid rgba(154,166,126,0.5)",
-                      color: "var(--cf-phosphor)",
-                    }}
-                  >
-                    <Icon icon={faCheck} style={{ fontSize: "10px" }} />
-                  </button>
-                  <button
-                    onClick={() => setEditId(null)}
-                    aria-label="Cancel"
-                    className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer"
-                    style={{
-                      border: "1px solid var(--cf-edge)",
-                      color: "var(--cf-text-muted)",
-                    }}
-                  >
-                    <Icon icon={faXmark} style={{ fontSize: "10px" }} />
-                  </button>
-                </div>
-                <Swatches value={editColor} onPick={setEditColor} />
-              </>
-            ) : (
-              <div className="flex items-center gap-3">
-                <span
-                  className="rounded-full flex-shrink-0"
-                  style={{
-                    width: 12,
-                    height: 12,
-                    background: tag.color,
-                    boxShadow: `0 0 6px ${tag.color}`,
-                  }}
-                />
-                <span
-                  className="flex-1 truncate font-bold"
-                  style={{ fontSize: "12px", color: "var(--cf-text)" }}
-                >
-                  {tag.name}
-                </span>
-                {confirmId === tag.id ? (
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span
-                      className="uppercase"
-                      style={{
-                        fontSize: "9px",
-                        letterSpacing: "0.1em",
-                        color: "var(--cf-red)",
-                      }}
-                    >
-                      Delete?
-                    </span>
-                    <button
-                      onClick={() => handleDelete(tag.id)}
-                      aria-label="Confirm"
-                      className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer"
-                      style={{
-                        background: "rgba(255,90,77,0.16)",
-                        border: "1px solid rgba(255,90,77,0.55)",
-                        color: "var(--cf-red)",
-                      }}
-                    >
-                      <Icon icon={faCheck} style={{ fontSize: "10px" }} />
-                    </button>
-                    <button
-                      onClick={() => setConfirmId(null)}
-                      aria-label="Cancel"
-                      className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer"
-                      style={{
-                        border: "1px solid var(--cf-edge)",
-                        color: "var(--cf-text-muted)",
-                      }}
-                    >
-                      <Icon icon={faXmark} style={{ fontSize: "10px" }} />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button
-                      onClick={() => startEdit(tag)}
-                      aria-label={`Edit ${tag.name}`}
-                      title="Edit"
-                      className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer"
-                      style={{ color: "var(--cf-text-dim)" }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.color = "var(--cf-cyan)")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.color = "var(--cf-text-dim)")
-                      }
-                    >
-                      <Icon icon={faPen} style={{ fontSize: "10px" }} />
-                    </button>
-                    <button
-                      onClick={() => setConfirmId(tag.id)}
-                      aria-label={`Delete ${tag.name}`}
-                      title="Delete"
-                      className="w-6 h-6 rounded-md flex items-center justify-center cursor-pointer"
-                      style={{ color: "var(--cf-text-dim)" }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.color = "var(--cf-red)")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.color = "var(--cf-text-dim)")
-                      }
-                    >
-                      <Icon icon={faTrash} style={{ fontSize: "11px" }} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+      {channelTags.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <GroupLabel>Channel · built-in</GroupLabel>
+          {channelTags.map(renderTag)}
+        </div>
+      )}
+
+      {customTags.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <GroupLabel>Custom</GroupLabel>
+          {customTags.map(renderTag)}
+        </div>
+      )}
 
       {/* Create tag */}
       <div
         className="flex flex-col gap-3 pt-3 border-t"
         style={{ borderColor: "var(--cf-edge)" }}
       >
-        <label className="cf-label">New tag</label>
+        <label className="cf-label">New custom tag</label>
         <div className="flex items-center gap-2">
           <span
             className="rounded-full flex-shrink-0"

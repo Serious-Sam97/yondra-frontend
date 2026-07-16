@@ -5,7 +5,13 @@ import type {
   CardPaymentsPayload,
   PaymentMilestoneEventRow,
 } from "@/interfaces/PaymentInterface";
-import { addCardPayment, deleteCardPayment, fetchCardPayments } from "@/lib/api";
+import {
+  addCardPayment,
+  deleteCardPayment,
+  downloadCardDocument,
+  fetchCardPayments,
+  issueCardInvoice,
+} from "@/lib/api";
 
 interface Props {
   boardId: number;
@@ -27,16 +33,22 @@ const money = (n: number, currency: string) => {
 };
 
 // Colour + glyph for a milestone-event's message outcome.
-function statusChip(e: PaymentMilestoneEventRow): { text: string; color: string } {
+function statusChip(e: PaymentMilestoneEventRow): {
+  text: string;
+  color: string;
+} {
   const parts: string[] = [];
   if (e.message_status === "sent")
     parts.push(`${e.message_channel ?? "message"} sent`);
   else if (e.message_status === "failed") parts.push("message failed");
   else if (e.message_status === "skipped") parts.push("message skipped");
   if (e.moved_to_section_id) parts.push("moved stage");
+  if (e.invoice_status === "issued")
+    parts.push(`invoice #${e.invoice_number ?? ""}`.trim());
+  else if (e.invoice_status === "failed") parts.push("invoice failed");
   const text = parts.length ? parts.join(" · ") : "logged";
   const color =
-    e.message_status === "failed"
+    e.message_status === "failed" || e.invoice_status === "failed"
       ? "var(--cf-red)"
       : e.message_status === "skipped"
         ? "var(--cf-amber)"
@@ -110,6 +122,35 @@ export function PaymentsSection({
     }
   };
 
+  const invoice = data?.invoice ?? null;
+
+  const issue = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await issueCardInvoice(boardId, cardId);
+      setData(updated);
+    } catch {
+      setError("Could not issue the nota fiscal.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const download = async () => {
+    if (!invoice?.document_id) return;
+    try {
+      await downloadCardDocument(
+        boardId,
+        cardId,
+        invoice.document_id,
+        `nota-fiscal-${invoice.number}.pdf`,
+      );
+    } catch {
+      setError("Could not download the nota fiscal.");
+    }
+  };
+
   if (loading) {
     return (
       <p className="cf-mono text-xs" style={{ color: "var(--cf-text-muted)" }}>
@@ -174,14 +215,15 @@ export function PaymentsSection({
           >
             {pct != null ? `${pct}% paid` : "set a deal value to track %"}
           </span>
-          {summary?.amount_remaining != null && summary.amount_remaining > 0 && (
-            <span
-              className="cf-mono tabular-nums"
-              style={{ fontSize: "10px", color: "var(--cf-amber)" }}
-            >
-              {money(summary.amount_remaining, cur)} remaining
-            </span>
-          )}
+          {summary?.amount_remaining != null &&
+            summary.amount_remaining > 0 && (
+              <span
+                className="cf-mono tabular-nums"
+                style={{ fontSize: "10px", color: "var(--cf-amber)" }}
+              >
+                {money(summary.amount_remaining, cur)} remaining
+              </span>
+            )}
         </div>
       </div>
 
@@ -224,6 +266,62 @@ export function PaymentsSection({
           })}
         </div>
       )}
+
+      {/* Nota fiscal (YON-68): issued invoice + issue/re-issue control */}
+      <div
+        className="flex items-center gap-2 rounded-md px-3 py-2"
+        style={{
+          background: "rgba(255,255,255,0.02)",
+          border: "1px solid var(--cf-edge)",
+        }}
+      >
+        {invoice ? (
+          <>
+            <span
+              className="cf-mono flex-shrink-0"
+              style={{ fontSize: "11px", color: "var(--cf-phosphor)" }}
+            >
+              Nota fiscal #{invoice.number}
+            </span>
+            <span
+              className="cf-mono flex-1 min-w-0 truncate"
+              style={{ fontSize: "10px", color: "var(--cf-text-dim)" }}
+            >
+              {invoice.issued_at
+                ? `issued ${new Date(invoice.issued_at).toLocaleDateString()}`
+                : ""}
+            </span>
+            {invoice.document_id && (
+              <button
+                type="button"
+                onClick={download}
+                className="cf-mono flex-shrink-0 cursor-pointer"
+                style={{ fontSize: "11px", color: "var(--cf-cyan, #6fe0ff)" }}
+              >
+                Download
+              </button>
+            )}
+          </>
+        ) : (
+          <span
+            className="cf-mono flex-1"
+            style={{ fontSize: "11px", color: "var(--cf-text-muted)" }}
+          >
+            No nota fiscal issued yet
+          </span>
+        )}
+        {!isReadOnly && (
+          <button
+            type="button"
+            onClick={issue}
+            disabled={busy}
+            className="btn-physical cf-mono text-xs uppercase font-bold cursor-pointer disabled:opacity-50 px-2 py-1"
+            style={{ color: "var(--cf-phosphor)" }}
+          >
+            {busy ? "…" : invoice ? "Re-issue" : "Issue"}
+          </button>
+        )}
+      </div>
 
       {/* Ledger */}
       {data && data.payments.length > 0 && (

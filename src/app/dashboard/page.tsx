@@ -243,6 +243,9 @@ function CrmPanel({
       <div className="yd-hd yd-crmhd">
         <span className="yd-led a" />
         <span className="yd-label">Pipeline · CRM</span>
+        <Link href="/dashboard/conversion" className="yd-count yd-crmlink">
+          Conversion →
+        </Link>
         <Link href="/dashboard/revenue" className="yd-count yd-crmlink">
           Revenue →
         </Link>

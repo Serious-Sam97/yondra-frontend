@@ -13,11 +13,30 @@ import {
   faRotateLeft,
   faUsers,
 } from "@fortawesome/free-solid-svg-icons";
+import {
+  type CollisionDetection,
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  type DragStartEvent,
+  DragOverlay,
+  MouseSensor,
+  pointerWithin,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  rectSortingStrategy,
+  SortableContext,
+} from "@dnd-kit/sortable";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import BoardCard from "@/components/projects/BoardCard";
 import MembersPanel from "@/components/projects/MembersPanel";
 import ProjectRail from "@/components/projects/ProjectRail";
+import SortableBoardCard from "@/components/projects/SortableBoardCard";
 import { useProjects } from "@/components/projects/ProjectsProvider";
 import StatTile from "@/components/projects/StatTile";
 import Modal from "@/components/shared/Modal";
@@ -36,6 +55,7 @@ import {
   deleteBoard,
   fetchProject,
   fetchProjects,
+  reorderBoards,
   unarchiveBoard,
   updateBoard,
 } from "@/lib/api";
@@ -44,7 +64,7 @@ import { getEcho } from "@/lib/echo";
 import { boardProgress, PROJECT_COLORS } from "@/lib/ui";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 
-type SortKey = "recent" | "name" | "progress" | "cards";
+type SortKey = "manual" | "recent" | "name" | "progress" | "cards";
 
 function NewProjectModal({
   onCreate,
@@ -136,7 +156,9 @@ export default function ProjectPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<SortKey>("recent");
+  const [sort, setSort] = useState<SortKey>("manual");
+  // Board id currently being dragged (drives the DragOverlay preview).
+  const [activeDragId, setActiveDragId] = useState<number | null>(null);
   const [view, setView] = useState<"grid" | "list">("grid");
   const [showArchived, setShowArchived] = useState(false);
 
@@ -197,7 +219,21 @@ export default function ProjectPage() {
     const channel = getEcho().private(`project.${projectId}`);
     channel.listen(
       ".project.event",
-      (e: { type: string; payload: ProjectBoard }) => {
+      (e: { type: string; payload: ProjectBoard & { board_id?: number } }) => {
+        // A board dragged out to another project (YON-125): drop it from this list.
+        if (e.type === "board.removed") {
+          const removedId = e.payload.board_id;
+          setProject((p) =>
+            p
+              ? {
+                  ...p,
+                  boards: (p.boards ?? []).filter((x) => x.id !== removedId),
+                  boards_count: Math.max(0, (p.boards_count ?? 1) - 1),
+                }
+              : p,
+          );
+          return;
+        }
         if (e.type !== "board.created") return;
         const b = e.payload;
         setProject((p) => {
@@ -250,6 +286,7 @@ export default function ProjectPage() {
     const q = query.trim().toLowerCase();
     const list = boards.filter((b) => b.name.toLowerCase().includes(q));
     return list.sort((a, b) => {
+      if (sort === "manual") return (a.position ?? 0) - (b.position ?? 0);
       if (sort === "name") return a.name.localeCompare(b.name);
       if (sort === "progress")
         return boardProgress(b).pct - boardProgress(a).pct;
@@ -357,6 +394,101 @@ export default function ProjectPage() {
     router.push(`/projects/${p.id}`);
   }
 
+  // ── Board drag-and-drop (YON-125) ──
+  // Only project owners can reorder / move boards, and only in Manual sort with no
+  // active search (a filtered subset can't be re-sequenced unambiguously).
+  const dndEnabled = canManage && sort === "manual" && query.trim() === "";
+
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 350, tolerance: 5 } }),
+  );
+
+  // Prefer a pointer hit (over a card or a rail channel); fall back to nearest.
+  const collisionDetection: CollisionDetection = (args) => {
+    const hits = pointerWithin(args);
+    return hits.length > 0 ? hits : closestCenter(args);
+  };
+
+  const activeDragBoard = boards.find((b) => b.id === activeDragId) ?? null;
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveDragId(Number(String(event.active.id).replace("board-", "")));
+  }
+
+  async function handleDragEnd(event: DragEndEvent) {
+    setActiveDragId(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeBoardId = Number(String(active.id).replace("board-", ""));
+    const overId = String(over.id);
+
+    // Dropped onto another project's rail channel → move the board there.
+    if (overId.startsWith("proj-")) {
+      const targetProjectId = Number(overId.replace("proj-", ""));
+      if (targetProjectId === projectId) return;
+      const moved = boards.find((b) => b.id === activeBoardId);
+      if (!moved) return;
+
+      // Optimistically remove from this project; the destination picks it up via
+      // the board.created broadcast (or on next load).
+      setProject((p) =>
+        p
+          ? {
+              ...p,
+              boards: (p.boards ?? []).filter((b) => b.id !== activeBoardId),
+              boards_count: Math.max(0, (p.boards_count ?? 1) - 1),
+            }
+          : p,
+      );
+      try {
+        await updateBoard(activeBoardId, { project_id: targetProjectId });
+      } catch {
+        // Restore on failure.
+        setProject((p) =>
+          p
+            ? {
+                ...p,
+                boards: [...(p.boards ?? []), moved],
+                boards_count: (p.boards_count ?? 0) + 1,
+              }
+            : p,
+        );
+      }
+      return;
+    }
+
+    // Otherwise: reorder within this project's grid.
+    if (String(active.id) === overId) return;
+    const oldIndex = visibleBoards.findIndex((b) => b.id === activeBoardId);
+    const newIndex = visibleBoards.findIndex((b) => `board-${b.id}` === overId);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const orderedIds = arrayMove(visibleBoards, oldIndex, newIndex).map(
+      (b) => b.id,
+    );
+    const prevBoards = project?.boards ?? [];
+    const posById = new Map(orderedIds.map((id, i) => [id, i]));
+
+    // Optimistically restamp positions so the Manual sort reflects the drop.
+    setProject((p) =>
+      p
+        ? {
+            ...p,
+            boards: (p.boards ?? []).map((b) =>
+              posById.has(b.id) ? { ...b, position: posById.get(b.id) } : b,
+            ),
+          }
+        : p,
+    );
+    try {
+      await reorderBoards(projectId, orderedIds);
+    } catch {
+      setProject((p) => (p ? { ...p, boards: prevBoards } : p));
+    }
+  }
+
   if (!hydrated && contentLoading) {
     return (
       <div
@@ -397,12 +529,19 @@ export default function ProjectPage() {
       className="flex overflow-hidden"
       style={{ height: "calc(100vh - var(--app-header-h, 56px))" }}
     >
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/60 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={collisionDetection}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={() => setActiveDragId(null)}
+      >
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-30 bg-black/60 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
 
       {/* ── Left rail ── */}
       <aside
@@ -430,6 +569,7 @@ export default function ProjectPage() {
             owned={owned}
             member={member}
             activeId={projectId}
+            enableBoardDrop={dndEnabled}
             onSelect={(id) => {
               router.push(`/projects/${id}`);
               setSidebarOpen(false);
@@ -606,6 +746,7 @@ export default function ProjectPage() {
               padding: "7px 8px",
             }}
           >
+            <option value="manual">Manual</option>
             <option value="recent">Recent</option>
             <option value="name">Name</option>
             <option value="progress">Progress</option>
@@ -756,16 +897,34 @@ export default function ProjectPage() {
                   : undefined
               }
             >
-              {visibleBoards.map((b) => (
-                <BoardCard
-                  key={b.id}
-                  board={b}
-                  projectColor={project?.color ?? "#888"}
-                  editMode={editMode}
-                  isOwner={isOwner}
-                  onClick={() => handleBoardClick(b)}
-                />
-              ))}
+              {dndEnabled ? (
+                <SortableContext
+                  items={visibleBoards.map((b) => `board-${b.id}`)}
+                  strategy={rectSortingStrategy}
+                >
+                  {visibleBoards.map((b) => (
+                    <SortableBoardCard
+                      key={b.id}
+                      board={b}
+                      projectColor={project?.color ?? "#888"}
+                      editMode={editMode}
+                      isOwner={isOwner}
+                      onClick={() => handleBoardClick(b)}
+                    />
+                  ))}
+                </SortableContext>
+              ) : (
+                visibleBoards.map((b) => (
+                  <BoardCard
+                    key={b.id}
+                    board={b}
+                    projectColor={project?.color ?? "#888"}
+                    editMode={editMode}
+                    isOwner={isOwner}
+                    onClick={() => handleBoardClick(b)}
+                  />
+                ))
+              )}
             </div>
           )}
         </div>
@@ -793,6 +952,16 @@ export default function ProjectPage() {
           />
         )}
       </aside>
+
+        <DragOverlay>
+          {activeDragBoard ? (
+            <BoardCard
+              board={activeDragBoard}
+              projectColor={project?.color ?? "#888"}
+            />
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
       {/* ── Modals ── */}
       {modal && (

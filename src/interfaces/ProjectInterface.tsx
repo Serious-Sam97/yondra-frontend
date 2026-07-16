@@ -24,6 +24,8 @@ export interface ProjectBoard {
   name: string;
   description?: string | null;
   project_id?: number | null;
+  // Manual order within a project (YON-125); drives the "Manual" sort mode.
+  position?: number;
   color?: string | null;
   background?: string | null;
   cards_count?: number;

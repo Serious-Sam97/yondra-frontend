@@ -135,6 +135,9 @@ export interface CardInterface {
   updated_at?: string | null;
   archived_at?: string | null;
   done_at?: string | null;
+  // CRM: stamped when the deal enters the Lost stage (YON-66); its chosen reason.
+  lost_at?: string | null;
+  loss_reason?: string | null;
   parent_card_id?: number | null;
   is_done?: boolean;
   ticket_number?: number | null;

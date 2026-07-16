@@ -1,0 +1,364 @@
+/* Deals export (YON-67). Reuses the /dashboard LCD tokens + .yd-* classes
+   (dashboard.css is imported alongside). ex-* covers page layout: the filter
+   toolbar, the on-screen preview table, and — crucially — an @media print
+   block that reflows the report into a clean, light, paper-ready document so
+   "Print / Save as PDF" matches (and beats) the old Pipedrive PDF. */
+
+.ex-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* toolbar */
+.ex-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 4px;
+}
+.ex-title {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.ex-title h1 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #e7e2d4;
+  margin: 0;
+}
+.ex-back {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #8f897a;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.ex-back:hover {
+  color: var(--yd-phosphor);
+}
+
+.ex-actions {
+  display: flex;
+  gap: 8px;
+}
+.ex-btn {
+  font-family: var(--yd-mono);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #cfcabc;
+  padding: 9px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--yd-edge);
+  background: linear-gradient(180deg, var(--yd-graphite-hi), var(--yd-graphite));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    opacity 0.15s;
+}
+.ex-btn:hover:not(:disabled) {
+  color: #e7e2d4;
+  border-color: #5c5749;
+}
+.ex-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.ex-btn-primary {
+  color: var(--yd-lcd-ink);
+  background: var(--yd-phosphor);
+  border-color: var(--yd-phosphor);
+  box-shadow:
+    0 0 8px rgba(158, 196, 106, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.ex-btn-primary:hover:not(:disabled) {
+  color: var(--yd-lcd-ink);
+  filter: brightness(1.05);
+}
+
+/* filters */
+.ex-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: 2px 2px 0;
+}
+.ex-fgroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.ex-flabel {
+  font-family: var(--yd-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8f897a;
+  margin-right: 2px;
+}
+.ex-seg {
+  font-family: var(--yd-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #b7b1a1;
+  padding: 6px 11px;
+  border-radius: 6px;
+  border: 1px solid var(--yd-edge);
+  background: linear-gradient(180deg, var(--yd-graphite-hi), var(--yd-graphite));
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+.ex-seg:hover {
+  color: #e7e2d4;
+  border-color: #5c5749;
+}
+.ex-seg.on {
+  color: var(--yd-lcd-ink);
+  background: var(--yd-phosphor);
+  border-color: var(--yd-phosphor);
+  box-shadow:
+    0 0 8px rgba(158, 196, 106, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+/* headline stats */
+.ex-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+.ex-tile .v {
+  font-size: 22px;
+}
+@media (max-width: 560px) {
+  .ex-stats {
+    grid-template-columns: 1fr;
+  }
+  .ex-tile + .ex-tile {
+    border-left: none;
+    border-top: 1px solid rgba(74, 70, 63, 0.35);
+  }
+}
+.ex-mixed {
+  padding: 8px 14px 12px;
+  font-size: 12px;
+  color: var(--yd-gold);
+}
+
+/* preview / report table (screen) */
+.ex-report {
+  padding: 0;
+  overflow: hidden;
+}
+.ex-tablewrap {
+  overflow-x: auto;
+}
+.ex-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: #cfcabc;
+}
+.ex-table th {
+  text-align: left;
+  font-family: var(--yd-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8f897a;
+  padding: 10px 12px;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--yd-edge);
+  position: sticky;
+  top: 0;
+  background: var(--yd-graphite);
+}
+.ex-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.22);
+  white-space: nowrap;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ex-table td.num,
+.ex-table th.num {
+  text-align: right;
+}
+.ex-table tbody tr:hover {
+  background: rgba(158, 196, 106, 0.05);
+}
+.ex-money {
+  color: var(--yd-phosphor);
+  font-weight: 700;
+}
+.ex-loading {
+  text-align: center !important;
+  color: #8f897a;
+  padding: 26px 0 !important;
+}
+.ex-table tfoot td {
+  border-top: 1px solid var(--yd-edge);
+  border-bottom: none;
+  padding: 11px 12px;
+  font-weight: 700;
+  color: #e7e2d4;
+}
+.ex-total {
+  color: var(--yd-phosphor);
+}
+.ex-total-l {
+  color: #8f897a;
+  font-family: var(--yd-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.03em;
+}
+
+/* status chips */
+.ex-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.ex-won {
+  color: var(--yd-phosphor);
+  background: rgba(158, 196, 106, 0.12);
+}
+.ex-lost {
+  color: #d98a8a;
+  background: rgba(217, 138, 138, 0.12);
+}
+.ex-open {
+  color: var(--yd-cyan);
+  background: rgba(106, 162, 194, 0.12);
+}
+
+/* masthead only shows on paper */
+.ex-masthead {
+  display: none;
+}
+
+/* ── print: reflow the report into a clean light document ──────────────────── */
+@media print {
+  /* Kill the app chrome; only .ex-report survives onto paper. */
+  .ex-noprint,
+  .yd-sidebar,
+  nav,
+  aside {
+    display: none !important;
+  }
+  :root {
+    background: #fff !important;
+  }
+  .yd-root,
+  .yd-wrap,
+  .ex-wrap {
+    display: block !important;
+    background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+  }
+  .ex-report {
+    background: #fff !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #111 !important;
+    padding: 0 !important;
+  }
+
+  .ex-masthead {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 2px solid #111;
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+  }
+  .ex-brand {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: #111;
+  }
+  .ex-sub {
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #555;
+    margin-top: 2px;
+  }
+  .ex-meta {
+    text-align: right;
+    font-size: 11px;
+    color: #444;
+    line-height: 1.5;
+  }
+
+  .ex-tablewrap {
+    overflow: visible !important;
+  }
+  .ex-table {
+    color: #111 !important;
+    font-size: 10px;
+    width: 100%;
+  }
+  .ex-table th {
+    color: #000 !important;
+    background: #f0f0f0 !important;
+    border-bottom: 1px solid #999 !important;
+    position: static !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .ex-table td {
+    border-bottom: 1px solid #ddd !important;
+    color: #111 !important;
+    max-width: none;
+    white-space: normal;
+  }
+  .ex-table tbody tr {
+    break-inside: avoid;
+  }
+  .ex-money,
+  .ex-total {
+    color: #111 !important;
+  }
+  .ex-table tfoot td {
+    color: #000 !important;
+    border-top: 2px solid #111 !important;
+  }
+  .ex-total-l {
+    color: #555 !important;
+  }
+  /* chips read as plain text on paper — colour print is unreliable */
+  .ex-chip {
+    background: none !important;
+    padding: 0 !important;
+    color: #111 !important;
+    font-weight: 700;
+  }
+  @page {
+    margin: 14mm;
+    size: landscape;
+  }
+}

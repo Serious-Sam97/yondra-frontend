@@ -73,11 +73,16 @@ export interface BoardSummaryInterface {
   // Section that marks a card done/closed (CRM "won" stage, or any chosen column).
   // null = fall back to a column literally named "Done".
   done_section_id?: number | null;
+  // CRM Lost stage + the editable list of loss reasons required on lost (YON-66).
+  lost_section_id?: number | null;
+  loss_reasons?: string[] | null;
   // Sentinel (QA) module toggle for this board.
   qa_enabled?: boolean;
   description: string;
   user_id?: number;
   project_id?: number | null;
+  // Manual order within a project (YON-125).
+  position?: number;
   ticket_prefix?: string | null;
   next_ticket_number?: number;
   background?: string | null;
@@ -98,6 +103,8 @@ export interface BoardSummaryInterface {
   require_optin_before_email?: boolean;
   // Manager-defined roadmap flowchart (YON-120); null = auto-layout.
   roadmap_config?: RoadmapConfig | null;
+  // Issuer / emitente details stamped on generated nota fiscais (YON-68).
+  invoice_issuer?: import("./PaymentInterface").InvoiceIssuer | null;
   owner?: SharedUser;
   shared_with?: SharedUser[];
   cards_count?: number;
