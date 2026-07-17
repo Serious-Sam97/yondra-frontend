@@ -3,6 +3,46 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, type CrmChatMessage, startVortexChat } from "@/lib/api";
 import { getEcho } from "@/lib/echo";
+import type { VortexMount } from "@/lib/vortex";
+
+// An action Vortex PROPOSED (server-validated whitelist). Nothing runs until the
+// user confirms; execution happens client-side through the normal authorized APIs.
+export type VortexAction =
+  | {
+      kind: "create_project";
+      name: string;
+      description?: string;
+      boards: Array<{ name: string; type: "kanban" | "scrum" | "crm" }>;
+    }
+  | {
+      kind: "create_board";
+      name: string;
+      type: "kanban" | "scrum" | "crm";
+      project_id?: number;
+    }
+  | {
+      kind: "create_card";
+      board_id: number;
+      name: string;
+      description?: string;
+      column?: string;
+      board_name?: string;
+    }
+  | {
+      kind: "add_column";
+      board_id: number;
+      name: string;
+      board_name?: string;
+    }
+  | {
+      kind: "archive_board";
+      board_id: number;
+      board_name?: string;
+    };
+
+export interface VortexChatMessage extends CrmChatMessage {
+  action?: VortexAction | null;
+}
 
 type UserAiPayload = {
   scope?: string;
@@ -10,6 +50,7 @@ type UserAiPayload = {
   delta?: string;
   text?: string;
   message?: string;
+  action?: VortexAction;
 };
 type IncomingEvent = { type: string; payload: UserAiPayload };
 
@@ -18,8 +59,14 @@ type IncomingEvent = { type: string; payload: UserAiPayload };
 // `App.Models.User.{id}` channel (shared with notifications), accepting only
 // scope:'vortex-chat' frames for the active turn. Listens with `.listen`/`.stopListening`
 // on the shared channel — never `leave()`s it, since useNotifications rides it too.
-export function useVortexChat(userId: number | undefined, enabled: boolean) {
-  const [messages, setMessages] = useState<CrmChatMessage[]>([]);
+// Each turn carries the CURRENT mounts, so ejecting/mounting mid-conversation takes
+// effect on the very next question.
+export function useVortexChat(
+  userId: number | undefined,
+  enabled: boolean,
+  mounts: VortexMount[] = [],
+) {
+  const [messages, setMessages] = useState<VortexChatMessage[]>([]);
   const [streamingText, setStreamingText] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +85,11 @@ export function useVortexChat(userId: number | undefined, enabled: boolean) {
         const finalText = e.payload.text ?? "";
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: finalText },
+          {
+            role: "assistant",
+            content: finalText,
+            action: e.payload.action ?? null,
+          },
         ]);
         setStreamingText("");
         setStreaming(false);
@@ -83,18 +134,32 @@ export function useVortexChat(userId: number | undefined, enabled: boolean) {
       setError(null);
       setStreaming(true);
       try {
-        await startVortexChat(id, next);
+        await startVortexChat(
+          id,
+          next,
+          mounts.map((m) => ({ type: m.type, id: m.id })),
+        );
       } catch (e) {
         activeId.current = null;
         setStreaming(false);
-        setError(
-          e instanceof ApiError && e.status === 503
-            ? "AI assist isn't configured on this server."
-            : "Couldn't send — try again.",
-        );
+        if (e instanceof ApiError && e.status === 422) {
+          // Almost always a stale mount (deleted / access revoked) — surface the
+          // server's eject-it message.
+          let msg = "A mounted context is no longer accessible — eject it.";
+          try {
+            msg = (JSON.parse(e.body) as { message?: string }).message ?? msg;
+          } catch {}
+          setError(msg);
+        } else {
+          setError(
+            e instanceof ApiError && e.status === 503
+              ? "AI assist isn't configured on this server."
+              : "Couldn't send — try again.",
+          );
+        }
       }
     },
-    [userId, streaming, messages],
+    [userId, streaming, messages, mounts],
   );
 
   return { messages, streamingText, streaming, error, send };

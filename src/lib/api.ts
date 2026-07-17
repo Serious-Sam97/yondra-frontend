@@ -1780,13 +1780,20 @@ export async function startCrmChat(
 // Sends one turn of the Vortex workspace chat (the mascot assistant). Same contract as
 // the CRM chat — post the whole transcript, get a 202, and the reply streams back — but
 // user-scoped: frames arrive on the caller's own private channel as scope:'vortex-chat'.
+// Optional mounts focus the grounding on specific boards (deep) / projects (wide);
+// a mount the caller lost access to gets a 422 with an eject-it message.
 export async function startVortexChat(
   requestId: string,
   messages: CrmChatMessage[],
+  mounts: Array<{ type: "project" | "board"; id: number }> = [],
 ): Promise<{ request_id: string }> {
   return apiFetch(`/api/ai/vortex-chat`, {
     method: "POST",
-    body: JSON.stringify({ request_id: requestId, messages }),
+    body: JSON.stringify({
+      request_id: requestId,
+      messages,
+      ...(mounts.length > 0 ? { mounts } : {}),
+    }),
   });
 }
 

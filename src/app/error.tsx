@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { reportError } from "@/lib/telemetry";
 
 // Route-segment error boundary: catches render/effect throws anywhere under the
 // root layout so a crash shows this panel instead of a white screen. The layout
@@ -14,6 +15,7 @@ export default function ErrorPage({
 }) {
   useEffect(() => {
     console.error(error);
+    reportError(error, { boundary: "segment", digest: error.digest });
   }, [error]);
 
   return (

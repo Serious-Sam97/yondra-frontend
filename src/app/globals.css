@@ -5245,3 +5245,118 @@ emoji-picker.cm-emoji-picker {
     transition: none;
   }
 }
+
+/* ---- mounts: cartridge chips + picker inside the chat panel ---- */
+.vxa-mounts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px dashed #c9c4ae;
+}
+.vxa-mchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 150px;
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 7px;
+  color: #401a30;
+  background: #ffe3f2;
+  border: 1px solid #f4b7da;
+  border-radius: 7px;
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
+}
+.vxa-mchip-kind {
+  font-size: 10px;
+  opacity: 0.7;
+}
+.vxa-mchip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vxa-mchip-x {
+  background: none;
+  border: none;
+  padding: 0 1px;
+  font-size: 13px;
+  line-height: 1;
+  color: #a05580;
+  cursor: pointer;
+}
+.vxa-mchip-x:hover { color: #401a30; }
+.vxa-mchip--ghost {
+  background: none;
+  border: 1px dashed #b9b39a;
+  color: #6f6a56;
+  cursor: pointer;
+  box-shadow: none;
+}
+.vxa-mchip--ghost:hover {
+  color: #1a1a1a;
+  border-color: #6f6a56;
+}
+.vxa-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px dashed #c9c4ae;
+  background: #fbf7e6;
+}
+.vxa-picker-list {
+  max-height: 130px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.vxa-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  font-size: 12px;
+  padding: 5px 6px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: #1a1a1a;
+  cursor: pointer;
+}
+.vxa-picker-item:hover { background: #f2ecd4; }
+.vxa-picker-item--on .vxa-mchip-name { color: #a01a64; font-weight: 600; }
+.vxa-picker-item-state {
+  margin-left: auto;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8a8571;
+}
+.vxa-picker-empty {
+  font-size: 12px;
+  color: #8a8571;
+  padding: 4px 6px;
+}
+
+/* ---- proposed-action confirm card in the chat log ---- */
+.vxa-action {
+  align-self: flex-start;
+  max-width: 92%;
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #f2e9ff;
+  border: 1px dashed #b895e0;
+  color: #2c1a40;
+}
+.vxa-action-desc { line-height: 1.45; }
+.vxa-action-state {
+  margin-top: 5px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #7b5ea3;
+}

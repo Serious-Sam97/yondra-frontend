@@ -28,6 +28,9 @@ export const TOOL_COLORS = {
   crmchat: "#f7768e", // AI CRM assistant — warm pipeline pink
 } as const;
 
+// Vertical-rail launcher: icon only, with the label revealed as a flyout on
+// hover/focus so the dock stays a slim strip instead of a wall of always-on
+// labels bleeding over the last column.
 function ToolBtn({
   icon,
   label,
@@ -40,23 +43,39 @@ function ToolBtn({
   onClick: () => void;
 }) {
   return (
-    <div className="flex items-center gap-2">
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      className="group relative aero-btn aero-btn--ghost w-10 h-10 flex items-center justify-center cursor-pointer text-lg"
+      style={{ color }}
+    >
+      <Icon icon={icon} />
       <span
-        className="cf-mono text-[9px] uppercase tracking-widest whitespace-nowrap"
-        style={{ color: "var(--cf-text-muted)" }}
+        className="pointer-events-none absolute right-full mr-2 top-1/2 -translate-y-1/2 px-2 py-1 rounded whitespace-nowrap cf-mono text-[9px] uppercase tracking-widest opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity z-50"
+        style={{
+          background: "var(--cf-graphite-3)",
+          border: "1px solid var(--cf-edge)",
+          color: "var(--cf-text)",
+        }}
       >
         {label}
       </span>
-      <button
-        type="button"
-        aria-label={label}
-        onClick={onClick}
-        className="aero-btn aero-btn--ghost w-10 h-10 flex items-center justify-center cursor-pointer text-lg"
-        style={{ color }}
-      >
-        <Icon icon={icon} />
-      </button>
-    </div>
+    </button>
+  );
+}
+
+// Hairline separator between the "live" tools (activity/chat/standup/CRM) and
+// the occasional config tools (tags/import/archive/background).
+function ToolDivider() {
+  return (
+    <div
+      className="w-6 h-px my-1"
+      style={{
+        background:
+          "linear-gradient(90deg, transparent, var(--cf-edge), transparent)",
+      }}
+    />
   );
 }
 
@@ -130,15 +149,10 @@ export function BoardToolsDock({
       {/* Desktop toolbar — vertical on kanban/list, horizontal bottom bar on calendar/analytics */}
       {viewMode === "kanban" ? (
         <div
-          className="hidden lg:flex flex-col items-end gap-2 fixed z-40"
-          style={{ right: "24px", bottom: "96px" }}
+          className="hidden lg:flex flex-col items-center gap-1 fixed z-40 aero-menu py-2 px-1.5"
+          style={{ right: "20px", bottom: "96px" }}
         >
-          <ToolBtn
-            icon={faTag}
-            color={TOOL_COLORS.tags}
-            label="Tags"
-            onClick={onOpenTags}
-          />
+          {/* Live tools: the panels you dip into while working the board. */}
           {!isDemo && (
             <ToolBtn
               icon={faClipboardList}
@@ -171,6 +185,16 @@ export function BoardToolsDock({
               onClick={onOpenCrmChat}
             />
           )}
+
+          {!isDemo && <ToolDivider />}
+
+          {/* Config tools: occasional setup actions. */}
+          <ToolBtn
+            icon={faTag}
+            color={TOOL_COLORS.tags}
+            label="Tags"
+            onClick={onOpenTags}
+          />
           {!isDemo && (
             <ToolBtn
               icon={faFileImport}

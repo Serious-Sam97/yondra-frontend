@@ -2,13 +2,15 @@
 
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
 import {
+  faCheck,
   faDownload,
   faPaperclip,
   faPlus,
   faRotate,
   faTrash,
+  faXmark,
 } from "@fortawesome/free-solid-svg-icons";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Icon from "@/components/ui/Icon";
 import type { Template } from "@/hooks/useCardTemplates";
 import type { CardDocument, CardLink } from "@/interfaces/CardInterface";
@@ -26,6 +28,16 @@ const AVATAR_COLORS = [
   "#00BCD4",
   "#E91E63",
 ];
+
+// The combining-diacritics block that NFD splits accents into. Built from a
+// string so the source stays ASCII — the literal marks are invisible on screen.
+const DIACRITICS = /[\u0300-\u036f]/g;
+
+// Accent-insensitive compare so "regulatorio" matches "Regulatório" and
+// "educacao" matches "Educação" — tag names here are largely Portuguese.
+const foldAccents = (s: string) =>
+  s.normalize("NFD").replace(DIACRITICS, "").toLowerCase();
+
 const PRIORITY_OPTS: {
   value: "low" | "medium" | "high";
   label: string;
@@ -254,6 +266,31 @@ export function PropertiesPanel({
   const boardSections = sections.filter((s) => s.id !== backlogSectionId);
   const currentStepIdx = boardSections.findIndex((s) => s.id === sectionId);
 
+  // Tag picker. The card shows only its own tags; the board's full set lives
+  // behind this popover, so the section's height tracks the card, not the board.
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);
+  const [tagQuery, setTagQuery] = useState("");
+  const selectedTags = tags.filter((t) => selectedTagIds.includes(t.id));
+  const tagSearchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!tagPickerOpen) return;
+    tagSearchRef.current?.focus();
+    const onPointerDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target?.closest("[data-tag-picker]")) setTagPickerOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setTagPickerOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [tagPickerOpen]);
+
   // AI story-point suggestion (Scrum). Fills the picker + shows a one-line rationale.
   const [suggesting, setSuggesting] = useState(false);
   const [rationale, setRationale] = useState<string | null>(null);
@@ -310,41 +347,75 @@ export function PropertiesPanel({
 
   return (
     <div className="flex flex-col">
-      {canSuggest && (
-        <div className="flex flex-col gap-1 pt-3">
-          <button
-            type="button"
-            onClick={runTriage}
-            disabled={triaging}
-            className="ai-btn self-start"
-          >
-            {triaging ? "Triaging…" : "AI triage"}
-          </button>
-          {triageMsg && (
-            <span
-              className="cf-mono"
+      {/* Crew — assignee */}
+      {users.length > 0 && (
+        <div className="flex flex-col gap-2.5 pt-3 pb-4">
+          {clusterHead(
+            `Crew${
+              assignedUserId !== null
+                ? ` · ${users.find((u) => u.id === assignedUserId)?.name ?? ""}`
+                : ""
+            }`,
+          )}
+          <div className="flex gap-2 flex-wrap items-center">
+            <button
+              disabled={isReadOnly}
+              onClick={() => setAssignedUserId(null)}
+              title="Unassigned"
               style={{
-                fontSize: "10px",
-                color: "var(--cf-text-dim)",
-                lineHeight: 1.4,
+                fontSize: "9px",
+                borderColor: "var(--cf-edge)",
+                color:
+                  assignedUserId === null
+                    ? "var(--cf-text)"
+                    : "var(--cf-text-muted)",
+                backgroundColor:
+                  assignedUserId === null
+                    ? "var(--cf-graphite)"
+                    : "transparent",
+                width: 32,
+                height: 32,
               }}
+              className="cf-mono rounded-full border-2 flex items-center justify-center font-bold cursor-pointer disabled:opacity-60 flex-shrink-0 transition-all"
             >
-              {triageMsg}
-            </span>
-          )}
-          {triageErr && (
-            <span
-              className="cf-mono"
-              style={{ fontSize: "10px", color: "var(--cf-red)" }}
-            >
-              {triageErr}
-            </span>
-          )}
+              —
+            </button>
+            {users.map((u) => {
+              const color = AVATAR_COLORS[u.id % AVATAR_COLORS.length];
+              const isActive = assignedUserId === u.id;
+              return (
+                <button
+                  key={u.id}
+                  disabled={isReadOnly}
+                  onClick={() => setAssignedUserId(isActive ? null : u.id)}
+                  title={u.name}
+                  style={{
+                    borderColor: color,
+                    backgroundColor: isActive ? color : "transparent",
+                    color: isActive ? "#1c1a16" : color,
+                    boxShadow: isActive ? `0 0 8px ${color}55` : "none",
+                    fontSize: "10px",
+                    width: 32,
+                    height: 32,
+                  }}
+                  className="cf-mono rounded-full border-2 flex items-center justify-center font-bold cursor-pointer disabled:opacity-60 flex-shrink-0 transition-all"
+                >
+                  {initials(u.name)}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
+
       {/* Pipeline / Column — the board's stages as a vertical stepper: passed
           stages glow dim phosphor, the current one amber, the rest unlit. */}
-      <div className="flex flex-col gap-2.5 py-4">
+      <div
+        className={`flex flex-col gap-2.5 py-4 ${users.length > 0 ? "border-t" : ""}`}
+        style={{
+          borderColor: "color-mix(in srgb, var(--cf-edge) 60%, transparent)",
+        }}
+      >
         {clusterHead(boardType === "crm" ? "Pipeline" : "Column", "amber")}
         <div className="flex flex-col">
           {boardSections.map((s, i) => {
@@ -984,72 +1055,6 @@ export function PropertiesPanel({
         </div>
       )}
 
-      {/* Crew — assignee */}
-      {users.length > 0 && (
-        <div
-          className="flex flex-col gap-2.5 py-4 border-t"
-          style={{
-            borderColor: "color-mix(in srgb, var(--cf-edge) 60%, transparent)",
-          }}
-        >
-          {clusterHead(
-            `Crew${
-              assignedUserId !== null
-                ? ` · ${users.find((u) => u.id === assignedUserId)?.name ?? ""}`
-                : ""
-            }`,
-          )}
-          <div className="flex gap-2 flex-wrap items-center">
-            <button
-              disabled={isReadOnly}
-              onClick={() => setAssignedUserId(null)}
-              title="Unassigned"
-              style={{
-                fontSize: "9px",
-                borderColor: "var(--cf-edge)",
-                color:
-                  assignedUserId === null
-                    ? "var(--cf-text)"
-                    : "var(--cf-text-muted)",
-                backgroundColor:
-                  assignedUserId === null
-                    ? "var(--cf-graphite)"
-                    : "transparent",
-                width: 32,
-                height: 32,
-              }}
-              className="cf-mono rounded-full border-2 flex items-center justify-center font-bold cursor-pointer disabled:opacity-60 flex-shrink-0 transition-all"
-            >
-              —
-            </button>
-            {users.map((u) => {
-              const color = AVATAR_COLORS[u.id % AVATAR_COLORS.length];
-              const isActive = assignedUserId === u.id;
-              return (
-                <button
-                  key={u.id}
-                  disabled={isReadOnly}
-                  onClick={() => setAssignedUserId(isActive ? null : u.id)}
-                  title={u.name}
-                  style={{
-                    borderColor: color,
-                    backgroundColor: isActive ? color : "transparent",
-                    color: isActive ? "#1c1a16" : color,
-                    boxShadow: isActive ? `0 0 8px ${color}55` : "none",
-                    fontSize: "10px",
-                    width: 32,
-                    height: 32,
-                  }}
-                  className="cf-mono rounded-full border-2 flex items-center justify-center font-bold cursor-pointer disabled:opacity-60 flex-shrink-0 transition-all"
-                >
-                  {initials(u.name)}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {/* Tags */}
       {tags.length > 0 && (
         <div
@@ -1058,51 +1063,171 @@ export function PropertiesPanel({
             borderColor: "color-mix(in srgb, var(--cf-edge) 60%, transparent)",
           }}
         >
-          {clusterHead("Tags")}
-          {(
-            [
-              ["Channel", tags.filter((t) => t.kind === "channel")],
-              ["Custom", tags.filter((t) => t.kind !== "channel")],
-            ] as const
-          ).map(([label, group]) =>
-            group.length === 0 ? null : (
-              <div key={label} className="flex flex-col gap-1.5">
-                <span
-                  className="cf-mono uppercase"
+          <div
+            className="flex items-center justify-between gap-2 relative"
+            data-tag-picker
+          >
+            {clusterHead("Tags")}
+            {!isReadOnly && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTagPickerOpen((v) => !v);
+                  setTagQuery("");
+                }}
+                aria-expanded={tagPickerOpen}
+                aria-haspopup="true"
+                style={{ fontSize: "9px" }}
+                className="aero-pill uppercase tracking-widest px-2 py-1 cursor-pointer font-bold inline-flex items-center gap-1.5 text-white/70 hover:text-white"
+              >
+                <Icon icon={faPlus} />
+                Add
+              </button>
+            )}
+
+            {tagPickerOpen && !isReadOnly && (
+              <div
+                className="aero-menu absolute right-0 top-full mt-1.5 z-50 p-2"
+                style={{ width: "250px" }}
+              >
+                <input
+                  ref={tagSearchRef}
+                  value={tagQuery}
+                  onChange={(e) => setTagQuery(e.target.value)}
+                  placeholder="Find a tag"
+                  className="w-full rounded px-2 py-1.5 mb-2"
                   style={{
-                    fontSize: "8px",
-                    letterSpacing: "0.18em",
-                    color: "var(--cf-text-dim)",
+                    fontSize: "11px",
+                    background: "var(--cf-graphite-3)",
+                    border: "1px solid var(--cf-edge)",
+                    color: "var(--cf-text)",
                   }}
-                >
-                  {label}
-                </span>
-                <div className="flex gap-1.5 flex-wrap">
-                  {group.map((tag) => {
-                    const isActive = selectedTagIds.includes(tag.id);
-                    return (
-                      <button
-                        key={tag.id}
-                        disabled={isReadOnly}
-                        onClick={() => toggleTag(tag.id)}
-                        style={{
-                          borderColor: tag.color,
-                          backgroundColor: isActive ? tag.color : "transparent",
-                          color: isActive ? "#1c1a16" : tag.color,
-                          boxShadow: isActive
-                            ? `0 0 8px ${tag.color}55`
-                            : "none",
-                          fontSize: "10px",
-                        }}
-                        className="cf-mono uppercase tracking-widest px-2.5 py-1 rounded-sm border cursor-pointer font-bold disabled:opacity-60 disabled:cursor-not-allowed transition-all"
-                      >
-                        {tag.name}
-                      </button>
+                />
+                <div className="max-h-56 overflow-y-auto flex flex-col gap-2">
+                  {(
+                    [
+                      ["Channel", tags.filter((t) => t.kind === "channel")],
+                      ["Custom", tags.filter((t) => t.kind !== "channel")],
+                    ] as const
+                  ).map(([label, group]) => {
+                    const hits = group.filter((t) =>
+                      foldAccents(t.name).includes(
+                        foldAccents(tagQuery.trim()),
+                      ),
+                    );
+                    return hits.length === 0 ? null : (
+                      <div key={label} className="flex flex-col gap-0.5">
+                        <span
+                          className="cf-mono uppercase px-1"
+                          style={{
+                            fontSize: "8px",
+                            letterSpacing: "0.18em",
+                            color: "var(--cf-text-dim)",
+                          }}
+                        >
+                          {label}
+                        </span>
+                        {hits.map((tag) => {
+                          const isActive = selectedTagIds.includes(tag.id);
+                          return (
+                            <button
+                              key={tag.id}
+                              type="button"
+                              onClick={() => toggleTag(tag.id)}
+                              aria-pressed={isActive}
+                              title={tag.name}
+                              style={{
+                                fontSize: "10px",
+                                color: isActive ? "#1c1a16" : tag.color,
+                                background: isActive
+                                  ? tag.color
+                                  : "transparent",
+                              }}
+                              className="w-full flex items-center gap-2 px-2 py-1.5 rounded cf-mono uppercase tracking-widest font-bold cursor-pointer text-left transition-colors hover:bg-white/5"
+                            >
+                              <span
+                                className="cf-led flex-shrink-0"
+                                style={{
+                                  background: tag.color,
+                                  boxShadow: isActive
+                                    ? "none"
+                                    : `0 0 6px ${tag.color}`,
+                                }}
+                              />
+                              <span className="truncate">{tag.name}</span>
+                              <span
+                                className="ml-auto flex-shrink-0"
+                                style={{
+                                  fontSize: "9px",
+                                  visibility: isActive ? "visible" : "hidden",
+                                }}
+                              >
+                                <Icon icon={faCheck} />
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     );
                   })}
+                  {tags.every(
+                    (t) =>
+                      !foldAccents(t.name).includes(
+                        foldAccents(tagQuery.trim()),
+                      ),
+                  ) && (
+                    <span
+                      className="cf-mono px-2 py-1.5"
+                      style={{ fontSize: "10px", color: "var(--cf-text-dim)" }}
+                    >
+                      No tag matches “{tagQuery.trim()}”
+                    </span>
+                  )}
                 </div>
               </div>
-            ),
+            )}
+          </div>
+
+          {/* Only the card's own tags — long names truncate rather than wrap. */}
+          {selectedTags.length === 0 ? (
+            <span
+              className="cf-mono uppercase tracking-widest"
+              style={{ fontSize: "9px", color: "var(--cf-text-dim)" }}
+            >
+              {isReadOnly ? "No tags" : "No tags — add one"}
+            </span>
+          ) : (
+            <div className="flex gap-1.5 flex-wrap">
+              {selectedTags.map((tag) => (
+                <span
+                  key={tag.id}
+                  title={tag.name}
+                  style={{
+                    borderColor: tag.color,
+                    background: tag.color,
+                    color: "#1c1a16",
+                    boxShadow: `0 0 8px ${tag.color}55`,
+                    fontSize: "10px",
+                  }}
+                  className="cf-mono uppercase tracking-widest px-2 py-1 rounded-sm border font-bold inline-flex items-center gap-1.5 max-w-full"
+                >
+                  <span className="truncate" style={{ maxWidth: "150px" }}>
+                    {tag.name}
+                  </span>
+                  {!isReadOnly && (
+                    <button
+                      type="button"
+                      onClick={() => toggleTag(tag.id)}
+                      aria-label={`Remove ${tag.name}`}
+                      style={{ fontSize: "9px" }}
+                      className="cursor-pointer opacity-60 hover:opacity-100 flex-shrink-0"
+                    >
+                      <Icon icon={faXmark} />
+                    </button>
+                  )}
+                </span>
+              ))}
+            </div>
           )}
         </div>
       )}
@@ -1191,6 +1316,44 @@ export function PropertiesPanel({
                 Save
               </button>
             </div>
+          )}
+        </div>
+      )}
+
+      {canSuggest && (
+        <div
+          className="flex flex-col gap-1 py-4 border-t"
+          style={{
+            borderColor: "color-mix(in srgb, var(--cf-edge) 60%, transparent)",
+          }}
+        >
+          <button
+            type="button"
+            onClick={runTriage}
+            disabled={triaging}
+            className="ai-btn self-start"
+          >
+            {triaging ? "Triaging…" : "AI triage"}
+          </button>
+          {triageMsg && (
+            <span
+              className="cf-mono"
+              style={{
+                fontSize: "10px",
+                color: "var(--cf-text-dim)",
+                lineHeight: 1.4,
+              }}
+            >
+              {triageMsg}
+            </span>
+          )}
+          {triageErr && (
+            <span
+              className="cf-mono"
+              style={{ fontSize: "10px", color: "var(--cf-red)" }}
+            >
+              {triageErr}
+            </span>
           )}
         </div>
       )}

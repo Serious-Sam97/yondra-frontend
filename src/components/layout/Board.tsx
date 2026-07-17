@@ -188,8 +188,10 @@ export function Board({
   const [roadmapConfig, setRoadmapConfig] = useState(initialRoadmapConfig);
   const [isCardVisible, setIsCardVisible] = useState(false);
   const [selectedCard, setSelectedCard] = useState<CardInterface | null>(null);
-  const [filterUserId, setFilterUserId] = useState<number | null>(null);
-  const [filterTagId, setFilterTagId] = useState<number | null>(null);
+  // Card filters. Multi-select: a card matches if it hits ANY selected user and
+  // ANY selected tag (OR within each dimension, AND across them). Empty = off.
+  const [filterUserIds, setFilterUserIds] = useState<number[]>([]);
+  const [filterTagIds, setFilterTagIds] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCard, setActiveCard] = useState<CardInterface | null>(null);
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
@@ -376,8 +378,7 @@ export function Board({
     demoId,
     setTags,
     setCards,
-    filterTagId,
-    setFilterTagId,
+    setFilterTagIds,
     reportSyncError,
   });
 
@@ -440,11 +441,16 @@ export function Board({
 
   const matchesFilters = useCallback(
     (card: CardInterface) => {
-      if (filterUserId !== null && card.assigned_user_id !== filterUserId)
+      if (
+        filterUserIds.length > 0 &&
+        (card.assigned_user_id === null ||
+          card.assigned_user_id === undefined ||
+          !filterUserIds.includes(card.assigned_user_id))
+      )
         return false;
       if (
-        filterTagId !== null &&
-        !(card.tags ?? []).some((t) => t.id === filterTagId)
+        filterTagIds.length > 0 &&
+        !(card.tags ?? []).some((t) => filterTagIds.includes(t.id))
       )
         return false;
       if (searchQuery.trim()) {
@@ -459,7 +465,7 @@ export function Board({
       }
       return true;
     },
-    [filterUserId, filterTagId, searchQuery],
+    [filterUserIds, filterTagIds, searchQuery],
   );
 
   // Scrum boards show only the active sprint on the Board; planning lives in the Backlog.
@@ -1225,10 +1231,10 @@ export function Board({
         <BoardFilterStrip
           boardUsers={boardUsers}
           tags={tags}
-          filterUserId={filterUserId}
-          filterTagId={filterTagId}
-          setFilterUserId={setFilterUserId}
-          setFilterTagId={setFilterTagId}
+          filterUserIds={filterUserIds}
+          filterTagIds={filterTagIds}
+          setFilterUserIds={setFilterUserIds}
+          setFilterTagIds={setFilterTagIds}
         />
       )}
 
@@ -1423,6 +1429,14 @@ export function Board({
                     onAddSection={handleAddSection}
                   />
                 )}
+
+                {/* Right gutter so the last column can scroll clear of the
+                    fixed tools dock instead of tucking under it (lg only). */}
+                <div
+                  aria-hidden
+                  className="hidden lg:block flex-shrink-0"
+                  style={{ width: "72px" }}
+                />
               </div>
 
               <DragOverlay dropAnimation={null}>

@@ -23,21 +23,19 @@ interface UseBoardTagsParams {
   demoId: string;
   setTags: Dispatch<SetStateAction<TagInterface[]>>;
   setCards: Dispatch<SetStateAction<CardInterface[]>>;
-  filterTagId: number | null;
-  setFilterTagId: Dispatch<SetStateAction<number | null>>;
+  setFilterTagIds: Dispatch<SetStateAction<number[]>>;
   reportSyncError: (message: string) => void;
 }
 
 // Tag management: the tags modal's open/draft state plus create/delete handlers.
-// Deleting a tag also strips it from every card and clears an active tag filter.
+// Deleting a tag also strips it from every card and drops it from the filter.
 export function useBoardTags({
   boardId,
   isDemo,
   demoId,
   setTags,
   setCards,
-  filterTagId,
-  setFilterTagId,
+  setFilterTagIds,
   reportSyncError,
 }: UseBoardTagsParams) {
   const [isTagsOpen, setIsTagsOpen] = useState(false);
@@ -74,7 +72,7 @@ export function useBoardTags({
         tags: (c.tags ?? []).filter((t) => t.id !== tagId),
       })),
     );
-    if (filterTagId === tagId) setFilterTagId(null);
+    setFilterTagIds((prev) => prev.filter((id) => id !== tagId));
   };
 
   return {

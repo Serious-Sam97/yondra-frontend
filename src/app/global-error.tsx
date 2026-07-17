@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
+import { reportError } from "@/lib/telemetry";
+
 // Last-resort boundary: catches errors thrown by the root layout itself. It
 // replaces the entire document, so it must render its own <html>/<body> and
 // cannot rely on globals.css — everything is inlined (cassette-futurism tokens
@@ -11,7 +14,10 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  console.error(error);
+  useEffect(() => {
+    console.error(error);
+    reportError(error, { boundary: "global", digest: error.digest });
+  }, [error]);
 
   return (
     <html lang="en">

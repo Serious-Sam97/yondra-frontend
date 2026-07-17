@@ -971,7 +971,7 @@ const CardEdit: React.FC<CardEditProps> = ({
   return (
     <div
       style={tagTintStyle}
-      className="aero-menu flex flex-col w-full min-h-[100svh] sm:min-h-0 sm:w-[95vw] sm:max-w-[520px] sm:h-auto sm:max-h-[90vh] lg:max-w-[1360px] lg:h-[85vh] lg:max-h-[85vh] relative transition-[background,border-color,box-shadow] duration-300"
+      className="aero-menu flex flex-col w-full min-h-[100svh] sm:min-h-0 sm:w-[95vw] sm:max-w-[520px] sm:h-auto sm:max-h-[90vh] lg:max-w-[1360px] lg:h-[90vh] lg:max-h-[90vh] relative transition-[background,border-color,box-shadow] duration-300"
       onClick={(e) => {
         // Clicking any inline rich-text image opens it full size.
         const t = e.target as HTMLElement;

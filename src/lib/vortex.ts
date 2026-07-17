@@ -35,6 +35,77 @@ export function useVortexEnabled(): boolean {
   );
 }
 
+/* ------------------------------------------------------------------ mounts */
+// Contexts the user "mounted" into Vortex's chat — a board (deep) or a project
+// (all its boards). Persisted per device, like the enabled flag. The cap
+// mirrors the backend's mounts validation.
+export type VortexMountType = "project" | "board";
+export interface VortexMount {
+  type: VortexMountType;
+  id: number;
+  name: string;
+}
+export const VORTEX_MAX_MOUNTS = 6;
+
+const MOUNTS_KEY = "yd:vortex.mounts";
+const NO_MOUNTS: VortexMount[] = [];
+let mountsCache: VortexMount[] | null = null;
+const mountsListeners = new Set<() => void>();
+const notifyMounts = () => {
+  for (const l of mountsListeners) l();
+};
+
+function readMounts(): VortexMount[] {
+  if (typeof window === "undefined") return NO_MOUNTS;
+  if (mountsCache) return mountsCache;
+  try {
+    const raw: unknown = JSON.parse(localStorage.getItem(MOUNTS_KEY) ?? "[]");
+    mountsCache = Array.isArray(raw)
+      ? (raw as VortexMount[]).filter(
+          (m) =>
+            (m?.type === "project" || m?.type === "board") &&
+            typeof m.id === "number" &&
+            typeof m.name === "string",
+        )
+      : [];
+  } catch {
+    mountsCache = [];
+  }
+  return mountsCache;
+}
+function writeMounts(next: VortexMount[]): void {
+  mountsCache = next;
+  localStorage.setItem(MOUNTS_KEY, JSON.stringify(next));
+  notifyMounts();
+}
+
+export function useVortexMounts(): VortexMount[] {
+  return useSyncExternalStore(
+    (cb) => {
+      mountsListeners.add(cb);
+      return () => mountsListeners.delete(cb);
+    },
+    readMounts,
+    () => NO_MOUNTS,
+  );
+}
+export function isVortexMounted(type: VortexMountType, id: number): boolean {
+  return readMounts().some((m) => m.type === type && m.id === id);
+}
+/** Add a mount (no-op if already mounted or at the cap). */
+export function mountVortexContext(m: VortexMount): void {
+  const cur = readMounts();
+  if (cur.some((x) => x.type === m.type && x.id === m.id)) return;
+  if (cur.length >= VORTEX_MAX_MOUNTS) return;
+  writeMounts([...cur, m]);
+}
+export function unmountVortexContext(type: VortexMountType, id: number): void {
+  writeMounts(readMounts().filter((m) => !(m.type === type && m.id === id)));
+}
+export function clearVortexMounts(): void {
+  writeMounts([]);
+}
+
 /* ----------------------------------------------------------- the say() channel */
 export interface VortexSpeech {
   text: string;

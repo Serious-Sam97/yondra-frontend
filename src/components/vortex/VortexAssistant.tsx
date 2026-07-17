@@ -1,17 +1,32 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSystem } from "@/contexts/SystemContext";
-import { useVortexChat } from "@/hooks/useVortexChat";
-import { fetchUser } from "@/lib/auth";
+import { useVortexChat, type VortexAction } from "@/hooks/useVortexChat";
+import {
+  archiveBoard,
+  createBoard,
+  createCard,
+  createProject,
+  createSection,
+  fetchBoard,
+  fetchProjects,
+} from "@/lib/api";
+import { fetchBoards, fetchUser } from "@/lib/auth";
 import {
   greeting,
+  isVortexMounted,
+  mountVortexContext,
   quipForRoute,
   randomTip,
   setVortexEnabled,
   subscribeVortexSay,
+  unmountVortexContext,
   useVortexEnabled,
+  useVortexMounts,
+  VORTEX_MAX_MOUNTS,
+  type VortexMount,
   type VortexSpeech,
 } from "@/lib/vortex";
 
@@ -33,6 +48,7 @@ const VortexAssistant: React.FC = () => {
   const enabled = useVortexEnabled();
   const { isLogged } = useSystem();
   const pathname = usePathname() ?? "";
+  const router = useRouter();
 
   const [user, setUser] = useState<{ id: number; name: string } | null>(null);
   const [speech, setSpeech] = useState<VortexSpeech | null>(null);
@@ -41,6 +57,14 @@ const VortexAssistant: React.FC = () => {
   const [draft, setDraft] = useState("");
   // peek: pointer/focus is on him — slides him out of the border
   const [peek, setPeek] = useState(false);
+  // mount picker (inside the chat panel)
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerQuery, setPickerQuery] = useState("");
+  const [pickerItems, setPickerItems] = useState<VortexMount[] | null>(null);
+  // proposed-action confirm cards, keyed by transcript index
+  const [acted, setActed] = useState<
+    Record<number, "working" | "done" | "dismissed" | "error">
+  >({});
 
   const lastQuip = useRef(0);
   const lastSpoke = useRef(0);
@@ -53,9 +77,14 @@ const VortexAssistant: React.FC = () => {
   const logRef = useRef<HTMLDivElement>(null);
   const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const chat = useVortexChat(user?.id, enabled && isLogged);
+  const mounts = useVortexMounts();
+  const chat = useVortexChat(user?.id, enabled && isLogged, mounts);
 
   const active = enabled && isLogged;
+
+  // The board the user is looking at right now (for the one-click mount chip).
+  const boardMatch = pathname.match(/^\/boards\/(\d+)(?:\/|$)/);
+  const currentBoardId = boardMatch ? Number(boardMatch[1]) : null;
 
   /* who am I — needed for the private chat channel */
   useEffect(() => {
@@ -167,6 +196,147 @@ const VortexAssistant: React.FC = () => {
     setDraft("");
   };
 
+  /* mount picker — load projects + boards once per open (cheap list calls) */
+  useEffect(() => {
+    if (!pickerOpen || pickerItems !== null) return;
+    Promise.all([fetchProjects(), fetchBoards()])
+      .then(([projects, boards]) => {
+        const items: VortexMount[] = [
+          ...[...projects.owned, ...projects.member].map((p) => ({
+            type: "project" as const,
+            id: p.id,
+            name: p.name,
+          })),
+          ...[...boards.owned, ...boards.shared].map((b) => ({
+            type: "board" as const,
+            id: b.id,
+            name: b.name,
+          })),
+        ];
+        // De-dup (a co-owned project can appear in both lists).
+        const seen = new Set<string>();
+        setPickerItems(
+          items.filter((i) => {
+            const k = `${i.type}:${i.id}`;
+            if (seen.has(k)) return false;
+            seen.add(k);
+            return true;
+          }),
+        );
+      })
+      .catch(() => setPickerItems([]));
+  }, [pickerOpen, pickerItems]);
+
+  const visiblePickerItems = (pickerItems ?? []).filter((i) =>
+    i.name.toLowerCase().includes(pickerQuery.trim().toLowerCase()),
+  );
+
+  /* execute a proposed action the user confirmed — via the same authorized REST
+     endpoints the regular UI uses; Vortex itself never writes anything. */
+  const runAction = async (i: number, action: VortexAction) => {
+    setActed((s) => ({ ...s, [i]: "working" }));
+    try {
+      if (action.kind === "create_project") {
+        const project = await createProject({
+          name: action.name,
+          description: action.description ?? null,
+        });
+        let firstBoardId: number | null = null;
+        for (const b of action.boards) {
+          const nb = await createBoard({
+            name: b.name,
+            description: "",
+            project_id: project.id,
+            type: b.type,
+          });
+          firstBoardId ??= nb.id;
+        }
+        setActed((s) => ({ ...s, [i]: "done" }));
+        router.push(
+          firstBoardId !== null ? `/boards/${firstBoardId}` : "/projects",
+        );
+      } else if (action.kind === "create_board") {
+        const nb = await createBoard({
+          name: action.name,
+          description: "",
+          project_id: action.project_id ?? null,
+          type: action.type,
+        });
+        setActed((s) => ({ ...s, [i]: "done" }));
+        router.push(`/boards/${nb.id}`);
+      } else if (action.kind === "create_card") {
+        // Resolve the column by name (the model only knows column names, not ids).
+        const board = await fetchBoard(action.board_id);
+        const wanted = action.column?.trim().toLowerCase();
+        const section =
+          (wanted &&
+            board.sections?.find(
+              (s) => s.name.trim().toLowerCase() === wanted,
+            )) ||
+          board.sections?.[0];
+        if (!section) throw new Error("board has no columns");
+        const card = await createCard(action.board_id, {
+          section_id: section.id,
+          name: action.name,
+          description: action.description ?? "",
+        });
+        setActed((s) => ({ ...s, [i]: "done" }));
+        router.push(`/boards/${action.board_id}?card=${card.id}`);
+      } else if (action.kind === "add_column") {
+        await createSection(action.board_id, action.name);
+        setActed((s) => ({ ...s, [i]: "done" }));
+        router.push(`/boards/${action.board_id}`);
+      } else {
+        await archiveBoard(action.board_id);
+        setActed((s) => ({ ...s, [i]: "done" }));
+        router.push("/projects");
+      }
+    } catch {
+      setActed((s) => ({ ...s, [i]: "error" }));
+    }
+  };
+
+  const describeAction = (action: VortexAction): string => {
+    const boardLabel = (a: { board_id: number; board_name?: string }) =>
+      a.board_name ? `“${a.board_name}”` : `#${a.board_id}`;
+    switch (action.kind) {
+      case "create_project":
+        return `Create project “${action.name}”${
+          action.boards.length > 0
+            ? ` with ${action.boards
+                .map((b) => `“${b.name}” (${b.type})`)
+                .join(", ")}`
+            : ""
+        }`;
+      case "create_board":
+        return `Create board “${action.name}” (${action.type})${
+          action.project_id !== undefined
+            ? ` in project #${action.project_id}`
+            : ""
+        }`;
+      case "create_card":
+        return `Create card “${action.name}” on board ${boardLabel(action)}${
+          action.column ? ` in “${action.column}”` : ""
+        }`;
+      case "add_column":
+        return `Add column “${action.name}” to board ${boardLabel(action)}`;
+      case "archive_board":
+        return `Archive board ${boardLabel(action)}`;
+    }
+  };
+
+  /* one-click mount for the board currently on screen */
+  const mountCurrentBoard = async () => {
+    if (currentBoardId === null) return;
+    try {
+      const { owned, shared } = await fetchBoards();
+      const b = [...owned, ...shared].find((x) => x.id === currentBoardId);
+      if (b) mountVortexContext({ type: "board", id: b.id, name: b.name });
+    } catch {
+      // list call failed — the picker still works as a fallback
+    }
+  };
+
   if (!active) return null;
 
   return (
@@ -209,7 +379,11 @@ const VortexAssistant: React.FC = () => {
             <span className="vxa-name" style={{ marginBottom: 0 }}>
               Vortex
             </span>
-            <span className="vxa-chat-sub">your workspace guide</span>
+            <span className="vxa-chat-sub">
+              {mounts.length === 0
+                ? "your workspace guide"
+                : `focused: ${mounts.map((m) => m.name).join(", ")}`}
+            </span>
             <button
               type="button"
               className="vxa-chat-close"
@@ -219,19 +393,155 @@ const VortexAssistant: React.FC = () => {
               ×
             </button>
           </div>
+
+          {/* mount bar — cartridge chips for the contexts he's grounded on */}
+          <div className="vxa-mounts">
+            {mounts.map((m) => (
+              <span
+                key={`${m.type}:${m.id}`}
+                className="vxa-mchip"
+                title={
+                  m.type === "board" ? "Board (deep)" : "Project (all boards)"
+                }
+              >
+                <span aria-hidden className="vxa-mchip-kind">
+                  {m.type === "board" ? "▦" : "◫"}
+                </span>
+                <span className="vxa-mchip-name">{m.name}</span>
+                <button
+                  type="button"
+                  className="vxa-mchip-x"
+                  title={`Eject ${m.name}`}
+                  onClick={() => unmountVortexContext(m.type, m.id)}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+            {currentBoardId !== null &&
+              !isVortexMounted("board", currentBoardId) &&
+              mounts.length < VORTEX_MAX_MOUNTS && (
+                <button
+                  type="button"
+                  className="vxa-mchip vxa-mchip--ghost"
+                  title="Mount the board you're looking at"
+                  onClick={mountCurrentBoard}
+                >
+                  + this board
+                </button>
+              )}
+            {mounts.length < VORTEX_MAX_MOUNTS && (
+              <button
+                type="button"
+                className="vxa-mchip vxa-mchip--ghost"
+                aria-expanded={pickerOpen}
+                onClick={() => setPickerOpen((v) => !v)}
+              >
+                {pickerOpen ? "− close" : "+ mount"}
+              </button>
+            )}
+          </div>
+
+          {/* picker — searchable projects & boards, click to mount/eject */}
+          {pickerOpen && (
+            <div className="vxa-picker">
+              <input
+                className="vxa-chat-input"
+                placeholder="Search projects & boards…"
+                value={pickerQuery}
+                onChange={(e) => setPickerQuery(e.target.value)}
+              />
+              <div className="vxa-picker-list">
+                {pickerItems === null && (
+                  <div className="vxa-picker-empty">Loading…</div>
+                )}
+                {pickerItems !== null && visiblePickerItems.length === 0 && (
+                  <div className="vxa-picker-empty">Nothing matches.</div>
+                )}
+                {visiblePickerItems.map((item) => {
+                  const mounted = isVortexMounted(item.type, item.id);
+                  return (
+                    <button
+                      key={`${item.type}:${item.id}`}
+                      type="button"
+                      className={`vxa-picker-item${mounted ? " vxa-picker-item--on" : ""}`}
+                      onClick={() =>
+                        mounted
+                          ? unmountVortexContext(item.type, item.id)
+                          : mountVortexContext(item)
+                      }
+                    >
+                      <span aria-hidden className="vxa-mchip-kind">
+                        {item.type === "board" ? "▦" : "◫"}
+                      </span>
+                      <span className="vxa-mchip-name">{item.name}</span>
+                      <span className="vxa-picker-item-state">
+                        {mounted ? "eject" : "mount"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="vxa-chat-log" ref={logRef}>
             {chat.messages.length === 0 && !chat.streaming && (
               <div className="vxa-msg vxa-msg--vortex">
-                Ask me about your boards and projects — try “what's overdue?”
+                {mounts.length === 0
+                  ? "Ask me about your boards and projects — try “what's overdue?” Mount a board or project above to focus me on it."
+                  : `I'm focused on ${mounts.map((m) => m.name).join(" and ")} — ask away!`}
               </div>
             )}
             {chat.messages.map((m, i) => (
-              <div
-                // biome-ignore lint/suspicious/noArrayIndexKey: append-only transcript
-                key={i}
-                className={`vxa-msg ${m.role === "user" ? "vxa-msg--you" : "vxa-msg--vortex"}`}
-              >
-                {m.content}
+              // biome-ignore lint/suspicious/noArrayIndexKey: append-only transcript
+              <div key={i} className="contents">
+                <div
+                  className={`vxa-msg ${m.role === "user" ? "vxa-msg--you" : "vxa-msg--vortex"}`}
+                >
+                  {m.content}
+                </div>
+                {m.role === "assistant" && m.action && (
+                  <div className="vxa-action">
+                    <div className="vxa-action-desc">
+                      {describeAction(m.action)}
+                    </div>
+                    {(acted[i] === undefined || acted[i] === "error") && (
+                      <div className="vxa-actions" style={{ marginTop: 6 }}>
+                        <button
+                          type="button"
+                          className="vxa-btn"
+                          onClick={() => runAction(i, m.action as VortexAction)}
+                        >
+                          {acted[i] === "error" ? "Retry" : "Do it"}
+                        </button>
+                        <button
+                          type="button"
+                          className="vxa-link"
+                          onClick={() =>
+                            setActed((s) => ({ ...s, [i]: "dismissed" }))
+                          }
+                        >
+                          Dismiss
+                        </button>
+                        {acted[i] === "error" && (
+                          <span className="vxa-chat-error">
+                            That didn't work — try again.
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {acted[i] === "working" && (
+                      <div className="vxa-action-state">creating…</div>
+                    )}
+                    {acted[i] === "done" && (
+                      <div className="vxa-action-state">✓ created</div>
+                    )}
+                    {acted[i] === "dismissed" && (
+                      <div className="vxa-action-state">dismissed</div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
             {chat.streaming && (
@@ -239,7 +549,8 @@ const VortexAssistant: React.FC = () => {
                 {chat.streamingText === "" ? (
                   <span className="vxa-thinking">…</span>
                 ) : (
-                  chat.streamingText
+                  // hide the machine-readable ACTION tail while it streams in
+                  chat.streamingText.split("ACTION:")[0]
                 )}
               </div>
             )}
@@ -273,6 +584,7 @@ const VortexAssistant: React.FC = () => {
           <button>s, and buttons can't nest. The outer .vxa-dock carries the
           tuck-into-the-border transform; the bob animation transforms
           .vxa-sprite, so the two never fight over one element's transform. */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: hover/focus peek region only — the real controls are the buttons inside */}
       <div
         className={`vxa-dock${docked ? " vxa-dock--in" : ""}`}
         onMouseEnter={holdPeek}

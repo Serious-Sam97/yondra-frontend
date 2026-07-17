@@ -9,6 +9,7 @@ import "./globals.css";
 config.autoAddCss = false;
 
 import MenuAppBar from "@/components/layout/MenuAppBar"; // make sure this is a client component
+import ErrorReporter from "@/components/telemetry/ErrorReporter";
 import { SpringTrail } from "@/components/ui/SpringTrail";
 import VortexAssistant from "@/components/vortex/VortexAssistant";
 import { ConsoleProvider } from "@/contexts/ConsoleContext";
@@ -40,17 +41,18 @@ export default function RootLayout({
         <SystemProvider>
           <ConsoleProvider>
             <HeaderBusProvider>
-            <ToastProvider>
-              <div className="aero-fixed-bg" aria-hidden>
-                <div className="aero-bg__sun" />
-                <div className="aero-bg__grid" />
-                <div className="aero-bg__scan" />
-              </div>
-              <MenuAppBar />
-              {children}
-              <SpringTrail />
-              <VortexAssistant />
-            </ToastProvider>
+              <ToastProvider>
+                <div className="aero-fixed-bg" aria-hidden>
+                  <div className="aero-bg__sun" />
+                  <div className="aero-bg__grid" />
+                  <div className="aero-bg__scan" />
+                </div>
+                <MenuAppBar />
+                {children}
+                <SpringTrail />
+                <VortexAssistant />
+                <ErrorReporter />
+              </ToastProvider>
             </HeaderBusProvider>
           </ConsoleProvider>
         </SystemProvider>
