@@ -1,13 +1,21 @@
 "use client";
 
+import {
+  faDownload,
+  faTriangleExclamation,
+} from "@fortawesome/free-solid-svg-icons";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Modal from "@/components/shared/Modal";
 import { DirtyLed, ModuleHead, StatusLcd } from "@/components/ui/ConsoleModule";
+import Icon from "@/components/ui/Icon";
 import NotificationPreferences from "@/components/ui/NotificationPreferences";
 import VortexPreference from "@/components/vortex/VortexPreference";
 import type { UserInterface } from "@/interfaces/UserInterface";
 import { ApiError } from "@/lib/api";
 import {
+  deleteAccount,
+  downloadMyData,
   fetchBoards,
   fetchUser,
   logout,
@@ -253,6 +261,19 @@ export default function ProfilePage() {
     phase: "idle",
   });
 
+  // Data & privacy (LGPD): export download + password-gated account deletion.
+  const [exportBusy, setExportBusy] = useState(false);
+  const [exportError, setExportError] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const deletePwRef = useRef<HTMLInputElement>(null);
+  // Focus the password field when the delete-confirm modal opens.
+  useEffect(() => {
+    if (deleteOpen) deletePwRef.current?.focus();
+  }, [deleteOpen]);
+
   useEffect(() => {
     fetchUser()
       .then((u) => {
@@ -363,6 +384,37 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     await logout();
     router.push("/login");
+  };
+
+  const handleExport = async () => {
+    setExportError("");
+    setExportBusy(true);
+    try {
+      await downloadMyData();
+    } catch (e) {
+      setExportError(friendlyMessage(e, "Couldn't export your data."));
+    } finally {
+      setExportBusy(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) return;
+    setDeleteError("");
+    setDeleteBusy(true);
+    try {
+      await deleteAccount(deletePassword);
+      // Account gone and local auth cleared — send to the sign-up entry point.
+      router.push("/login");
+    } catch (e) {
+      setDeleteError(
+        friendlyMessage(
+          e,
+          "Couldn't delete your account. Check your password.",
+        ),
+      );
+      setDeleteBusy(false);
+    }
   };
 
   if (!user) {
@@ -801,8 +853,161 @@ export default function ProfilePage() {
               ⏏ Sign out
             </button>
           </section>
+
+          {/* DATA & PRIVACY — LGPD data-subject rights */}
+          <section className="glass-panel relative overflow-hidden flex flex-col gap-5 p-5">
+            <div className="flex flex-col gap-1">
+              <p className="cf-label" style={{ color: "var(--cf-phosphor)" }}>
+                Data &amp; privacy
+              </p>
+              <p
+                className="text-sm cf-mono"
+                style={{ color: "var(--cf-text-muted)" }}
+              >
+                Export a copy of your data, or permanently delete your account.
+              </p>
+            </div>
+
+            {/* Export */}
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <p
+                  className="cf-mono text-sm"
+                  style={{ color: "var(--cf-text)" }}
+                >
+                  Download my data
+                </p>
+                <p
+                  className="cf-mono"
+                  style={{ fontSize: "11px", color: "var(--cf-text-dim)" }}
+                >
+                  A JSON file with your account, boards, cards, and comments.
+                </p>
+                {exportError && (
+                  <p
+                    className="cf-mono mt-1"
+                    style={{ fontSize: "11px", color: "var(--cf-red)" }}
+                  >
+                    {exportError}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleExport}
+                disabled={exportBusy}
+                className="aero-btn aero-btn--cyan px-4 py-2.5 flex-shrink-0 flex items-center gap-2 disabled:opacity-60"
+              >
+                <Icon icon={faDownload} style={{ fontSize: "11px" }} />
+                {exportBusy ? "Preparing…" : "Export data"}
+              </button>
+            </div>
+
+            {/* Delete — hazard-striped danger row */}
+            <div
+              className="relative flex items-center gap-4 rounded-lg p-4"
+              style={{
+                border:
+                  "1px solid color-mix(in srgb, var(--cf-red) 50%, transparent)",
+                background: "color-mix(in srgb, var(--cf-red) 8%, transparent)",
+              }}
+            >
+              <div className="flex-1">
+                <p
+                  className="cf-mono text-sm font-bold flex items-center gap-2"
+                  style={{ color: "var(--cf-red)" }}
+                >
+                  <Icon icon={faTriangleExclamation} /> Delete account
+                </p>
+                <p
+                  className="cf-mono"
+                  style={{ fontSize: "11px", color: "var(--cf-text-dim)" }}
+                >
+                  Permanently erases your account and everything you own. This
+                  cannot be undone.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteError("");
+                  setDeletePassword("");
+                  setDeleteOpen(true);
+                }}
+                className="aero-btn aero-btn--magenta px-4 py-2.5 flex-shrink-0"
+              >
+                Delete…
+              </button>
+            </div>
+          </section>
         </div>
       </div>
+
+      {deleteOpen && (
+        <Modal>
+          <div className="aero-menu p-6 w-[90%] max-w-md flex flex-col gap-5">
+            <div className="flex flex-col items-center text-center gap-3">
+              <p className="text-3xl" style={{ color: "var(--cf-red)" }}>
+                <Icon icon={faTriangleExclamation} />
+              </p>
+              <p
+                className="cf-mono font-bold text-lg"
+                style={{ color: "var(--cf-text)" }}
+              >
+                Delete your account?
+              </p>
+              <p
+                className="cf-mono text-sm"
+                style={{ color: "var(--cf-text-muted)" }}
+              >
+                This permanently erases your account, your boards, cards, and
+                everything you own. It can't be undone. Enter your password to
+                confirm.
+              </p>
+            </div>
+
+            <input
+              type="password"
+              ref={deletePwRef}
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleDeleteAccount();
+                if (e.key === "Escape") setDeleteOpen(false);
+              }}
+              placeholder="Your password"
+              className="glass-input px-3 py-2"
+            />
+            {deleteError && (
+              <p
+                className="cf-mono"
+                style={{ fontSize: "12px", color: "var(--cf-red)" }}
+              >
+                {deleteError}
+              </p>
+            )}
+
+            <div className="flex justify-between">
+              <button
+                type="button"
+                onClick={() => setDeleteOpen(false)}
+                disabled={deleteBusy}
+                className="aero-btn aero-btn--ghost text-xs uppercase tracking-widest px-4 py-2 cursor-pointer disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={deleteBusy || !deletePassword}
+                className="aero-btn aero-btn--magenta text-xs uppercase tracking-widest font-bold px-4 py-2 cursor-pointer disabled:opacity-60"
+              >
+                {deleteBusy ? "Deleting…" : "Delete forever"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

@@ -128,6 +128,35 @@ export async function logout(): Promise<void> {
   }
 }
 
+// LGPD data access/portability: pull the account export and save it as a JSON
+// file. Uses a raw fetch (not apiFetch) so we can hand the browser the blob.
+export async function downloadMyData(): Promise<void> {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API}/api/user/export`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new ApiError(res.status, await res.text().catch(() => ""));
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `yondra-data-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// LGPD right to erasure: permanently delete the account. Guarded server-side by
+// the current password; clears local auth on success so the app logs out.
+export async function deleteAccount(password: string): Promise<void> {
+  await apiFetch("/api/user", {
+    method: "DELETE",
+    body: JSON.stringify({ password }),
+  });
+  clearAuth();
+}
+
 export async function forgotPassword(email: string): Promise<void> {
   await apiFetch("/api/forgot-password", {
     method: "POST",

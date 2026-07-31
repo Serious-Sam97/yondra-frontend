@@ -470,6 +470,15 @@ export function Board({
 
   // Scrum boards show only the active sprint on the Board; planning lives in the Backlog.
   const activeSprint = sprints.find((s) => s.status === "active") ?? null;
+  // Tickets sitting in the null-sprint product backlog — surfaced in the "no active
+  // sprint" empty state so a freshly-converted board doesn't just look emptied out.
+  const unassignedCount = useMemo(
+    () =>
+      type === "scrum"
+        ? boardCards.filter((c) => (c.sprint_id ?? null) === null).length
+        : 0,
+    [type, boardCards],
+  );
   const matchesSprint = useCallback(
     (card: CardInterface) => {
       if (type !== "scrum") return true;
@@ -1369,6 +1378,17 @@ export function Board({
               >
                 Plan and start a sprint from the Backlog to begin.
               </p>
+              {/* Spell out where the cards went: a board converted to scrum hides every
+                  unassigned ticket here, which otherwise reads as data loss. */}
+              {unassignedCount > 0 && (
+                <p
+                  className="cf-mono"
+                  style={{ fontSize: "11px", color: "var(--cf-text-muted)" }}
+                >
+                  {unassignedCount} ticket{unassignedCount === 1 ? "" : "s"}{" "}
+                  waiting in the product backlog.
+                </p>
+              )}
               <button
                 onClick={() => setViewMode("backlog")}
                 className="aero-btn aero-btn--cyan text-[10px] uppercase tracking-widest font-bold px-4 py-2 cursor-pointer inline-flex items-center gap-1.5"

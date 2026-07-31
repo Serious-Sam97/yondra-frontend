@@ -9,6 +9,7 @@ import "./globals.css";
 config.autoAddCss = false;
 
 import MenuAppBar from "@/components/layout/MenuAppBar"; // make sure this is a client component
+import PrivacyNotice from "@/components/legal/PrivacyNotice";
 import ErrorReporter from "@/components/telemetry/ErrorReporter";
 import { SpringTrail } from "@/components/ui/SpringTrail";
 import VortexAssistant from "@/components/vortex/VortexAssistant";
@@ -51,6 +52,7 @@ export default function RootLayout({
                 {children}
                 <SpringTrail />
                 <VortexAssistant />
+                <PrivacyNotice />
                 <ErrorReporter />
               </ToastProvider>
             </HeaderBusProvider>

@@ -17,6 +17,7 @@ import type { CardDocument, CardLink } from "@/interfaces/CardInterface";
 import { ApiError, suggestStoryPoints, suggestTriage } from "@/lib/api";
 import { currencySymbol, maskMoneyInput } from "@/lib/currency";
 import { FIBONACCI } from "@/lib/estimation";
+import { channelIcon, foldAccents } from "@/lib/tags";
 
 const AVATAR_COLORS = [
   "#4CAF50",
@@ -28,15 +29,6 @@ const AVATAR_COLORS = [
   "#00BCD4",
   "#E91E63",
 ];
-
-// The combining-diacritics block that NFD splits accents into. Built from a
-// string so the source stays ASCII — the literal marks are invisible on screen.
-const DIACRITICS = /[\u0300-\u036f]/g;
-
-// Accent-insensitive compare so "regulatorio" matches "Regulatório" and
-// "educacao" matches "Educação" — tag names here are largely Portuguese.
-const foldAccents = (s: string) =>
-  s.normalize("NFD").replace(DIACRITICS, "").toLowerCase();
 
 const PRIORITY_OPTS: {
   value: "low" | "medium" | "high";
@@ -1197,36 +1189,46 @@ export function PropertiesPanel({
               {isReadOnly ? "No tags" : "No tags — add one"}
             </span>
           ) : (
-            <div className="flex gap-1.5 flex-wrap">
-              {selectedTags.map((tag) => (
-                <span
-                  key={tag.id}
-                  title={tag.name}
-                  style={{
-                    borderColor: tag.color,
-                    background: tag.color,
-                    color: "#1c1a16",
-                    boxShadow: `0 0 8px ${tag.color}55`,
-                    fontSize: "10px",
-                  }}
-                  className="cf-mono uppercase tracking-widest px-2 py-1 rounded-sm border font-bold inline-flex items-center gap-1.5 max-w-full"
-                >
-                  <span className="truncate" style={{ maxWidth: "150px" }}>
-                    {tag.name}
+            <div className="flex gap-1 flex-wrap items-start">
+              {/* Every tag shows its full name — channels keep their glyph as a
+                  prefix, and long names wrap instead of truncating so nothing
+                  has to be hovered to be read. */}
+              {selectedTags.map((tag) => {
+                const icon = channelIcon(tag);
+                return (
+                  <span
+                    key={tag.id}
+                    style={{
+                      background: tag.color,
+                      color: "#1c1a16",
+                      boxShadow: `0 0 6px ${tag.color}55`,
+                      fontSize: "9px",
+                      letterSpacing: "0.04em",
+                    }}
+                    className="cf-mono uppercase px-1.5 py-0.5 rounded-sm font-bold inline-flex items-center gap-1"
+                  >
+                    {icon && (
+                      <Icon
+                        icon={icon}
+                        className="flex-shrink-0"
+                        style={{ fontSize: "10px" }}
+                      />
+                    )}
+                    <span className="break-words">{tag.name}</span>
+                    {!isReadOnly && (
+                      <button
+                        type="button"
+                        onClick={() => toggleTag(tag.id)}
+                        aria-label={`Remove ${tag.name}`}
+                        style={{ fontSize: "8px" }}
+                        className="cursor-pointer opacity-50 hover:opacity-100 flex-shrink-0 transition-opacity"
+                      >
+                        <Icon icon={faXmark} />
+                      </button>
+                    )}
                   </span>
-                  {!isReadOnly && (
-                    <button
-                      type="button"
-                      onClick={() => toggleTag(tag.id)}
-                      aria-label={`Remove ${tag.name}`}
-                      style={{ fontSize: "9px" }}
-                      className="cursor-pointer opacity-60 hover:opacity-100 flex-shrink-0"
-                    >
-                      <Icon icon={faXmark} />
-                    </button>
-                  )}
-                </span>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

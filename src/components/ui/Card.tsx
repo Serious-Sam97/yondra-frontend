@@ -1,11 +1,16 @@
 "use client";
 
 import { memo, useRef } from "react";
+import Icon from "@/components/ui/Icon";
 import type { BoardType } from "@/interfaces/BoardInterface";
 import type { CardInterface } from "@/interfaces/CardInterface";
 import { useAged } from "@/lib/aging";
 import { formatMoney } from "@/lib/currency";
+import { channelIcon } from "@/lib/tags";
 import { Draggable } from "../shared/Draggable";
+
+// How many named tags a card shows before the rest collapse into "+N".
+const CARD_TAG_LIMIT = 3;
 
 // Console palette with dark-ink initials (the app-wide avatarColor keeps white
 // text, which these brighter hues can't carry).
@@ -210,6 +215,15 @@ export const Card = memo(function Card({
   const tagColor = tags && tags.length > 0 ? tags[0].color : null;
   const railColor = aged ? "var(--cf-red)" : (priorityColor ?? "transparent");
 
+  // A card is scanned for its title, crew and progress — tags are context, so
+  // they get a fixed budget instead of pushing everything else off the casing.
+  // Channels shrink to their glyph; the rest spill into a "+N" chip.
+  const cardTags = tags ?? [];
+  const channelTags = cardTags.filter((t) => channelIcon(t));
+  const namedTags = cardTags.filter((t) => !channelIcon(t));
+  const shownTags = namedTags.slice(0, CARD_TAG_LIMIT);
+  const hiddenTags = namedTags.slice(CARD_TAG_LIMIT);
+
   const doneItems = (checklist_items ?? []).filter((i) => i.is_done).length;
   const totalItems = (checklist_items ?? []).length;
 
@@ -376,8 +390,22 @@ export const Card = memo(function Card({
                 </span>
               </span>
             )}
-            {(tags ?? []).map((tag) => (
-              <span key={tag.id} className="kc-chip">
+            {channelTags.map((tag) => {
+              const icon = channelIcon(tag);
+              if (!icon) return null;
+              return (
+                <span
+                  key={tag.id}
+                  className="kc-chip"
+                  title={tag.name}
+                  style={{ padding: "2.5px 5px", color: tag.color }}
+                >
+                  <Icon icon={icon} />
+                </span>
+              );
+            })}
+            {shownTags.map((tag) => (
+              <span key={tag.id} className="kc-chip" title={tag.name}>
                 <span
                   className="cf-led flex-shrink-0"
                   style={{
@@ -387,9 +415,23 @@ export const Card = memo(function Card({
                     height: 5,
                   }}
                 />
-                <span style={{ color: "var(--cf-text)" }}>{tag.name}</span>
+                <span
+                  className="truncate"
+                  style={{ color: "var(--cf-text)", maxWidth: "104px" }}
+                >
+                  {tag.name}
+                </span>
               </span>
             ))}
+            {hiddenTags.length > 0 && (
+              <span
+                className="kc-chip"
+                title={hiddenTags.map((t) => t.name).join(", ")}
+                style={{ color: "var(--cf-text-muted)" }}
+              >
+                +{hiddenTags.length}
+              </span>
+            )}
             {hasValue && (
               <span
                 className="kc-chip font-bold"

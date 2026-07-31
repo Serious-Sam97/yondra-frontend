@@ -535,8 +535,25 @@ export default function RegisterPage() {
                       </span>
                     </button>
                     <span className="reg-switch__text">
-                      I agree to the <a href="/terms">Terms</a> and{" "}
-                      <a href="/privacy">Privacy Policy</a>.
+                      {/* Open in a new tab so the half-filled sign-up form
+                          isn't lost when you go read the legal pages. */}
+                      I agree to the{" "}
+                      <a
+                        href="/terms"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Terms
+                      </a>{" "}
+                      and{" "}
+                      <a
+                        href="/privacy"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Privacy Policy
+                      </a>
+                      .
                     </span>
                   </div>
                 </div>
