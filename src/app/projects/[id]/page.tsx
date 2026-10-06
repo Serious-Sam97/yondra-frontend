@@ -550,7 +550,7 @@ export default function ProjectPage() {
     return (
       <div
         className="flex items-center justify-center"
-        style={{ minHeight: "calc(100vh - var(--app-header-h, 56px))" }}
+        style={{ minHeight: "calc(100dvh - var(--app-header-h, 56px))" }}
       >
         <p
           className="cf-mono uppercase tracking-widest chrome-text"
@@ -565,7 +565,7 @@ export default function ProjectPage() {
   return (
     <div
       className="pj-page flex overflow-hidden"
-      style={{ height: "calc(100vh - var(--app-header-h, 56px))" }}
+      style={{ height: "calc(100dvh - var(--app-header-h, 56px))" }}
     >
       <DndContext
         sensors={sensors}

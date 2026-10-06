@@ -2530,7 +2530,17 @@ input[type="number"]:focus {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
   font-family: var(--cf-mono);
+}
+.pj-rail {
+  container: pr-rail / size;
+}
+.pr-top,
+.pr-lib,
+.pr-now,
+.pr-foot {
+  flex-shrink: 0;
 }
 .pr-top {
   display: flex;
@@ -3070,7 +3080,9 @@ input[type="number"]:focus {
   color: var(--cf-cyan);
   text-shadow: 0 0 6px rgba(111, 224, 255, 0.5);
 }
-@media (max-height: 760px) {
+/* Show "now playing" only when the shelf itself is tall enough to keep a
+   usable project list above it (sized by the rail, not the viewport). */
+@container pr-rail (max-height: 660px) {
   .pr-now {
     display: none;
   }
