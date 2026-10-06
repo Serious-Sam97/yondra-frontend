@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  faArrowLeft,
   faBorderAll,
   faList,
   faMagnifyingGlass,
@@ -64,6 +63,8 @@ import {
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 
 type SortKey = "manual" | "recent" | "name" | "progress" | "cards";
+
+const RAIL_KEY = "yd:projectRailCollapsed";
 
 // Transport-key labels for the sort group ("cards" reads as tape length).
 const SORTS: { key: SortKey; label: string }[] = [
@@ -170,6 +171,32 @@ export default function ProjectPage() {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [showArchived, setShowArchived] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+
+  // Collapsed project shelf (desktop only), remembered per browser.
+  const [railPref, setRailPref] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    try {
+      setRailPref(localStorage.getItem(RAIL_KEY) === "1");
+    } catch {
+      /* storage unavailable: default to expanded */
+    }
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const sync = () => setIsDesktop(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  const railCollapsed = railPref && isDesktop;
+  const toggleRail = () =>
+    setRailPref((v) => {
+      try {
+        localStorage.setItem(RAIL_KEY, v ? "0" : "1");
+      } catch {
+        /* ignore */
+      }
+      return !v;
+    });
 
   // "/" focuses the board filter (unless the user is already typing somewhere).
   useEffect(() => {
@@ -556,40 +583,27 @@ export default function ProjectPage() {
 
         {/* ── Left rail ── */}
         <aside
-          className={`pj-rail glass-panel rounded-none z-40 lg:z-auto flex flex-col h-full w-56 flex-shrink-0 fixed lg:relative transition-transform duration-200 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
+          className={`pj-rail glass-panel rounded-none z-40 lg:z-auto flex flex-col h-full flex-shrink-0 fixed lg:relative transition-[transform,width] duration-200 ${railCollapsed ? "w-[252px] lg:w-16" : "w-[252px]"} ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
         >
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="flex items-center gap-2 px-4 py-4 hover:bg-[#1c1a16] transition-colors cursor-pointer"
-            style={{ borderBottom: "1px solid var(--cf-edge)" }}
-          >
-            <Icon
-              icon={faArrowLeft}
-              style={{ fontSize: 10, color: "var(--cf-text-muted)" }}
-            />
-            <span
-              className="cf-label uppercase tracking-widest font-bold"
-              style={{ fontSize: 9, color: "var(--cf-text)" }}
-            >
-              All projects
-            </span>
-          </button>
-          <div className="flex-1 min-h-0">
-            <ProjectRail
-              owned={owned}
-              member={member}
-              activeId={projectId}
-              enableBoardDrop={dndEnabled}
-              onSelect={(id) => {
-                router.push(`/projects/${id}`);
-                setSidebarOpen(false);
-              }}
-              onNewProject={() => {
-                setModal({ type: "project-new" });
-                setSidebarOpen(false);
-              }}
-            />
-          </div>
+          <ProjectRail
+            owned={owned}
+            member={member}
+            activeId={projectId}
+            activeProject={project}
+            collapsed={railCollapsed}
+            onToggleCollapsed={toggleRail}
+            enableBoardDrop={dndEnabled}
+            onBack={() => router.push("/dashboard")}
+            onSelect={(id) => {
+              router.push(`/projects/${id}`);
+              setSidebarOpen(false);
+            }}
+            onOpenBoard={(id) => router.push(`/boards/${id}`)}
+            onNewProject={() => {
+              setModal({ type: "project-new" });
+              setSidebarOpen(false);
+            }}
+          />
         </aside>
 
         {/* ── Main ── */}
