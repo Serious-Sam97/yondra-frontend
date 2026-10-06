@@ -1516,13 +1516,14 @@ input[type="number"]:focus {
   font-family: var(--cf-lcd);
   font-size: 17px;
   line-height: 1;
+  padding-bottom: 2px;
   box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.12);
 }
 .cs-name {
   flex: 1;
   min-width: 0;
   font-size: 17px;
-  line-height: 1.15;
+  line-height: 1.3;
   color: #24201a;
   white-space: nowrap;
   overflow: hidden;
@@ -2011,44 +2012,7 @@ input[type="number"]:focus {
   background: var(--cf-sunset);
   box-shadow: 0 0 14px rgba(255, 111, 216, 0.45);
 }
-.pd-vapor {
-  position: absolute;
-  right: 0;
-  top: 3px;
-  width: 620px;
-  max-width: 70%;
-  height: 74px;
-  overflow: hidden;
-  pointer-events: none;
-  opacity: 0.3;
-  -webkit-mask-image: linear-gradient(to left, rgba(0, 0, 0, 0.9), transparent 85%);
-  mask-image: linear-gradient(to left, rgba(0, 0, 0, 0.9), transparent 85%);
-}
-.pd-sun {
-  position: absolute;
-  right: 120px;
-  top: 14px;
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  background: linear-gradient(to bottom, #ffc23d, var(--cf-red) 55%, var(--cf-magenta));
-  -webkit-mask-image: repeating-linear-gradient(to bottom, #000 0 9px, transparent 9px 12px);
-  mask-image: repeating-linear-gradient(to bottom, #000 0 9px, transparent 9px 12px);
-}
-.pd-floor {
-  position: absolute;
-  left: -200px;
-  right: -200px;
-  bottom: -150px;
-  height: 200px;
-  transform: perspective(160px) rotateX(62deg);
-  background:
-    linear-gradient(rgba(255, 111, 216, 0.9) 1.5px, transparent 1.5px) 0 0 / 100% 22px,
-    linear-gradient(90deg, rgba(255, 111, 216, 0.9) 1.5px, transparent 1.5px) 0 0 / 46px 100%;
-  background-color: #1d1420;
-}
 @media (max-width: 767px) {
-  .pd-vapor,
   .pd-plate {
     display: none;
   }
@@ -2156,14 +2120,28 @@ input[type="number"]:focus {
 }
 .pd-plate {
   position: absolute;
-  right: 22px;
-  bottom: 4px;
+  right: 24px;
+  bottom: 3px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
   font-family: var(--cf-mono);
-  font-size: 7px;
+  font-size: 7.5px;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: rgba(0, 0, 0, 0.55);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: rgba(0, 0, 0, 0.6);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+/* Vaporwave slit-sun emblem on the model plate. */
+.pd-plate-sun {
+  width: 14px;
+  height: 7px;
+  border-radius: 7px 7px 0 0;
+  background: linear-gradient(to bottom, #ffc23d, var(--cf-red) 55%, var(--cf-magenta));
+  -webkit-mask-image: linear-gradient(to bottom, #000 0 2px, transparent 2px 3px, #000 3px 4.5px, transparent 4.5px 5.5px, #000 5.5px);
+  mask-image: linear-gradient(to bottom, #000 0 2px, transparent 2px 3px, #000 3px 4.5px, transparent 4.5px 5.5px, #000 5.5px);
+  opacity: 0.85;
+  box-shadow: 0 0 8px rgba(255, 111, 216, 0.5);
 }
 
 .ds-bezel {
@@ -2572,7 +2550,7 @@ input[type="number"]:focus {
   display: flex;
   align-items: center;
   width: calc(100% - 12px);
-  height: 46px;
+  height: 48px;
   margin: 5px 6px;
   padding: 0;
   overflow: hidden;
@@ -2616,9 +2594,9 @@ input[type="number"]:focus {
 .pr-spine-label {
   flex: 1;
   min-width: 0;
-  height: 32px;
-  margin: 6px 6px 6px 7px;
-  padding: 3px 8px;
+  height: 36px;
+  margin: 5px 6px 5px 7px;
+  padding: 2px 8px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -2628,7 +2606,8 @@ input[type="number"]:focus {
 .pr-spine-name {
   font-size: 12px;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.35;
+  padding-bottom: 1px;
   color: #bdb6a2;
   white-space: nowrap;
   overflow: hidden;

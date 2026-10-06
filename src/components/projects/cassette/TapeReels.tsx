@@ -1,18 +1,18 @@
 "use client";
 
-import { useId } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { BoardFlow } from "@/interfaces/ProjectInterface";
 import { reelRadii } from "@/lib/ui";
 
 // Cassette window contents: two tape packs whose size tracks the board's flow
 // (supply reel = still to do, take-up reel = done), white hubs, and the tape
 // path down to the guide rollers. Purely decorative — the card's aria-label
-// carries the numbers.
-const W = 330;
+// carries the numbers. The viewBox width follows the window's real aspect
+// ratio (measured), so the reels never get cropped on narrow cards or drift
+// apart on wide ones.
 const H = 74;
 const CY = 37;
-const LX = 66;
-const RX = W - 66;
+const DEFAULT_W = 330;
 
 function Pack({ x, r, id }: { x: number; r: number; id: string }) {
   if (r <= 14) return null;
@@ -83,6 +83,27 @@ export default function TapeReels({
   accent: string;
 }) {
   const id = useId().replace(/:/g, "");
+  const ref = useRef<SVGSVGElement>(null);
+  const [W, setW] = useState(DEFAULT_W);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const { width, height } = el.getBoundingClientRect();
+      if (width > 0 && height > 0)
+        setW(Math.max(200, Math.round((H * width) / height)));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Reel centres sit ~20% in from each end (66 at the 330 design width), but
+  // never closer to the edge than a full tape pack needs.
+  const LX = Math.max(50, Math.min(72, W * 0.2));
+  const RX = W - LX;
   const { left, right } = reelRadii(flow);
   const empty = left === 0 && right === 0;
   // Where the tape leaves each pack (or the bare hub) on its way to the rollers.
@@ -92,8 +113,9 @@ export default function TapeReels({
   return (
     // biome-ignore lint/a11y/noSvgWithoutTitle: decorative (aria-hidden); the card's aria-label carries the data
     <svg
+      ref={ref}
       viewBox={`0 0 ${W} ${H}`}
-      preserveAspectRatio="xMidYMid slice"
+      preserveAspectRatio="xMidYMid meet"
       aria-hidden
       className="cs-reels"
     >

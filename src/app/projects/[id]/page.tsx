@@ -741,7 +741,7 @@ export default function ProjectPage() {
                   view === "grid"
                     ? {
                         gridTemplateColumns:
-                          "repeat(auto-fill, minmax(min(300px, 100%), 1fr))",
+                          "repeat(auto-fill, minmax(min(100%, max(310px, calc((100% - 60px) / 4))), 1fr))",
                       }
                     : undefined
                 }
@@ -822,7 +822,7 @@ export default function ProjectPage() {
                   view === "grid"
                     ? {
                         gridTemplateColumns:
-                          "repeat(auto-fill, minmax(min(300px, 100%), 1fr))",
+                          "repeat(auto-fill, minmax(min(100%, max(310px, calc((100% - 60px) / 4))), 1fr))",
                       }
                     : undefined
                 }

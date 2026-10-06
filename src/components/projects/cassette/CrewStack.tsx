@@ -17,7 +17,7 @@ export default function CrewStack({
   if (users.length === 0) return null;
   const shown = users.slice(0, max);
   const extra = users.length - shown.length;
-  const overlap = -Math.round(size * 0.32);
+  const overlap = -Math.round(size * 0.2);
 
   return (
     <div className="flex items-center">

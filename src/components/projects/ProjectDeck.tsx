@@ -17,8 +17,8 @@ import DeckScreen from "./DeckScreen";
 
 // Project page header as the front panel of a tape deck: sunset trim, the
 // project LED + title, crew pill (replaces the old members side panel), the
-// hardware keys, and the DeckScreen readouts. The vaporwave sun/grid is a
-// static, decorative layer behind the keys.
+// hardware keys, and the DeckScreen readouts. The vaporwave slit-sun lives on
+// the engraved model plate.
 export default function ProjectDeck({
   project,
   roleLabel,
@@ -61,10 +61,6 @@ export default function ProjectDeck({
       aria-label="Project overview"
     >
       <div className="pd-sunset" aria-hidden />
-      <div className="pd-vapor" aria-hidden>
-        <div className="pd-sun" />
-        <div className="pd-floor" />
-      </div>
 
       <div className="pd-top">
         <button
@@ -158,6 +154,7 @@ export default function ProjectDeck({
         throughput={project?.throughput}
       />
       <div className="pd-plate" aria-hidden>
+        <span className="pd-plate-sun" />
         Yondra · project deck
       </div>
     </section>
