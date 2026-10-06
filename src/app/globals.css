@@ -1375,6 +1375,19 @@ input[type="number"]:focus {
      between the shelf and the content column. */
   gap: 8px;
   padding: 2px 8px 8px;
+  /* Content inset: loose content (the toolbar and tape grid) lines up with the
+     deck's inner content (title, LCD screen), while panels keep the 8px
+     rack grid. */
+  --pj-inset: 22px;
+}
+@media (max-width: 639px) {
+  .pj-page {
+    --pj-inset: 14px;
+  }
+}
+.pj-inset {
+  /* + the deck's 1.5px border, so edges match the deck's interior exactly. */
+  padding-inline: calc(var(--pj-inset) + 1.5px);
 }
 @media (min-width: 1024px) {
   .pj-rail {
@@ -2045,7 +2058,7 @@ input[type="number"]:focus {
   align-items: center;
   flex-wrap: wrap;
   gap: 14px 16px;
-  padding: 18px 22px 16px;
+  padding: 18px var(--pj-inset) 16px;
 }
 .pd-led {
   width: 12px;
@@ -2142,7 +2155,7 @@ input[type="number"]:focus {
 }
 .pd-plate {
   position: absolute;
-  right: 24px;
+  right: var(--pj-inset);
   bottom: 3px;
   display: flex;
   align-items: center;
@@ -2168,7 +2181,7 @@ input[type="number"]:focus {
 
 .ds-bezel {
   position: relative;
-  margin: 0 22px 16px;
+  margin: 0 var(--pj-inset) 16px;
   padding: 5px;
   border-radius: 11px;
   background: linear-gradient(to bottom, #151410, #1f1d18);

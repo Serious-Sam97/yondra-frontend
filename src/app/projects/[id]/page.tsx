@@ -642,7 +642,7 @@ export default function ProjectPage() {
           </div>
 
           {/* toolbar */}
-          <div className="flex items-center gap-x-3 gap-y-2.5 pt-4 pb-3.5 flex-wrap">
+          <div className="pj-inset flex items-center gap-x-3 gap-y-2.5 pt-4 pb-3.5 flex-wrap">
             <span className="pt-count">
               <b>{String(boards.length).padStart(2, "0")}</b>
               {boards.length === 1 ? "tape" : "tapes"}
@@ -742,7 +742,7 @@ export default function ProjectPage() {
           </div>
 
           {/* board grid / archived / empty */}
-          <div className="pb-10">
+          <div className="pj-inset pb-10">
             {showArchived ? (
               <div
                 className={
