@@ -556,8 +556,7 @@ export default function ProjectPage() {
 
         {/* ── Left rail ── */}
         <aside
-          className={`glass-panel rounded-none z-40 lg:z-auto flex flex-col h-full w-56 flex-shrink-0 fixed lg:relative transition-transform duration-200 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
-          style={{ borderRight: "1px solid var(--cf-edge)" }}
+          className={`pj-rail glass-panel rounded-none z-40 lg:z-auto flex flex-col h-full w-56 flex-shrink-0 fixed lg:relative transition-transform duration-200 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
         >
           <button
             onClick={() => router.push("/dashboard")}
@@ -602,7 +601,7 @@ export default function ProjectPage() {
             transition: "opacity 200ms ease",
           }}
         >
-          <div className="px-5 pt-4">
+          <div>
             <ProjectDeck
               project={project}
               roleLabel={roleLabel}
@@ -629,7 +628,7 @@ export default function ProjectPage() {
           </div>
 
           {/* toolbar */}
-          <div className="flex items-center gap-x-3 gap-y-2.5 px-5 pt-4 pb-3.5 flex-wrap">
+          <div className="flex items-center gap-x-3 gap-y-2.5 pt-4 pb-3.5 flex-wrap">
             <span className="pt-count">
               <b>{String(boards.length).padStart(2, "0")}</b>
               {boards.length === 1 ? "tape" : "tapes"}
@@ -729,19 +728,19 @@ export default function ProjectPage() {
           </div>
 
           {/* board grid / archived / empty */}
-          <div className="px-5 pb-10">
+          <div className="pb-10">
             {showArchived ? (
               <div
                 className={
                   view === "grid"
-                    ? "grid gap-x-5 gap-y-6 pt-2"
+                    ? "grid gap-x-4 gap-y-5 pt-2"
                     : "flex flex-col gap-2.5 pt-1"
                 }
                 style={
                   view === "grid"
                     ? {
                         gridTemplateColumns:
-                          "repeat(auto-fill, minmax(min(100%, max(310px, calc((100% - 60px) / 4))), 1fr))",
+                          "repeat(auto-fill, minmax(min(100%, 272px), 1fr))",
                       }
                     : undefined
                 }
@@ -815,14 +814,14 @@ export default function ProjectPage() {
               <div
                 className={
                   view === "grid"
-                    ? "grid gap-x-5 gap-y-6 pt-2"
+                    ? "grid gap-x-4 gap-y-5 pt-2"
                     : "flex flex-col gap-2.5 pt-1"
                 }
                 style={
                   view === "grid"
                     ? {
                         gridTemplateColumns:
-                          "repeat(auto-fill, minmax(min(100%, max(310px, calc((100% - 60px) / 4))), 1fr))",
+                          "repeat(auto-fill, minmax(min(100%, 272px), 1fr))",
                       }
                     : undefined
                 }

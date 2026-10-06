@@ -138,7 +138,7 @@ function BoardCard({
           </span>
         </span>
         <span className="cs-crew">
-          <CrewStack users={members} max={3} size={22} />
+          <CrewStack users={members} max={3} size={20} />
         </span>
       </span>
     </button>
