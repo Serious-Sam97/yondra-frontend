@@ -81,6 +81,36 @@ export interface CardComment {
   reactions: CommentReactionAgg[];
 }
 
+// One entry in a card's History tab (CardHistoryController). `changes` maps a field
+// to its before/after (labels, not ids — snapshotted server-side); `meta` carries
+// type-specific context (checklist text, file name, `via` for webhooks, …).
+export type CardActivitySource =
+  | "user"
+  | "webhook"
+  | "automation"
+  | "ci"
+  | "import"
+  | "planning";
+
+export interface CardActivityChange {
+  from?: unknown;
+  to?: unknown;
+  added?: string[];
+  removed?: string[];
+}
+
+export interface CardActivity {
+  // null for the synthesized "created" entry of cards older than history.
+  id: number | null;
+  card_id: number;
+  type: string;
+  source: CardActivitySource;
+  changes: Record<string, CardActivityChange>;
+  meta: Record<string, unknown>;
+  user: { id: number; name: string } | null;
+  created_at: string;
+}
+
 // A subtask is a bare card row under parent_card_id (CardController::subtasks) —
 // no relations are loaded on it.
 export interface SubtaskCard {

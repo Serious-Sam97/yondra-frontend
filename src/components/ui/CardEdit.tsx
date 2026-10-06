@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ChecklistSection } from "@/components/ui/card-edit/ChecklistSection";
 import { CommentsSection } from "@/components/ui/card-edit/CommentsSection";
+import { HistorySection } from "@/components/ui/card-edit/HistorySection";
 import { Lightbox } from "@/components/ui/card-edit/Lightbox";
 import { PaymentsSection } from "@/components/ui/card-edit/PaymentsSection";
 import { PropertiesPanel } from "@/components/ui/card-edit/PropertiesPanel";
@@ -22,6 +23,7 @@ import RichTextEditor from "@/components/ui/RichTextEditor";
 import { useCardAttachments } from "@/hooks/useCardAttachments";
 import { useCardChecklist } from "@/hooks/useCardChecklist";
 import { useCardComments } from "@/hooks/useCardComments";
+import { useCardHistory } from "@/hooks/useCardHistory";
 import { type Subtask, useCardSubtasks } from "@/hooks/useCardSubtasks";
 import { useCardLinks } from "@/hooks/useCardLinks";
 import { type Template, useCardTemplates } from "@/hooks/useCardTemplates";
@@ -162,7 +164,7 @@ const CardEdit: React.FC<CardEditProps> = ({
   const [storyPoints, setStoryPoints] = useState("");
   const [sprintId, setSprintId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<
-    "details" | "checklist" | "subtasks" | "comments" | "whatsapp"
+    "details" | "checklist" | "subtasks" | "comments" | "whatsapp" | "history"
   >("details");
   // Top-level switch between the card, Planning Poker, and Sentinel (QA).
   const [topTab, setTopTab] = useState<"card" | "planning" | "qa">("card");
@@ -171,6 +173,7 @@ const CardEdit: React.FC<CardEditProps> = ({
     checklist: true,
     subtasks: true,
     payments: true,
+    history: true,
   });
 
   // Unsaved-changes flag — lights the LED on the header Save button. Set by any
@@ -480,13 +483,15 @@ const CardEdit: React.FC<CardEditProps> = ({
   // Subtasks are one level deep: a card that is itself a subtask shows no subtasks surface.
   const isSubtask = !!card?.parent_card_id;
   const allTabs: Array<
-    "details" | "checklist" | "subtasks" | "comments" | "whatsapp"
+    "details" | "checklist" | "subtasks" | "comments" | "whatsapp" | "history"
   > = isNew
     ? []
     : waThread
-      ? ["details", "checklist", "subtasks", "comments", "whatsapp"]
-      : ["details", "checklist", "subtasks", "comments"];
-  const tabs = allTabs.filter((t) => t !== "subtasks" || !isSubtask);
+      ? ["details", "checklist", "subtasks", "comments", "whatsapp", "history"]
+      : ["details", "checklist", "subtasks", "comments", "history"];
+  const tabs = allTabs.filter(
+    (t) => (t !== "subtasks" || !isSubtask) && (t !== "history" || !isDemo),
+  );
 
   // Measure tab button positions for sliding indicator
   useEffect(() => {
@@ -511,6 +516,16 @@ const CardEdit: React.FC<CardEditProps> = ({
       window.removeEventListener("resize", sync);
     };
   }, []);
+
+  // History loads lazily: desktop when its section is expanded, mobile on its tab.
+  const history = useCardHistory({
+    boardId,
+    cardId: card?.id,
+    enabled:
+      !isNew &&
+      !isDemo &&
+      (isDesktop ? !collapsed.history : activeTab === "history"),
+  });
 
   // Tint the whole modal with the first tag's colour (live as tags toggle), like board cards.
   const activeTag = tags.find((t) => selectedTagIds.includes(t.id));
@@ -751,6 +766,10 @@ const CardEdit: React.FC<CardEditProps> = ({
     />
   );
 
+  const historySection = (
+    <HistorySection {...history} boardType={boardType} currency={currency} />
+  );
+
   const commentsSection = (
     <CommentsSection
       isDemo={isDemo}
@@ -965,6 +984,14 @@ const CardEdit: React.FC<CardEditProps> = ({
         )}
         {commentsSection}
       </div>
+      {!isNew && !isDemo && (
+        <div
+          className="border-t pt-6"
+          style={{ borderColor: "var(--cf-edge)" }}
+        >
+          {collapsibleSection("history", "History", null, historySection)}
+        </div>
+      )}
     </div>
   );
 
@@ -1234,8 +1261,9 @@ const CardEdit: React.FC<CardEditProps> = ({
           {/* Tabs (existing cards, mobile only — desktop uses the two-pane worklog) */}
           {!isNew && !isDesktop && (
             <div
-              className="relative flex border-b px-4 pt-2 gap-4 flex-shrink-0"
-              style={{ borderColor: "var(--cf-edge)" }}
+              className="relative flex border-b px-4 pt-2 gap-4 flex-shrink-0 min-w-0 overflow-x-auto"
+              // Scrolls sideways rather than widening the modal when tabs outgrow a phone.
+              style={{ borderColor: "var(--cf-edge)", scrollbarWidth: "none" }}
             >
               {tabs.map((tab, i) => {
                 const isActive = activeTab === tab;
@@ -1252,7 +1280,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                         : "var(--cf-text-muted)",
                       fontSize: "10px",
                     }}
-                    className="cf-mono uppercase tracking-widest font-bold pb-2 cursor-pointer transition-colors flex items-center gap-1.5"
+                    className="cf-mono uppercase tracking-widest font-bold pb-2 cursor-pointer transition-colors flex items-center gap-1.5 flex-shrink-0 whitespace-nowrap"
                   >
                     <span
                       className="cf-led"
@@ -1353,6 +1381,7 @@ const CardEdit: React.FC<CardEditProps> = ({
               {!isNew && activeTab === "subtasks" && subtasksSection}
               {!isNew && activeTab === "comments" && commentsSection}
               {!isNew && activeTab === "whatsapp" && whatsappSection}
+              {!isNew && activeTab === "history" && historySection}
             </div>
           )}
         </>

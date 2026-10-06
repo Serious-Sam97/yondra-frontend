@@ -7,6 +7,7 @@ import type {
   SectionData,
 } from "@/interfaces/BoardInterface";
 import type {
+  CardActivity,
   CardComment,
   CardDocument,
   CardImage,
@@ -1004,6 +1005,19 @@ export async function getComments(
 ): Promise<SimplePaginated<CardComment>> {
   return apiFetch(
     `/api/boards/${boardId}/cards/${cardId}/comments?page=${page}`,
+  );
+}
+
+// A card's History tab, newest first (30 per page; read `next_page_url`).
+export async function getCardHistory(
+  boardId: number,
+  cardId: number | string,
+  page = 1,
+): Promise<
+  Pick<SimplePaginated<CardActivity>, "data" | "current_page" | "next_page_url">
+> {
+  return apiFetch(
+    `/api/boards/${boardId}/cards/${cardId}/history?page=${page}`,
   );
 }
 
