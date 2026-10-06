@@ -124,3 +124,50 @@ export function shade(hex: string, amount: number): string {
   const f = (c: number) => Math.round(c * amount);
   return `rgb(${f(r)}, ${f(g)}, ${f(b)})`;
 }
+
+// --- Cassette metaphor helpers (project page redesign) ---
+
+/** Card count rendered as a tape length: 24 → "C-24", 0 → "C-00". */
+export function tapeLength(total: number): string {
+  return `C-${String(Math.max(0, total)).padStart(2, "0")}`;
+}
+
+/** A board is "recording" when one of its cards changed within the last hour. */
+export const RECORDING_WINDOW_MS = 60 * 60 * 1000;
+export function isRecording(
+  board: Pick<ProjectBoard, "last_activity_at">,
+  now: number = Date.now(),
+): boolean {
+  if (!board.last_activity_at) return false;
+  const t = new Date(board.last_activity_at).getTime();
+  return Number.isFinite(t) && now - t >= 0 && now - t < RECORDING_WINDOW_MS;
+}
+
+/** Three label stripes derived from a board accent (accent, toward red, toward amber). */
+export function labelStripes(color: string): [string, string, string] {
+  return [
+    color,
+    `color-mix(in srgb, ${color} 55%, #ff5a4d)`,
+    `color-mix(in srgb, ${color} 45%, #ffb000)`,
+  ];
+}
+
+/**
+ * Tape-pack radii for the cassette window: the supply (left) reel holds what's
+ * left to do, the take-up (right) reel what's done. sqrt keeps area ∝ cards.
+ */
+export const REEL_HUB_R = 14;
+export function reelRadii(flow: BoardFlow): { left: number; right: number } {
+  const total = flow.todo + flow.doing + flow.done;
+  if (total === 0) return { left: 0, right: 0 };
+  const r = (f: number) => REEL_HUB_R + 20 * Math.sqrt(f);
+  return {
+    left: r((flow.todo + flow.doing) / total),
+    right: r(flow.done / total),
+  };
+}
+
+/** Marker font only for Latin-script names; other scripts stay in the sans face. */
+export function isLatinName(name: string): boolean {
+  return /^[\p{Script=Latin}\p{N}\p{P}\p{S}\s]*$/u.test(name);
+}

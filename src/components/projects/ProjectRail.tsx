@@ -4,7 +4,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import Icon from "@/components/ui/Icon";
 import type { ProjectInterface } from "@/interfaces/ProjectInterface";
-import { boardProgress } from "@/lib/ui";
+import { boardProgress, isLatinName, isRecording } from "@/lib/ui";
 
 // Drop-target ID for a project channel; the page's handleDragEnd parses this to
 // move the dragged board into project <id> (YON-125).
@@ -21,38 +21,43 @@ function DroppableChannel({
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: projectDropId(projectId) });
   return (
-    <div
-      ref={setNodeRef}
-      className={isOver ? "pr-board-drop-over" : ""}
-      style={{
-        borderRadius: 6,
-        outline: isOver ? "2px dashed var(--cf-phosphor)" : "none",
-        outlineOffset: -2,
-        transition: "outline-color 120ms ease",
-      }}
-    >
+    <div ref={setNodeRef} className={isOver ? "pr-drop is-over" : "pr-drop"}>
       {children}
     </div>
   );
 }
 
-function projectPct(p: ProjectInterface): number | null {
+function projectStats(p: ProjectInterface): {
+  pct: number | null;
+  cards: number;
+  live: boolean;
+} {
   const boards = p.boards ?? [];
-  if (boards.length === 0) return null;
   let done = 0,
-    total = 0;
+    total = 0,
+    live = false;
   for (const b of boards) {
     const bp = boardProgress(b);
     done += bp.done;
     total += bp.total;
+    if (!live && isRecording(b)) live = true;
   }
-  return total > 0 ? Math.round((done / total) * 100) : 0;
+  return {
+    pct:
+      boards.length === 0
+        ? null
+        : total > 0
+          ? Math.round((done / total) * 100)
+          : 0,
+    cards: total,
+    live,
+  };
 }
 
-// "Channel strip": the active project is a powered-on channel in the same
-// anodized material as the board cards; idle channels sit flat with a dimmed
-// LED in their project colour.
-function ChannelTab({
+// "Tape shelf": each project is a cassette spine with a colour band. The
+// active one is pulled out of the shelf with a cream label and a lit band;
+// a red dot marks projects with a board that changed in the last hour.
+function Spine({
   project,
   active,
   isMember,
@@ -63,64 +68,42 @@ function ChannelTab({
   isMember?: boolean;
   onClick: () => void;
 }) {
-  const pct = projectPct(project);
+  const { pct, cards, live } = projectStats(project);
   const count = project.boards_count ?? project.boards?.length ?? 0;
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`pr-chan${active ? " active" : ""}`}
+      aria-current={active ? "page" : undefined}
+      aria-label={`${project.name}: ${count} board${count !== 1 ? "s" : ""}${pct !== null ? `, ${pct}% done` : ""}${live ? ", active now" : ""}`}
+      className={`pr-spine${active ? " active" : ""}`}
       style={{ "--pr-ac": project.color } as React.CSSProperties}
     >
-      <span className="pr-chan-rail" />
-      <span className="flex items-center gap-2.5 py-2 pl-3 pr-2.5">
-        <span className="pr-chan-led" />
-        <span className="flex-1 min-w-0">
-          <span
-            className="block font-bold truncate leading-tight"
-            style={{
-              fontSize: 12.5,
-              color: active ? "var(--cf-cream)" : "var(--cf-text-muted)",
-            }}
-          >
-            {project.name}
-          </span>
-          <span
-            className="cf-mono flex items-center gap-1.5"
-            style={{
-              fontSize: 9,
-              marginTop: 3,
-              color: active ? "rgba(232,228,214,0.6)" : "var(--cf-text-dim)",
-            }}
-          >
-            <span className="truncate">
-              {count} board{count !== 1 ? "s" : ""}
-              {isMember ? " · member" : ""}
-            </span>
-            {pct !== null && (
-              <>
-                <span
-                  className="flex-shrink-0 rounded-sm overflow-hidden"
-                  style={{
-                    width: 34,
-                    height: 3,
-                    background: active ? "rgba(0,0,0,0.45)" : "#14130e",
-                    boxShadow: "inset 0 1px 1px rgba(0,0,0,0.7)",
-                  }}
-                >
-                  <span
-                    className="block h-full rounded-sm"
-                    style={{
-                      width: `${Math.max(pct, 2)}%`,
-                      background: "var(--cf-phosphor)",
-                    }}
-                  />
-                </span>
-                <span className="flex-shrink-0">{pct}%</span>
-              </>
-            )}
-          </span>
+      <span className="pr-spine-band" aria-hidden />
+      {live && <span className="pr-spine-live" aria-hidden />}
+      <span className="pr-spine-label" aria-hidden>
+        <span
+          className={`pr-spine-name${active && isLatinName(project.name) ? " cf-marker" : ""}`}
+        >
+          {project.name}
         </span>
+        <span className="pr-spine-meta">
+          <span className="truncate">
+            {count} board{count !== 1 ? "s" : ""}
+            {isMember ? " · member" : ""}
+          </span>
+          {pct !== null && (
+            <>
+              <span className="pr-mini">
+                <i style={{ width: `${Math.max(pct, 2)}%` }} />
+              </span>
+              <span className="flex-shrink-0">{pct}%</span>
+            </>
+          )}
+        </span>
+      </span>
+      <span className="pr-spine-len" aria-hidden>
+        C{cards}
       </span>
     </button>
   );
@@ -147,7 +130,7 @@ export default function ProjectRail({
   const channel = (p: ProjectInterface, isMember?: boolean) => {
     const active = p.id === activeId;
     const tab = (
-      <ChannelTab
+      <Spine
         project={p}
         active={active}
         isMember={isMember}
@@ -165,31 +148,29 @@ export default function ProjectRail({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto py-1">
+      <div className="flex-1 overflow-y-auto pb-2">
         {owned.length > 0 && (
           <>
-            <p
-              className="cf-label px-3 pt-3 pb-1.5 uppercase tracking-widest"
-              style={{ fontSize: 10, color: "var(--cf-text-muted)" }}
-            >
-              Yours
-            </p>
-            {owned.map((p) => channel(p))}
+            <div className="pr-shelf-h">
+              <span>Tape shelf · yours</span>
+              <b>{String(owned.length).padStart(2, "0")}</b>
+            </div>
+            <div className="pr-shelf">{owned.map((p) => channel(p))}</div>
           </>
         )}
         {member.length > 0 && (
           <>
-            <p
-              className="cf-label px-3 pt-4 pb-1 uppercase tracking-widest"
-              style={{ fontSize: 8, color: "var(--cf-text-muted)" }}
-            >
-              Shared
-            </p>
-            {member.map((p) => channel(p, true))}
+            <div className="pr-shelf-h">
+              <span>Shared with you</span>
+              <b>{String(member.length).padStart(2, "0")}</b>
+            </div>
+            <div className="pr-shelf">
+              {member.map((p) => channel(p, true))}
+            </div>
           </>
         )}
       </div>
-      <div className="p-2.5" style={{ borderTop: "1px solid var(--cf-edge)" }}>
+      <div className="pr-foot">
         <button type="button" onClick={onNewProject} className="pr-newkey">
           <Icon
             icon={faPlus}

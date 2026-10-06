@@ -2,16 +2,10 @@
 
 import {
   faArrowLeft,
-  faBars,
   faBorderAll,
-  faCrown,
-  faGear,
   faList,
   faMagnifyingGlass,
-  faPen,
-  faPlus,
   faRotateLeft,
-  faUsers,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   type CollisionDetection,
@@ -32,13 +26,13 @@ import {
   SortableContext,
 } from "@dnd-kit/sortable";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import BoardCard from "@/components/projects/BoardCard";
-import MembersPanel from "@/components/projects/MembersPanel";
+import BoardSpineRow from "@/components/projects/BoardSpineRow";
+import ProjectDeck from "@/components/projects/ProjectDeck";
 import ProjectRail from "@/components/projects/ProjectRail";
 import SortableBoardCard from "@/components/projects/SortableBoardCard";
 import { useProjects } from "@/components/projects/ProjectsProvider";
-import StatTile from "@/components/projects/StatTile";
 import Modal from "@/components/shared/Modal";
 import {
   type BoardFormData,
@@ -61,10 +55,24 @@ import {
 } from "@/lib/api";
 import { fetchUser } from "@/lib/auth";
 import { getEcho } from "@/lib/echo";
-import { boardProgress, PROJECT_COLORS } from "@/lib/ui";
+import {
+  boardFlow,
+  boardProgress,
+  isRecording,
+  PROJECT_COLORS,
+} from "@/lib/ui";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 
 type SortKey = "manual" | "recent" | "name" | "progress" | "cards";
+
+// Transport-key labels for the sort group ("cards" reads as tape length).
+const SORTS: { key: SortKey; label: string }[] = [
+  { key: "manual", label: "Manual" },
+  { key: "recent", label: "Recent" },
+  { key: "name", label: "Name" },
+  { key: "progress", label: "Progress" },
+  { key: "cards", label: "Length" },
+];
 
 function NewProjectModal({
   onCreate,
@@ -161,6 +169,25 @@ export default function ProjectPage() {
   const [activeDragId, setActiveDragId] = useState<number | null>(null);
   const [view, setView] = useState<"grid" | "list">("grid");
   const [showArchived, setShowArchived] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // "/" focuses the board filter (unless the user is already typing somewhere).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (
+        t &&
+        (t.isContentEditable ||
+          ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName))
+      )
+        return;
+      e.preventDefault();
+      searchRef.current?.focus();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useDocumentTitle(
     project?.name ? `Yondra - ${project.name}` : "Yondra - Project",
@@ -269,17 +296,18 @@ export default function ProjectPage() {
   const roleLabel = isOwner ? "Owner" : (myRole ?? "Member");
 
   const totals = useMemo(() => {
-    let done = 0,
-      total = 0;
+    let total = 0,
+      recording = 0;
+    const flow = { todo: 0, doing: 0, done: 0 };
     for (const b of boards) {
-      const bp = boardProgress(b);
-      done += bp.done;
-      total += bp.total;
+      total += boardProgress(b).total;
+      const f = boardFlow(b);
+      flow.todo += f.todo;
+      flow.doing += f.doing;
+      flow.done += f.done;
+      if (isRecording(b)) recording++;
     }
-    return {
-      cards: total,
-      pct: total > 0 ? Math.round((done / total) * 100) : 0,
-    };
+    return { cards: total, flow, recording };
   }, [boards]);
 
   const visibleBoards = useMemo(() => {
@@ -401,7 +429,9 @@ export default function ProjectPage() {
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 350, tolerance: 5 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 350, tolerance: 5 },
+    }),
   );
 
   // Prefer a pointer hit (over a card or a rail channel); fall back to nearest.
@@ -505,28 +535,9 @@ export default function ProjectPage() {
     );
   }
 
-  const IconKey = ({
-    icon,
-    label,
-    onClick,
-    variant = "ghost",
-  }: {
-    icon: typeof faGear;
-    label: string;
-    onClick: () => void;
-    variant?: "ghost" | "cyan" | "magenta";
-  }) => (
-    <button
-      onClick={onClick}
-      className={`aero-btn aero-btn--${variant} uppercase tracking-widest font-bold px-3 py-1.5 text-[9px] inline-flex items-center gap-1.5`}
-    >
-      <Icon icon={icon} /> <span className="hidden sm:inline">{label}</span>
-    </button>
-  );
-
   return (
     <div
-      className="flex overflow-hidden"
+      className="pj-page flex overflow-hidden"
       style={{ height: "calc(100vh - var(--app-header-h, 56px))" }}
     >
       <DndContext
@@ -543,422 +554,332 @@ export default function ProjectPage() {
           />
         )}
 
-      {/* ── Left rail ── */}
-      <aside
-        className={`glass-panel rounded-none z-40 lg:z-auto flex flex-col h-full w-56 flex-shrink-0 fixed lg:relative transition-transform duration-200 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
-        style={{ borderRight: "1px solid var(--cf-edge)" }}
-      >
-        <button
-          onClick={() => router.push("/dashboard")}
-          className="flex items-center gap-2 px-4 py-4 hover:bg-[#1c1a16] transition-colors cursor-pointer"
-          style={{ borderBottom: "1px solid var(--cf-edge)" }}
+        {/* ── Left rail ── */}
+        <aside
+          className={`glass-panel rounded-none z-40 lg:z-auto flex flex-col h-full w-56 flex-shrink-0 fixed lg:relative transition-transform duration-200 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
+          style={{ borderRight: "1px solid var(--cf-edge)" }}
         >
-          <Icon
-            icon={faArrowLeft}
-            style={{ fontSize: 10, color: "var(--cf-text-muted)" }}
-          />
-          <span
-            className="cf-label uppercase tracking-widest font-bold"
-            style={{ fontSize: 9, color: "var(--cf-text)" }}
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="flex items-center gap-2 px-4 py-4 hover:bg-[#1c1a16] transition-colors cursor-pointer"
+            style={{ borderBottom: "1px solid var(--cf-edge)" }}
           >
-            All projects
-          </span>
-        </button>
-        <div className="flex-1 min-h-0">
-          <ProjectRail
-            owned={owned}
-            member={member}
-            activeId={projectId}
-            enableBoardDrop={dndEnabled}
-            onSelect={(id) => {
-              router.push(`/projects/${id}`);
-              setSidebarOpen(false);
-            }}
-            onNewProject={() => {
-              setModal({ type: "project-new" });
-              setSidebarOpen(false);
-            }}
-          />
-        </div>
-      </aside>
-
-      {/* ── Main ── */}
-      <main
-        className="flex-1 flex flex-col overflow-hidden"
-        style={{
-          opacity: contentLoading ? 0.35 : 1,
-          pointerEvents: contentLoading ? "none" : undefined,
-          transition: "opacity 200ms ease",
-        }}
-      >
-        {/* status strip */}
-        <div className="flex gap-1 px-5 pt-3">
-          {[
-            "var(--cf-phosphor)",
-            "var(--cf-amber)",
-            "var(--cf-cyan)",
-            "var(--cf-red)",
-            "var(--cf-amber)",
-            "var(--cf-phosphor)",
-          ].map((c, i) => (
-            <div
-              key={i}
-              style={{ background: c, boxShadow: `0 0 5px ${c}`, height: 3 }}
-              className="flex-1 rounded-sm"
-            />
-          ))}
-        </div>
-
-        {/* hero */}
-        <div
-          className="px-5 pt-4 pb-4"
-          style={{ borderBottom: "1.5px solid var(--cf-edge)" }}
-        >
-          <div className="flex items-start gap-3 flex-wrap">
-            <button
-              className="lg:hidden p-1 cursor-pointer mt-1"
-              style={{ color: "var(--cf-text)" }}
-              onClick={() => setSidebarOpen((s) => !s)}
-            >
-              <Icon icon={faBars} />
-            </button>
-            <span
-              className="cf-led flex-shrink-0 mt-2"
-              style={{
-                width: 13,
-                height: 13,
-                background: project?.color,
-                boxShadow: `0 0 10px ${project?.color}`,
-              }}
-            />
-            <div className="min-w-0">
-              <p
-                className="chrome-text font-bold"
-                style={{ fontSize: 26, lineHeight: 1 }}
-              >
-                {project?.name}
-              </p>
-              {project?.description && (
-                <p
-                  className="cf-mono mt-1"
-                  style={{ fontSize: 11, color: "var(--cf-text-muted)" }}
-                >
-                  {project.description}
-                </p>
-              )}
-              <span
-                className="inline-flex items-center gap-1.5 uppercase mt-2"
-                style={{
-                  fontSize: 8.5,
-                  letterSpacing: "0.12em",
-                  color: "var(--cf-amber)",
-                  border: "1px solid rgba(255,176,0,0.5)",
-                  background: "rgba(255,176,0,0.14)",
-                  borderRadius: 4,
-                  padding: "3px 8px",
-                }}
-              >
-                <Icon icon={faCrown} style={{ fontSize: 9 }} /> {roleLabel}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap ml-auto">
-              {canManage && (
-                <IconKey
-                  icon={faUsers}
-                  label="Members"
-                  onClick={() =>
-                    router.push(`/projects/${projectId}/settings?tab=members`)
-                  }
-                />
-              )}
-              {canManage && (
-                <IconKey
-                  icon={faGear}
-                  label="Settings"
-                  onClick={() => router.push(`/projects/${projectId}/settings`)}
-                />
-              )}
-              {isOwner && (
-                <IconKey
-                  icon={faPen}
-                  label={editMode ? "Done" : "Edit"}
-                  variant={editMode ? "magenta" : "ghost"}
-                  onClick={() => setEditMode((e) => !e)}
-                />
-              )}
-              {isOwner && (
-                <IconKey
-                  icon={faPlus}
-                  label="Board"
-                  variant="cyan"
-                  onClick={() => setModal({ type: "board-new" })}
-                />
-              )}
-            </div>
-          </div>
-
-          {/* stat tiles */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-3.5">
-            <StatTile label="Boards" value={boards.length} />
-            <StatTile label="Cards" value={totals.cards} />
-            <StatTile
-              label="Progress"
-              value={totals.pct}
-              suffix="%"
-              bar={totals.pct}
-            />
-            <StatTile label="Members" value={project?.members?.length ?? 0} />
-          </div>
-        </div>
-
-        {/* toolbar */}
-        <div className="flex items-center gap-2 px-5 py-3 flex-wrap">
-          <div className="relative flex-1 min-w-[150px]">
             <Icon
-              icon={faMagnifyingGlass}
-              style={{
-                position: "absolute",
-                left: 10,
-                top: "50%",
-                transform: "translateY(-50%)",
-                fontSize: 12,
-                color: "#5a6050",
-              }}
+              icon={faArrowLeft}
+              style={{ fontSize: 10, color: "var(--cf-text-muted)" }}
             />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Filter boards"
-              className="glass-input cf-mono"
-              style={{ fontSize: 11, paddingLeft: 28 }}
-            />
-          </div>
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value as SortKey)}
-            className="cf-mono cursor-pointer"
-            style={{
-              border: "1.5px solid var(--cf-edge)",
-              background: "#2a2823",
-              color: "var(--cf-text)",
-              fontSize: 10,
-              borderRadius: 5,
-              padding: "7px 8px",
-            }}
-          >
-            <option value="manual">Manual</option>
-            <option value="recent">Recent</option>
-            <option value="name">Name</option>
-            <option value="progress">Progress</option>
-            <option value="cards">Cards</option>
-          </select>
-          <div
-            className="inline-flex rounded-md overflow-hidden"
-            style={{ border: "1.5px solid var(--cf-edge)" }}
-          >
-            {(["grid", "list"] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                aria-label={`${v} view`}
-                className="px-2.5 py-1.5 cursor-pointer"
-                style={{
-                  background: view === v ? "#3a3832" : "#2a2823",
-                  color: view === v ? "var(--cf-cyan)" : "var(--cf-text-dim)",
-                }}
-              >
-                <Icon
-                  icon={v === "grid" ? faBorderAll : faList}
-                  style={{ fontSize: 13 }}
-                />
-              </button>
-            ))}
-          </div>
-          {archivedBoards.length > 0 && (
-            <button
-              onClick={() => setShowArchived((s) => !s)}
-              className="cf-mono uppercase inline-flex items-center gap-2 cursor-pointer"
-              style={{
-                fontSize: 9,
-                letterSpacing: "0.08em",
-                color: showArchived ? "var(--cf-cyan)" : "var(--cf-text-muted)",
-              }}
+            <span
+              className="cf-label uppercase tracking-widest font-bold"
+              style={{ fontSize: 9, color: "var(--cf-text)" }}
             >
-              <span
-                style={{
-                  width: 28,
-                  height: 15,
-                  borderRadius: 8,
-                  background: showArchived
-                    ? "rgba(111,224,255,0.25)"
-                    : "#11140f",
-                  border: `1px solid ${showArchived ? "var(--cf-cyan)" : "var(--cf-edge)"}`,
-                  position: "relative",
-                  display: "inline-block",
-                }}
-              >
-                <span
-                  style={{
-                    position: "absolute",
-                    top: 1,
-                    left: showArchived ? 14 : 1,
-                    width: 11,
-                    height: 11,
-                    borderRadius: "50%",
-                    background: showArchived
-                      ? "var(--cf-cyan)"
-                      : "var(--cf-text-dim)",
-                    boxShadow: showArchived
-                      ? "0 0 6px var(--cf-cyan)"
-                      : undefined,
-                    transition: "left .15s",
-                  }}
-                />
-              </span>
-              Archived ({archivedBoards.length})
-            </button>
-          )}
-        </div>
+              All projects
+            </span>
+          </button>
+          <div className="flex-1 min-h-0">
+            <ProjectRail
+              owned={owned}
+              member={member}
+              activeId={projectId}
+              enableBoardDrop={dndEnabled}
+              onSelect={(id) => {
+                router.push(`/projects/${id}`);
+                setSidebarOpen(false);
+              }}
+              onNewProject={() => {
+                setModal({ type: "project-new" });
+                setSidebarOpen(false);
+              }}
+            />
+          </div>
+        </aside>
 
-        {/* board grid / archived / empty */}
-        <div className="flex-1 overflow-y-auto px-5 pb-6">
-          {showArchived ? (
+        {/* ── Main ── */}
+        <main
+          className="flex-1 min-w-0 overflow-y-auto"
+          style={{
+            opacity: contentLoading ? 0.35 : 1,
+            pointerEvents: contentLoading ? "none" : undefined,
+            transition: "opacity 200ms ease",
+          }}
+        >
+          <div className="px-5 pt-4">
+            <ProjectDeck
+              project={project}
+              roleLabel={roleLabel}
+              isOwner={isOwner}
+              canManage={canManage}
+              editMode={editMode}
+              stats={{
+                cards: totals.cards,
+                boards: boards.length,
+                archived: archivedBoards.length,
+                recording: totals.recording,
+                flow: totals.flow,
+              }}
+              onToggleSidebar={() => setSidebarOpen((s) => !s)}
+              onToggleEdit={() => setEditMode((e) => !e)}
+              onNewBoard={() => setModal({ type: "board-new" })}
+              onOpenSettings={() =>
+                router.push(`/projects/${projectId}/settings`)
+              }
+              onOpenMembers={() =>
+                router.push(`/projects/${projectId}/settings?tab=members`)
+              }
+            />
+          </div>
+
+          {/* toolbar */}
+          <div className="flex items-center gap-x-3 gap-y-2.5 px-5 pt-4 pb-3.5 flex-wrap">
+            <span className="pt-count">
+              <b>{String(boards.length).padStart(2, "0")}</b>
+              {boards.length === 1 ? "tape" : "tapes"}
+            </span>
+            <div className="pt-search">
+              <Icon
+                icon={faMagnifyingGlass}
+                style={{
+                  position: "absolute",
+                  left: 10,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  fontSize: 12,
+                  color: "#5a6050",
+                }}
+              />
+              <input
+                ref={searchRef}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Filter boards…"
+                aria-label="Filter boards"
+                className="glass-input cf-mono"
+                style={{ fontSize: 11, paddingLeft: 28, paddingRight: 30 }}
+              />
+              {!query && <kbd aria-hidden>/</kbd>}
+            </div>
             <div
-              className={
-                view === "grid" ? "grid gap-3.5" : "flex flex-col gap-3.5"
-              }
-              style={
-                view === "grid"
-                  ? {
-                      gridTemplateColumns:
-                        "repeat(auto-fill, minmax(248px, 1fr))",
-                    }
-                  : undefined
-              }
+              className="pt-transport"
+              role="radiogroup"
+              aria-label="Sort boards"
+              onKeyDown={(e) => {
+                if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+                e.preventDefault();
+                const i = SORTS.findIndex((o) => o.key === sort);
+                const next =
+                  SORTS[
+                    (i + (e.key === "ArrowRight" ? 1 : -1) + SORTS.length) %
+                      SORTS.length
+                  ];
+                setSort(next.key);
+                (
+                  e.currentTarget.querySelector(
+                    `[data-sort="${next.key}"]`,
+                  ) as HTMLButtonElement | null
+                )?.focus();
+              }}
             >
-              {archivedBoards.map((b) => (
-                <div key={b.id} className="relative opacity-80">
-                  <BoardCard
-                    board={b}
-                    projectColor={project?.color ?? "#888"}
-                    onClick={() => router.push(`/boards/${b.id}`)}
-                  />
-                  {canManage && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRestore(b.id);
-                      }}
-                      className="aero-btn aero-btn--ghost absolute top-2 right-2 uppercase tracking-widest font-bold px-2 py-1 text-[8px] inline-flex items-center gap-1"
-                    >
-                      <Icon icon={faRotateLeft} style={{ fontSize: 8 }} />{" "}
-                      Restore
-                    </button>
-                  )}
-                </div>
+              {SORTS.map((o) => (
+                // biome-ignore lint/a11y/useSemanticElements: styled transport keys acting as a radio group (arrow-key nav handled above)
+                <button
+                  key={o.key}
+                  type="button"
+                  role="radio"
+                  data-sort={o.key}
+                  aria-checked={sort === o.key}
+                  tabIndex={sort === o.key ? 0 : -1}
+                  onClick={() => setSort(o.key)}
+                >
+                  {o.label}
+                </button>
               ))}
             </div>
-          ) : boards.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <p style={{ fontSize: 40, color: "var(--cf-edge)" }}>▦</p>
-              <p
-                className="cf-label uppercase tracking-widest mt-3"
-                style={{ fontSize: 11, color: "var(--cf-text-muted)" }}
+            <div className="flex-1" />
+            {archivedBoards.length > 0 && (
+              <button
+                type="button"
+                role="switch"
+                aria-checked={showArchived}
+                onClick={() => setShowArchived((s) => !s)}
+                className="pt-switch"
               >
-                No boards yet
-              </p>
-              {isOwner && (
+                <span className="track">
+                  <span className="knob" />
+                </span>
+                Archived · {archivedBoards.length}
+              </button>
+            )}
+            {/* biome-ignore lint/a11y/useSemanticElements: a fieldset would break the joined key-strip styling */}
+            <div className="pt-transport" role="group" aria-label="Layout">
+              {(["grid", "list"] as const).map((v) => (
                 <button
-                  onClick={() => setModal({ type: "board-new" })}
-                  className="aero-btn aero-btn--cyan mt-4 uppercase tracking-widest font-bold px-4 py-2 text-[9px]"
+                  key={v}
+                  type="button"
+                  onClick={() => setView(v)}
+                  aria-label={`${v} view`}
+                  aria-pressed={view === v}
+                  style={{ padding: "8px 11px" }}
                 >
-                  + Create first board
-                </button>
-              )}
-            </div>
-          ) : visibleBoards.length === 0 ? (
-            <p
-              className="cf-mono text-center py-10"
-              style={{ fontSize: 11, color: "var(--cf-text-dim)" }}
-            >
-              No boards match “{query}”.
-            </p>
-          ) : (
-            <div
-              className={
-                view === "grid" ? "grid gap-3.5" : "flex flex-col gap-3.5"
-              }
-              style={
-                view === "grid"
-                  ? {
-                      gridTemplateColumns:
-                        "repeat(auto-fill, minmax(248px, 1fr))",
-                    }
-                  : undefined
-              }
-            >
-              {dndEnabled ? (
-                <SortableContext
-                  items={visibleBoards.map((b) => `board-${b.id}`)}
-                  strategy={rectSortingStrategy}
-                >
-                  {visibleBoards.map((b) => (
-                    <SortableBoardCard
-                      key={b.id}
-                      board={b}
-                      projectColor={project?.color ?? "#888"}
-                      editMode={editMode}
-                      isOwner={isOwner}
-                      onClick={() => handleBoardClick(b)}
-                    />
-                  ))}
-                </SortableContext>
-              ) : (
-                visibleBoards.map((b) => (
-                  <BoardCard
-                    key={b.id}
-                    board={b}
-                    projectColor={project?.color ?? "#888"}
-                    editMode={editMode}
-                    isOwner={isOwner}
-                    onClick={() => handleBoardClick(b)}
+                  <Icon
+                    icon={v === "grid" ? faBorderAll : faList}
+                    style={{ fontSize: 12 }}
                   />
-                ))
-              )}
+                </button>
+              ))}
             </div>
-          )}
-        </div>
-      </main>
+          </div>
 
-      {/* ── Right panel: members (wide screens) ── */}
-      <aside
-        className="glass-panel rounded-none hidden lg:flex flex-col w-56 flex-shrink-0 overflow-hidden"
-        style={{
-          borderLeft: "1px solid var(--cf-edge)",
-          opacity: contentLoading ? 0.35 : 1,
-          pointerEvents: contentLoading ? "none" : undefined,
-          transition: "opacity 200ms ease",
-        }}
-      >
-        {project && (
-          <MembersPanel
-            project={project}
-            onInvite={
-              canManage
-                ? () =>
-                    router.push(`/projects/${projectId}/settings?tab=members`)
-                : undefined
-            }
-          />
-        )}
-      </aside>
+          {/* board grid / archived / empty */}
+          <div className="px-5 pb-10">
+            {showArchived ? (
+              <div
+                className={
+                  view === "grid"
+                    ? "grid gap-x-5 gap-y-6 pt-2"
+                    : "flex flex-col gap-2.5 pt-1"
+                }
+                style={
+                  view === "grid"
+                    ? {
+                        gridTemplateColumns:
+                          "repeat(auto-fill, minmax(min(300px, 100%), 1fr))",
+                      }
+                    : undefined
+                }
+              >
+                {archivedBoards.map((b) => {
+                  const Item = view === "grid" ? BoardCard : BoardSpineRow;
+                  return (
+                    <div key={b.id} className="relative">
+                      <Item
+                        board={b}
+                        projectColor={project?.color ?? "#888"}
+                        archived
+                        onClick={() => router.push(`/boards/${b.id}`)}
+                      />
+                      {canManage && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRestore(b.id);
+                          }}
+                          className="cs-restore"
+                          style={
+                            view === "list"
+                              ? {
+                                  top: "50%",
+                                  right: 110,
+                                  transform: "translateY(-50%)",
+                                }
+                              : undefined
+                          }
+                        >
+                          <Icon icon={faRotateLeft} style={{ fontSize: 8 }} />
+                          Restore
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : boards.length === 0 ? (
+              <div className="flex flex-col items-center justify-center text-center py-16">
+                <div className="cs-blank" aria-hidden>
+                  <span />
+                  <span />
+                </div>
+                <p
+                  className="cf-label uppercase tracking-widest mt-4"
+                  style={{ fontSize: 11, color: "var(--cf-text-muted)" }}
+                >
+                  No tapes on this shelf yet
+                </p>
+                {isOwner && (
+                  <button
+                    type="button"
+                    onClick={() => setModal({ type: "board-new" })}
+                    className="aero-btn aero-btn--cyan mt-4 uppercase tracking-widest font-bold px-4 py-2 text-[9px]"
+                  >
+                    + Record first board
+                  </button>
+                )}
+              </div>
+            ) : visibleBoards.length === 0 ? (
+              <p
+                className="cf-mono text-center py-10"
+                style={{ fontSize: 11, color: "var(--cf-text-dim)" }}
+              >
+                No boards match “{query}”.
+              </p>
+            ) : (
+              <div
+                className={
+                  view === "grid"
+                    ? "grid gap-x-5 gap-y-6 pt-2"
+                    : "flex flex-col gap-2.5 pt-1"
+                }
+                style={
+                  view === "grid"
+                    ? {
+                        gridTemplateColumns:
+                          "repeat(auto-fill, minmax(min(300px, 100%), 1fr))",
+                      }
+                    : undefined
+                }
+              >
+                {dndEnabled ? (
+                  <SortableContext
+                    items={visibleBoards.map((b) => `board-${b.id}`)}
+                    strategy={rectSortingStrategy}
+                  >
+                    {visibleBoards.map((b) => (
+                      <SortableBoardCard
+                        key={b.id}
+                        board={b}
+                        projectColor={project?.color ?? "#888"}
+                        editMode={editMode}
+                        isOwner={isOwner}
+                        variant={view === "grid" ? "tape" : "row"}
+                        onClick={() => handleBoardClick(b)}
+                      />
+                    ))}
+                  </SortableContext>
+                ) : (
+                  visibleBoards.map((b) => {
+                    const Item = view === "grid" ? BoardCard : BoardSpineRow;
+                    return (
+                      <Item
+                        key={b.id}
+                        board={b}
+                        projectColor={project?.color ?? "#888"}
+                        editMode={editMode}
+                        isOwner={isOwner}
+                        onClick={() => handleBoardClick(b)}
+                      />
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
+        </main>
 
         <DragOverlay>
+          {/* A shrunken, tilted ghost so the rail's drop targets stay visible. */}
           {activeDragBoard ? (
-            <BoardCard
-              board={activeDragBoard}
-              projectColor={project?.color ?? "#888"}
-            />
+            <div className={`cs-drag-ghost${view === "list" ? " is-row" : ""}`}>
+              {view === "grid" ? (
+                <BoardCard
+                  board={activeDragBoard}
+                  projectColor={project?.color ?? "#888"}
+                />
+              ) : (
+                <BoardSpineRow
+                  board={activeDragBoard}
+                  projectColor={project?.color ?? "#888"}
+                />
+              )}
+            </div>
           ) : null}
         </DragOverlay>
       </DndContext>

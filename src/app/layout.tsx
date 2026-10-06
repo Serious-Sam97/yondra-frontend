@@ -1,6 +1,6 @@
 import { config } from "@fortawesome/fontawesome-svg-core";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Permanent_Marker } from "next/font/google";
 import "@fortawesome/fontawesome-svg-core/styles.css";
 import "./globals.css";
 
@@ -23,6 +23,13 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+// Handwritten face for cassette labels (board names on the project page).
+const permanentMarker = Permanent_Marker({
+  variable: "--font-marker",
+  weight: "400",
+  subsets: ["latin"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Yondra",
@@ -37,7 +44,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${permanentMarker.variable} antialiased`}
       >
         <SystemProvider>
           <ConsoleProvider>

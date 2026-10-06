@@ -4,17 +4,20 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { ProjectBoard } from "@/interfaces/ProjectInterface";
 import BoardCard from "./BoardCard";
+import BoardSpineRow from "./BoardSpineRow";
 
 // Draggable shell around a BoardCard for the project-page grid (YON-125). Uses a
 // <div> (not a <button>) so the inner BoardCard button's onClick still fires — the
 // MouseSensor's 5px activation distance is what separates a plain click (open the
-// board) from a drag (reorder / move to another project).
+// board) from a drag (reorder / move to another project). `variant` picks the
+// grid cassette or the list-view spine row.
 export default function SortableBoardCard({
   board,
   projectColor,
   editMode,
   isOwner,
   disabled,
+  variant = "tape",
   onClick,
 }: {
   board: ProjectBoard;
@@ -22,6 +25,7 @@ export default function SortableBoardCard({
   editMode?: boolean;
   isOwner?: boolean;
   disabled?: boolean;
+  variant?: "tape" | "row";
   onClick: () => void;
 }) {
   const {
@@ -46,13 +50,23 @@ export default function SortableBoardCard({
         touchAction: "none",
       }}
     >
-      <BoardCard
-        board={board}
-        projectColor={projectColor}
-        editMode={editMode}
-        isOwner={isOwner}
-        onClick={onClick}
-      />
+      {variant === "row" ? (
+        <BoardSpineRow
+          board={board}
+          projectColor={projectColor}
+          editMode={editMode}
+          isOwner={isOwner}
+          onClick={onClick}
+        />
+      ) : (
+        <BoardCard
+          board={board}
+          projectColor={projectColor}
+          editMode={editMode}
+          isOwner={isOwner}
+          onClick={onClick}
+        />
+      )}
     </div>
   );
 }

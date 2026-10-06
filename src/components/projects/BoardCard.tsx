@@ -1,246 +1,148 @@
 "use client";
 
+import { memo } from "react";
 import type { ProjectBoard } from "@/interfaces/ProjectInterface";
-import { boardColor, boardFlow, boardProgress, timeAgo } from "@/lib/ui";
-import Avatar from "./Avatar";
+import {
+  boardColor,
+  boardFlow,
+  boardProgress,
+  isLatinName,
+  isRecording,
+  labelStripes,
+  tapeLength,
+  timeAgo,
+} from "@/lib/ui";
+import CrewStack from "./cassette/CrewStack";
+import TapeReels from "./cassette/TapeReels";
 
-// "Anodized rack module": graphite casing tinted with the board's own colour
-// (rail + LED + header wash), with a dark inset flow screen showing the
-// To Do / Doing / Done breakdown.
-const DIM_INK = "rgba(232,228,214,0.58)";
-
-export default function BoardCard({
+// "Board cassette": every decorative part carries data — the label stripes are
+// the board accent, the C-length is the card count, the reels wind from the
+// supply spool (to do + doing) onto the take-up spool (done), and the REC lamp
+// lights when a card changed in the last hour. See design/projects-v2-*.png.
+function BoardCard({
   board,
   projectColor,
   editMode,
   isOwner,
+  archived,
   onClick,
 }: {
   board: ProjectBoard;
   projectColor: string;
   editMode?: boolean;
   isOwner?: boolean;
+  archived?: boolean;
   // Optional so a non-interactive DragOverlay copy can render the card (YON-125).
   onClick?: () => void;
 }) {
   const ac = boardColor(board, projectColor);
   const flow = boardFlow(board);
-  const { done, total, pct } = boardProgress(board);
+  const { total, pct } = boardProgress(board);
+  const editing = !!(editMode && isOwner);
+  const recording = !archived && isRecording(board);
+  const lastTouch = board.last_activity_at ?? board.updated_at;
 
   const members = [board.owner, ...(board.shared_with ?? [])].filter(
-    (u): u is NonNullable<typeof u> => !!u,
+    (u, i, all): u is NonNullable<typeof u> =>
+      !!u && all.findIndex((x) => x?.id === u.id) === i,
   );
 
-  const seg = (v: number, color: string, glow?: boolean) =>
-    v > 0 ? (
-      <span
-        style={{
-          flex: v,
-          height: "100%",
-          borderRadius: 2,
-          background: color,
-          boxShadow: glow ? `0 0 8px ${color}` : undefined,
-        }}
-      />
-    ) : null;
+  const label = `${board.name}: ${total} card${total !== 1 ? "s" : ""}, ${pct}% done${recording ? ", active in the last hour" : ""}${editing ? ". Edit board" : ""}`;
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="bc-mod block w-full text-left p-0"
-      style={
-        {
-          "--bc-ac": ac,
-          ...(editMode && isOwner
-            ? {
-                borderColor: "var(--cf-amber)",
-                boxShadow:
-                  "inset 0 1px 0 rgba(255,255,255,0.14), 0 0 0 2px rgba(255,176,0,0.5), 0 3px 7px rgba(0,0,0,0.45)",
-              }
-            : null),
-        } as React.CSSProperties
-      }
+      aria-label={label}
+      className={`cs-tape${editing ? " is-edit" : ""}${archived ? " is-archived" : ""}`}
+      style={{ "--ac": ac } as React.CSSProperties}
     >
-      {/* edge-lit colour rail + backlight wash */}
-      <div className="bc-rail" />
-      <div className="bc-wash" />
+      {editing && (
+        <>
+          <span className="cs-grip" aria-hidden />
+          <span className="cs-editbadge" aria-hidden>
+            Drag · tap to edit
+          </span>
+        </>
+      )}
+      <span className="cs-screw s1" aria-hidden />
+      <span className="cs-screw s2" aria-hidden />
+      <span className="cs-screw s3" aria-hidden />
+      <span className="cs-screw s4" aria-hidden />
+      <span className="cs-screw s5" aria-hidden />
 
-      <div className="px-3.5 pt-3 pb-3.5 relative">
-        <div className="flex items-center gap-2">
+      <span className="cs-paper">
+        <span className="cs-stripes" aria-hidden>
+          {labelStripes(ac).map((c) => (
+            <i key={c} style={{ background: c }} />
+          ))}
+        </span>
+        <span className="cs-ph">
+          <span className="cs-side" aria-hidden>
+            A
+          </span>
           <span
-            className="rounded-full flex-shrink-0"
-            style={{
-              width: 8,
-              height: 8,
-              background: ac,
-              boxShadow: `0 0 7px ${ac}, inset 0 -1px 1px rgba(0,0,0,0.4)`,
-            }}
-          />
-          <span
-            className="font-bold flex-1 truncate"
-            style={{ fontSize: "14px", color: "var(--cf-cream)" }}
+            className={`cs-name${isLatinName(board.name) ? " cf-marker" : " is-plain"}`}
           >
             {board.name}
           </span>
-          {editMode && isOwner ? (
-            <span
-              className="cf-mono uppercase font-bold flex-shrink-0"
-              style={{
-                fontSize: "9px",
-                letterSpacing: "0.06em",
-                color: "var(--cf-red)",
-              }}
-            >
-              edit
-            </span>
-          ) : (
-            <span
-              className="cf-mono flex-shrink-0"
-              style={{ fontSize: "9px", color: DIM_INK }}
-            >
-              {total} card{total !== 1 ? "s" : ""}
-            </span>
-          )}
-        </div>
-        <div
-          className="cf-mono mt-1 truncate"
-          style={{ fontSize: "9px", color: DIM_INK }}
-        >
-          {board.updated_at
-            ? `updated ${timeAgo(board.updated_at)}`
-            : "no activity yet"}
-          {board.owner ? ` · ${board.owner.name}` : ""}
-        </div>
-
-        {/* dark flow screen */}
-        <div
-          className="mt-2.5 rounded-md p-2.5"
-          style={{
-            background: "#0d1410",
-            border: "1.5px solid #11140f",
-            boxShadow: "inset 0 2px 6px rgba(0,0,0,0.85)",
-          }}
-        >
-          <div
-            className="flex justify-between cf-mono uppercase"
-            style={{
-              fontSize: "7.5px",
-              letterSpacing: "0.1em",
-              color: "var(--cf-text-dim)",
-              marginBottom: 5,
-            }}
-          >
-            <span>Flow</span>
-            <span style={{ color: "var(--cf-phosphor)" }}>
-              {pct}% · {done} done
-            </span>
-          </div>
-          <div
-            className="flex rounded-sm overflow-hidden"
-            style={{ height: 16, gap: 2 }}
-          >
-            {seg(flow.todo, "#3a3d38")}
-            {seg(flow.doing, "var(--cf-amber)")}
-            {seg(flow.done, "var(--cf-phosphor)", true)}
-            {total === 0 && (
-              <span
-                style={{
-                  flex: 1,
-                  height: "100%",
-                  borderRadius: 2,
-                  background: "#1b1e18",
-                }}
-              />
-            )}
-          </div>
-          {total === 0 ? (
-            <div className="bc-standby" style={{ marginTop: 6 }}>
-              STANDBY
-              <span className="bc-cursor">_</span>
-            </div>
-          ) : (
-            <div
-              className="flex justify-between cf-lcd"
-              style={{ fontSize: "16px", marginTop: 6 }}
-            >
-              <b
-                className="flex items-center gap-1"
-                style={{ color: "#8a8f80" }}
-              >
-                <span
-                  style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: "50%",
-                    background: "#3a3d38",
-                    display: "inline-block",
-                  }}
-                />
-                {flow.todo}
-              </b>
-              <b
-                className="flex items-center gap-1"
-                style={{ color: "var(--cf-amber)" }}
-              >
-                <span
-                  style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: "50%",
-                    background: "var(--cf-amber)",
-                    display: "inline-block",
-                  }}
-                />
-                {flow.doing}
-              </b>
-              <b
-                className="flex items-center gap-1"
-                style={{ color: "var(--cf-phosphor)" }}
-              >
-                <span
-                  style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: "50%",
-                    background: "var(--cf-phosphor)",
-                    boxShadow: "0 0 5px var(--cf-phosphor)",
-                    display: "inline-block",
-                  }}
-                />
-                {flow.done}
-              </b>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between mt-2.5">
-          <span
-            className="cf-lcd"
-            style={{
-              fontSize: "24px",
-              lineHeight: 1,
-              color: done > 0 ? "var(--cf-phosphor)" : "rgba(232,228,214,0.38)",
-              textShadow:
-                done > 0
-                  ? "0 0 8px color-mix(in srgb, var(--cf-phosphor) 45%, transparent)"
-                  : undefined,
-            }}
-          >
-            {pct}
-            <span style={{ fontSize: "12px", color: DIM_INK }}>%</span>
+          {recording && <span className="cs-rec">Rec</span>}
+          <span className="cs-len">{tapeLength(total)}</span>
+        </span>
+        <span className="cs-ruled">
+          <span className="truncate">
+            {lastTouch ? `updated ${timeAgo(lastTouch)}` : "no activity yet"}
           </span>
-          {members.length > 0 && (
-            <div className="flex">
-              {members.slice(0, 4).map((u, i) => (
-                <span key={u.id} style={{ marginLeft: i ? -6 : 0 }}>
-                  <Avatar user={u} size={19} ring="#232220" />
-                </span>
-              ))}
-            </div>
+          {board.owner && (
+            <span className="truncate flex-shrink-0 max-w-[45%]">
+              {board.owner.name}
+            </span>
           )}
-        </div>
-      </div>
+        </span>
+        <span className="cs-window">
+          <TapeReels flow={flow} accent={ac} />
+          <span className="cs-wlcd">
+            {total > 0 ? (
+              <span className="cs-wpct">
+                {pct}
+                <small>%</small>
+              </span>
+            ) : (
+              <span className="cs-standby">
+                Standby<span className="cs-cursor">_</span>
+              </span>
+            )}
+          </span>
+        </span>
+      </span>
+
+      <span className="cs-foot">
+        <span className="cs-hole l" aria-hidden />
+        <span className="cs-hole r" aria-hidden />
+        <span className="cs-flow" aria-hidden>
+          <span className="cs-fbar">
+            {total > 0 ? (
+              <>
+                <i className="done" style={{ flex: flow.done }} />
+                <i className="doing" style={{ flex: flow.doing }} />
+                <i className="todo" style={{ flex: flow.todo }} />
+              </>
+            ) : (
+              <i className="empty" style={{ flex: 1 }} />
+            )}
+          </span>
+          <span className="cs-fnum">
+            <b className="done">{flow.done}</b>
+            <b className="doing">{flow.doing}</b>
+            <b className="todo">{flow.todo}</b>
+          </span>
+        </span>
+        <span className="cs-crew">
+          <CrewStack users={members} max={4} size={22} />
+        </span>
+      </span>
     </button>
   );
 }
+
+export default memo(BoardCard);

@@ -33,6 +33,9 @@ export interface ProjectBoard {
   flow?: BoardFlow;
   archived_at?: string | null;
   updated_at?: string | null;
+  // Newest card touch on the board (cards don't bump boards.updated_at); drives
+  // the cassette's REC lamp and the rail's live dot.
+  last_activity_at?: string | null;
   owner?: UserSummary | null;
   shared_with: {
     id: number;
@@ -56,6 +59,9 @@ export interface ProjectInterface {
   boards_count?: number;
   // Server-computed capability for the current user (co-owner-aware).
   can_manage?: boolean;
+  // Cards completed per day over the last 14 days (oldest first), scoped to the
+  // boards this user can see. Only returned by the project show endpoint.
+  throughput?: number[];
   created_at?: string | null;
   updated_at?: string | null;
 }
