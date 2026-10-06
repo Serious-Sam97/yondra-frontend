@@ -29,6 +29,24 @@ ENV NEXT_PUBLIC_REVERB_SCHEME=$NEXT_PUBLIC_REVERB_SCHEME
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Fail loudly instead of shipping a broken bundle. NEXT_PUBLIC_* is inlined into the
+# client JS at build time, so an unset build arg becomes the empty string and every
+# `${NEXT_PUBLIC_API}${path}` collapses to a relative URL — the app then posts
+# /api/login to its own origin and gets the Next 404 page. That failure is invisible
+# at build and at container start: the image builds clean, boots clean, and only
+# breaks in the browser. `docker compose build` interpolates these args from a `.env`
+# in the project dir, NOT from `.env.local` (which `env_file:` supplies only at
+# runtime), so a build without `--env-file .env.local` silently zeroes all five.
+RUN for v in NEXT_PUBLIC_API NEXT_PUBLIC_REVERB_APP_KEY NEXT_PUBLIC_REVERB_HOST \
+             NEXT_PUBLIC_REVERB_PORT NEXT_PUBLIC_REVERB_SCHEME; do \
+      eval "val=\$$v"; \
+      if [ -z "$val" ]; then \
+        echo "BUILD ABORTED: $v is empty; the client bundle would ship with no value."; \
+        echo "Build with: docker compose --env-file .env.local -f docker-compose.yml build"; \
+        exit 1; \
+      fi; \
+    done
+
 RUN npm run build
 
 # ── runner ────────────────────────────────────────────────────────────────────

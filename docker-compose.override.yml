@@ -5,7 +5,15 @@
 # (whose entrypoint is `node server.js`, which crashes once the source is bind-mounted).
 #
 # PRODUCTION must bypass this override explicitly:
-#     docker compose -f docker-compose.yml up -d --build
+#     docker compose --env-file .env.local -f docker-compose.yml up -d --build
+#
+# --env-file is NOT optional. Compose interpolates the ${NEXT_PUBLIC_*} build args
+# from a `.env` in this directory, and there isn't one — only `.env.local`, which
+# `env_file:` supplies at RUNTIME but never to interpolation. Without the flag all
+# five args resolve to "" and, since NEXT_PUBLIC_* is inlined into the client bundle
+# at build time, the image ships with no API URL and no Reverb config.
+# Verify before deploying — every arg must be non-empty:
+#     docker compose --env-file .env.local -f docker-compose.yml config | grep -A6 'args:'
 services:
   app:
     image: yondra-frontend-dev:latest
