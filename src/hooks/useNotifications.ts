@@ -12,6 +12,7 @@ import {
   markNotificationRead,
 } from "@/lib/api";
 import { getEcho } from "@/lib/echo";
+import { pollWhileVisible } from "@/lib/poll";
 
 // The entity now lives with the API boundary; re-exported so existing consumers
 // keep importing it from the hook.
@@ -43,33 +44,35 @@ export function useNotifications(userId?: number, enabled: boolean = true) {
   React.useEffect(() => {
     if (!enabled || !isLogged) return;
     refetch();
-    const interval = setInterval(refetch, 120000);
-    return () => clearInterval(interval);
+    return pollWhileVisible(refetch, 120000);
   }, [enabled, isLogged, refetch]);
 
   // Live push over Reverb on the user's private channel.
   React.useEffect(() => {
     if (!enabled || !isLogged || !userId) return;
     const channelName = `App.Models.User.${userId}`;
-    let echo: ReturnType<typeof getEcho> | null = null;
+    let channel: ReturnType<ReturnType<typeof getEcho>["private"]> | null =
+      null;
+    const handler = (payload: AppNotification) => {
+      pushToast({
+        type: payload?.type,
+        message: payload?.message ?? "New notification",
+        deepLink: payload?.deep_link ?? null,
+      });
+      pushActivity(`alert · ${payload?.message ?? "notification"}`);
+      refetch();
+    };
     try {
-      echo = getEcho();
-      echo
-        .private(channelName)
-        .listen(".notification", (payload: AppNotification) => {
-          pushToast({
-            type: payload?.type,
-            message: payload?.message ?? "New notification",
-            deepLink: payload?.deep_link ?? null,
-          });
-          pushActivity(`alert · ${payload?.message ?? "notification"}`);
-          refetch();
-        });
+      channel = getEcho().private(channelName);
+      channel.listen(".notification", handler);
     } catch {
       // Echo/Reverb not configured — polling still covers it.
     }
     return () => {
-      echo?.leave(channelName);
+      // Detach only our handler — useVortexChat rides this same user channel, so
+      // leave() would kill its stream. Logout is a full navigation, which closes
+      // the socket anyway.
+      channel?.stopListening(".notification", handler);
     };
   }, [enabled, isLogged, userId, pushToast, pushActivity, refetch]);
 

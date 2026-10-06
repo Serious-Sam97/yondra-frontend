@@ -24,6 +24,7 @@ import type {
 import { createProject, fetchDashboard } from "@/lib/api";
 import { fetchUser } from "@/lib/auth";
 import { getEcho } from "@/lib/echo";
+import { pollWhileVisible } from "@/lib/poll";
 import { PROJECT_COLORS } from "@/lib/ui";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 
@@ -72,13 +73,40 @@ const prLed = (s: string | null) =>
 const checksSym = (s: string | null) =>
   s === "success" ? "✓" : s === "failure" ? "✗" : s === "pending" ? "…" : "";
 
-function useClock(): Date {
+// Owns its own tick so only the clock re-renders, not the whole dashboard. Shows
+// HH:MM, so re-render on each minute boundary rather than every second.
+function ClockScreen() {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(t);
+    let t: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      const d = new Date();
+      setNow(d);
+      t = setTimeout(
+        tick,
+        60000 - (d.getSeconds() * 1000 + d.getMilliseconds()),
+      );
+    };
+    tick();
+    return () => clearTimeout(t);
   }, []);
-  return now;
+  return (
+    <div className="yd-screen yd-clock">
+      <div className="t">
+        {now.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })}
+      </div>
+      <div className="d">
+        {now.toLocaleDateString("en-US", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+        })}
+      </div>
+    </div>
+  );
 }
 
 // ── queue ───────────────────────────────────────────────────────────────────
@@ -445,7 +473,6 @@ function NewProjectModal({
 export default function DashboardPage() {
   useDocumentTitle("Yondra - Dashboard");
   const router = useRouter();
-  const now = useClock();
   const [user, setUser] = useState<UserSummary | null>(null);
   const [data, setData] = useState<DashboardPayload | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
@@ -471,10 +498,7 @@ export default function DashboardPage() {
   }, [load]);
 
   // Keep the home base fresh even if the socket drops.
-  useEffect(() => {
-    const t = setInterval(load, 45000);
-    return () => clearInterval(t);
-  }, [load]);
+  useEffect(() => pollWhileVisible(load, 45000), [load]);
 
   // Realtime: refetch (debounced) whenever any visible board broadcasts a change.
   // Stable string key so a same-set refetch doesn't churn subscriptions.
@@ -532,7 +556,7 @@ export default function DashboardPage() {
   ];
   const boardsCount = projects.reduce((s, p) => s + (p.boards_count ?? 0), 0);
 
-  const hour = now.getHours();
+  const hour = new Date().getHours();
   const greeting =
     hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const v = data?.vitals;
@@ -602,21 +626,7 @@ export default function DashboardPage() {
                 <div className="h">{user?.name ?? "…"}</div>
               </div>
               <OmniSearch />
-              <div className="yd-screen yd-clock">
-                <div className="t">
-                  {now.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </div>
-                <div className="d">
-                  {now.toLocaleDateString("en-US", {
-                    weekday: "short",
-                    day: "numeric",
-                    month: "short",
-                  })}
-                </div>
-              </div>
+              <ClockScreen />
             </div>
 
             {/* vitals — honest LCD tiles: big numeral + factual sub-line.

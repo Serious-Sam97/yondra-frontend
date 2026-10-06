@@ -17,6 +17,7 @@ import type {
 import type { ProjectBoard } from "@/interfaces/ProjectInterface";
 import { fetchDashboard, fetchProject, searchWorkspace } from "@/lib/api";
 import { fetchBoards, fetchUser, logout } from "@/lib/auth";
+import { pollWhileVisible } from "@/lib/poll";
 import YondraIcon from "../icons/yondra.png";
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -98,7 +99,12 @@ function ScopeCanvas({ pulseKey }: { pulseKey: number }) {
     const rm =
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
     const dpr = window.devicePixelRatio || 1;
+    // Full frame rate only while a pulse is decaying; otherwise a slow idle drift.
+    // A perpetual rAF here kept the GPU at display refresh (60–120Hz) on every page.
+    const PULSE_MS = 3500;
+    const IDLE_FPS = 12;
     let raf = 0;
+    let idle: ReturnType<typeof setTimeout> | null = null;
 
     const size = () => {
       const r = cv.getBoundingClientRect();
@@ -146,12 +152,35 @@ function ScopeCanvas({ pulseKey }: { pulseKey: number }) {
       }
       ctx.stroke();
       ctx.shadowBlur = 0;
-      if (!rm) raf = requestAnimationFrame(draw);
     };
-    if (rm) draw(1200);
-    else raf = requestAnimationFrame(draw);
-    return () => {
+
+    const schedule = () => {
+      if (rm || document.hidden) return; // visibilitychange resumes
+      const pulsing =
+        pulseRef.current > 0 && performance.now() - pulseRef.current < PULSE_MS;
+      if (pulsing) raf = requestAnimationFrame(frame);
+      else idle = setTimeout(() => frame(performance.now()), 1000 / IDLE_FPS);
+    };
+    const frame = (t: number) => {
+      draw(t);
+      schedule();
+    };
+    const stop = () => {
       cancelAnimationFrame(raf);
+      if (idle) clearTimeout(idle);
+      idle = null;
+    };
+    const onVisibility = () => {
+      stop();
+      if (!document.hidden) frame(performance.now());
+    };
+
+    if (rm) draw(1200);
+    else frame(performance.now());
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
       ro.disconnect();
     };
   }, []);
@@ -407,10 +436,10 @@ export default function MenuAppBar() {
         })
         .catch(() => {});
     load();
-    const t = setInterval(load, 90000);
+    const stopPolling = pollWhileVisible(load, 90000);
     return () => {
       alive = false;
-      clearInterval(t);
+      stopPolling();
     };
   }, [isLogged, onDashboard]);
 

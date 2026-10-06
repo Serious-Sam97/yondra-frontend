@@ -247,6 +247,10 @@ body {
 }
 .modal-content {
   animation: modal-drop 0.3s var(--spring) both;
+  /* A flex child of the centering backdrop: without this its min-content (e.g. a
+     wide tab row) sets its width and it spills off both sides of a phone. */
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* ─── Input / textarea — recessed into the surface on focus ───────────────── */
@@ -5240,9 +5244,23 @@ emoji-picker.cm-emoji-picker {
 .vxa-dock--in:hover {
   opacity: 1;
 }
+/* Docked is the resting state for most of a session: freeze the idle loops so a
+   32px sliver doesn't keep the compositor (and the SVG repaints) running forever. */
+.vxa-dock--in .vxa-sprite,
+.vxa-dock--in .vxa-glow,
+.vxa-dock--in .vxa-eyes,
+.vxa-dock--in .vxa-swirl {
+  animation-play-state: paused;
+}
 @media (prefers-reduced-motion: reduce) {
   .vxa-dock {
     transition: none;
+  }
+  .vxa-sprite,
+  .vxa-glow,
+  .vxa-eyes,
+  .vxa-swirl {
+    animation: none;
   }
 }
 
