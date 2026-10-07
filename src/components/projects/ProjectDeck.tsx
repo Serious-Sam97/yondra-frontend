@@ -8,6 +8,8 @@ import {
   faPlus,
 } from "@fortawesome/free-solid-svg-icons";
 import Icon from "@/components/ui/Icon";
+import { SvgArt } from "@/components/ui/SvgArt";
+import { headerWaveform } from "@/lib/boardArt";
 import type {
   BoardFlow,
   ProjectInterface,
@@ -53,6 +55,16 @@ export default function ProjectDeck({
   const color = project?.color ?? "var(--cf-phosphor)";
   const members = project?.members ?? [];
   const crewLabel = `${members.length} crew`;
+  // Box-set label stripes in the project colour (same recipe as board labels).
+  const stripes = [
+    color,
+    `color-mix(in srgb, ${color} 55%, #ff5a4d)`,
+    `color-mix(in srgb, ${color} 45%, #ffb000)`,
+  ];
+  const latinName = /^[\p{Script=Latin}\p{N}\p{P}\p{S}\s]*$/u.test(
+    project?.name ?? "",
+  );
+  const tapes = String(stats.boards).padStart(2, "0");
 
   return (
     <section
@@ -60,7 +72,12 @@ export default function ProjectDeck({
       style={{ "--pc": color } as React.CSSProperties}
       aria-label="Project overview"
     >
-      <div className="pd-sunset" aria-hidden />
+      <SvgArt as="div" className="ph-art" svg={headerWaveform()} aria-hidden />
+      <div className="ph-trim" aria-hidden>
+        {stripes.map((c) => (
+          <i key={c} style={{ background: c }} />
+        ))}
+      </div>
 
       <div className="pd-top">
         <button
@@ -72,19 +89,34 @@ export default function ProjectDeck({
         >
           <Icon icon={faBars} />
         </button>
-        <span className="pd-led" aria-hidden />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="pd-title">{project?.name}</h1>
-            <span className={`pd-role${isOwner ? " is-owner" : ""}`}>
-              {isOwner && <Icon icon={faCrown} style={{ fontSize: 8 }} />}
-              {roleLabel}
-            </span>
+        {/* Box-set label: stripes, tape count, handwritten name, summary. */}
+        <div className="ph-label" title={project?.description ?? undefined}>
+          <span className="ph-stripes" aria-hidden>
+            {stripes.map((c) => (
+              <i key={c} style={{ background: c }} />
+            ))}
+          </span>
+          <span className="ph-box" aria-label={`${stats.boards} boards`}>
+            <b>{tapes}</b>
+            <small>TAPES</small>
+          </span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <h1 className={`pd-title${latinName ? "" : " plain"}`}>
+                {project?.name}
+              </h1>
+              <span className={`pd-role${isOwner ? " is-owner" : ""}`}>
+                {isOwner && <Icon icon={faCrown} style={{ fontSize: 8 }} />}
+                {roleLabel}
+              </span>
+            </div>
+            <div className="ph-sub">
+              Box set · {stats.boards} tape{stats.boards === 1 ? "" : "s"} ·{" "}
+              {stats.cards} cards · {members.length} crew
+            </div>
           </div>
-          {project?.description && (
-            <p className="pd-desc">{project.description}</p>
-          )}
         </div>
+        <div className="flex-1" />
 
         <div className="pd-actions">
           {members.length > 0 &&
