@@ -128,7 +128,7 @@ function ScopeCanvas({ pulseKey }: { pulseKey: number }) {
       const pulse = pulseRef.current > 0 ? Math.exp(-since / 1200) * 2.2 : 0;
       const amp = 4 * (1 + pulse);
       ctx.clearRect(0, 0, W, H);
-      ctx.strokeStyle = "rgba(38,46,24,0.1)";
+      ctx.strokeStyle = "rgba(255,179,71,0.07)";
       ctx.lineWidth = 1;
       for (let gx = 0; gx < W; gx += 22) {
         ctx.beginPath();
@@ -136,10 +136,11 @@ function ScopeCanvas({ pulseKey }: { pulseKey: number }) {
         ctx.lineTo(gx, H);
         ctx.stroke();
       }
-      ctx.strokeStyle = "rgba(38,46,24,0.92)";
+      // Amber VFD trace (matches the warm receiver palette).
+      ctx.strokeStyle = "#ecd03a";
       ctx.lineWidth = 1.6;
-      ctx.shadowColor = "rgba(38,46,24,0.4)";
-      ctx.shadowBlur = 3;
+      ctx.shadowColor = "rgba(255,200,71,0.75)";
+      ctx.shadowBlur = 6;
       ctx.beginPath();
       for (let x = 0; x <= W; x += 2) {
         const p = x / W;
@@ -263,11 +264,11 @@ function HeaderSearch() {
   return (
     <div ref={boxRef} className="relative flex-1 min-w-0 h-full">
       <div className="ydc-find relative flex items-center gap-2 h-full rounded-[7px] px-3">
-        <span style={{ color: "rgba(38,46,24,0.6)", fontSize: 12 }}>⌕</span>
+        <span style={{ color: "#6b5a44", fontSize: 12 }}>⌕</span>
         <input
           ref={inputRef}
           className="ydc-input"
-          style={{ color: "var(--cf-ink, #262e18)", fontWeight: 600 }}
+          style={{ color: "#2b2219", fontWeight: 600 }}
           placeholder="Cards, boards, deals…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -295,8 +296,8 @@ function HeaderSearch() {
           style={{
             fontSize: 8,
             letterSpacing: "0.14em",
-            color: "rgba(38,46,24,0.55)",
-            border: "1px solid rgba(38,46,24,0.3)",
+            color: "#6b5a44",
+            border: "1px solid #b8a888",
             borderRadius: 4,
             padding: "1px 5px",
             background: "rgba(255,255,255,0.18)",
@@ -890,7 +891,7 @@ export default function MenuAppBar() {
                   right: 8,
                   fontSize: 6.5,
                   letterSpacing: "0.24em",
-                  color: "rgba(38,46,24,0.5)",
+                  color: "#ffb347",
                   zIndex: 1,
                 }}
               >
@@ -904,7 +905,7 @@ export default function MenuAppBar() {
                   bottom: 3,
                   fontSize: 10,
                   fontWeight: 600,
-                  color: "#262e18",
+                  color: "#ffb347",
                   zIndex: 1,
                   textAlign: "left",
                 }}
@@ -921,7 +922,7 @@ export default function MenuAppBar() {
                   style={{
                     width: 5,
                     height: 10,
-                    background: "#262e18",
+                    background: "#ffb347",
                     animation: "ydc-blink 1.1s steps(1) infinite",
                     flex: "none",
                   }}
@@ -1037,7 +1038,7 @@ export default function MenuAppBar() {
               <span
                 key={unreadCount}
                 className={unreadCount > 0 ? "bell-ring" : ""}
-                style={{ color: "var(--cf-amber)", fontSize: 14 }}
+                style={{ color: "#3a2a1c", fontSize: 14 }}
               >
                 <Icon icon={faBell} />
               </span>
@@ -1154,7 +1155,7 @@ export default function MenuAppBar() {
                 <input
                   ref={qaRef}
                   className="ydc-input"
-                  style={{ color: "var(--cf-cream)" }}
+                  style={{ color: "#ffd9a8" }}
                   disabled={!canQuickAdd}
                   placeholder={
                     qaFlash
