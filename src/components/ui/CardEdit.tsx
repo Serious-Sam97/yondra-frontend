@@ -8,7 +8,7 @@ import {
   faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChecklistSection } from "@/components/ui/card-edit/ChecklistSection";
 import { CommentsSection } from "@/components/ui/card-edit/CommentsSection";
 import { HistorySection } from "@/components/ui/card-edit/HistorySection";
@@ -20,6 +20,7 @@ import { WhatsAppSection } from "@/components/ui/card-edit/WhatsAppSection";
 import { CardAiPanel } from "@/components/ui/CardAiPanel";
 import Icon from "@/components/ui/Icon";
 import RichTextEditor from "@/components/ui/RichTextEditor";
+import { SvgArt } from "@/components/ui/SvgArt";
 import { useCardAttachments } from "@/hooks/useCardAttachments";
 import { useCardChecklist } from "@/hooks/useCardChecklist";
 import { useCardComments } from "@/hooks/useCardComments";
@@ -34,6 +35,13 @@ import type {
   ChecklistItem,
 } from "@/interfaces/CardInterface";
 import type { TagInterface } from "@/interfaces/TagInterface";
+import {
+  artKindFor,
+  barcode,
+  cardInks,
+  coverArt,
+  spineArt,
+} from "@/lib/boardArt";
 import {
   currencySymbol,
   formatMoneyInput,
@@ -532,16 +540,92 @@ const CardEdit: React.FC<CardEditProps> = ({
       (isDesktop ? !collapsed.history : activeTab === "history"),
   });
 
-  // Tint the whole modal with the first tag's colour (live as tags toggle), like board cards.
-  const activeTag = tags.find((t) => selectedTagIds.includes(t.id));
-  const tagColor = activeTag?.color ?? null;
-  const tagTintStyle: React.CSSProperties = tagColor
-    ? {
-        background: `linear-gradient(to bottom, color-mix(in srgb, ${tagColor} 22%, #2c2a24), color-mix(in srgb, ${tagColor} 12%, #1d1b17))`,
-        borderColor: `color-mix(in srgb, ${tagColor} 45%, var(--cf-edge))`,
-        boxShadow: `0 16px 40px rgba(0,0,0,0.6), 0 0 34px ${tagColor}22, inset 0 1px 0 var(--cf-edge-lit)`,
-      }
-    : {};
+  // ── Cassette case (design/card-open-dark-graphite.png) ──
+  // Cover art + colour spine reuse the board card's generated art so the open
+  // card reads as the same tape.
+  const caseTags = tags.filter((t) => selectedTagIds.includes(t.id));
+  const [inkA, inkB] = cardInks({ id: id ?? 0, tags: caseTags });
+  const artKind = artKindFor(id ?? 0);
+  const artSeed = typeof id === "number" ? id : 1;
+  const coverSvg = useMemo(
+    () => coverArt(artKind, inkA, inkB, artSeed, `cx${String(id)}`),
+    [artKind, inkA, inkB, artSeed, id],
+  );
+  const spineSvg = useMemo(
+    () => spineArt(artKind, inkA, inkB, artSeed, `cx${String(id)}`),
+    [artKind, inkA, inkB, artSeed, id],
+  );
+  const caseSection = sections.find((s) => s.id === sectionId)?.name ?? "";
+  const playingFor = card?.section_entered_at
+    ? Math.max(
+        0,
+        Math.floor(
+          (Date.now() - new Date(card.section_entered_at).getTime()) /
+            86_400_000,
+        ),
+      )
+    : null;
+  const lateDate =
+    dueDate &&
+    !card?.done_at &&
+    new Date(`${dueDate}T23:59:59`).getTime() < Date.now()
+      ? new Date(`${dueDate}T00:00:00`)
+          .toLocaleDateString("en-US", { month: "short", day: "numeric" })
+          .toUpperCase()
+      : null;
+  const caseJammed = blockedReason.trim() !== "";
+
+  const renderCover = () => (
+    <div className="mtx-cover" aria-hidden>
+      <SvgArt svg={coverSvg} />
+      <span className="cat">
+        {(card?.ticket_key ?? "NEW").replace("-", " · ")} · SIDE A
+      </span>
+      <span className="side">A</span>
+      {caseJammed ? (
+        <span className="mtx-stk jam">
+          <span>JAM</span>
+        </span>
+      ) : (
+        caseSection && (
+          <span className="mtx-stk play">
+            ▶ {playingFor != null ? `${playingFor}D · ` : ""}
+            {caseSection}
+          </span>
+        )
+      )}
+      {lateDate && (
+        <span className="mtx-stk late">
+          Late<b>{lateDate}</b>
+        </span>
+      )}
+    </div>
+  );
+
+  const renderSpine = () => (
+    <div className="mtx-spine" style={{ "--a": inkA } as React.CSSProperties}>
+      <SvgArt className="sp" svg={spineSvg} aria-hidden />
+      <span className="lbl">{name || "Untitled tape"}</span>
+      <span className="m">
+        {comments.length > 0 && `✉ ${comments.length} · `}
+        {checklistItems.length > 0
+          ? `${doneCount}/${checklistItems.length} tracks`
+          : "no tracks yet"}
+      </span>
+      <span className="bars" aria-hidden>
+        {barcode(artSeed, 26).map((w, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: fixed barcode bars
+          <i key={i} style={{ width: w }} />
+        ))}
+      </span>
+      {storyPoints && (
+        <span className="pts">
+          {storyPoints}
+          <small> PT</small>
+        </span>
+      )}
+    </div>
+  );
 
   // Big hero title
   const renderTitle = () => (
@@ -573,7 +657,7 @@ const CardEdit: React.FC<CardEditProps> = ({
         rows={2}
         disabled={isReadOnly}
         style={{ color: "var(--cf-text)", caretColor: "var(--cf-phosphor)" }}
-        className="w-full bg-transparent text-2xl lg:text-[28px] font-bold placeholder-white/25 focus:outline-none resize-none leading-tight disabled:opacity-70 flex-shrink-0 px-1 pt-1"
+        className="mtx-title w-full bg-transparent text-2xl lg:text-[28px] font-bold placeholder-white/25 focus:outline-none resize-none leading-tight disabled:opacity-70 flex-shrink-0 px-1 pt-1"
         value={name}
         onChange={(e) => {
           setDirty(true);
@@ -936,7 +1020,7 @@ const CardEdit: React.FC<CardEditProps> = ({
       <div>
         {collapsibleSection(
           "checklist",
-          "Checklist",
+          "Side A · Tracklist",
           checklistItems.length
             ? `${doneCount}/${checklistItems.length}`
             : null,
@@ -986,7 +1070,7 @@ const CardEdit: React.FC<CardEditProps> = ({
       )}
       <div className="border-t pt-6" style={{ borderColor: "var(--cf-edge)" }}>
         {workHeader(
-          "Comments",
+          "Talkback · Comments",
           comments.length ? String(comments.length) : null,
         )}
         {commentsSection}
@@ -996,7 +1080,12 @@ const CardEdit: React.FC<CardEditProps> = ({
           className="border-t pt-6"
           style={{ borderColor: "var(--cf-edge)" }}
         >
-          {collapsibleSection("history", "History", null, historySection)}
+          {collapsibleSection(
+            "history",
+            "Recording log · History",
+            null,
+            historySection,
+          )}
         </div>
       )}
     </div>
@@ -1004,8 +1093,7 @@ const CardEdit: React.FC<CardEditProps> = ({
 
   return (
     <div
-      style={tagTintStyle}
-      className="aero-menu flex flex-col w-full min-h-[100svh] sm:min-h-0 sm:w-[95vw] sm:max-w-[520px] sm:h-auto sm:max-h-[90vh] lg:max-w-[1360px] lg:h-[90vh] lg:max-h-[90vh] relative transition-[background,border-color,box-shadow] duration-300"
+      className="mt-cardx aero-menu flex flex-col w-full min-h-[100svh] sm:min-h-0 sm:w-[95vw] sm:max-w-[520px] sm:h-auto sm:max-h-[90vh] lg:max-w-[1360px] lg:h-[90vh] lg:max-h-[90vh] relative transition-[background,border-color,box-shadow] duration-300"
       onClick={(e) => {
         // Clicking any inline rich-text image opens it full size.
         const t = e.target as HTMLElement;
@@ -1349,26 +1437,25 @@ const CardEdit: React.FC<CardEditProps> = ({
                readable measure, properties rail on the right. Save is in the
                header — no footer. */
             <div className="flex flex-1 min-h-0">
-              <div className="flex-1 min-w-0 overflow-y-auto px-8 pt-6 pb-10">
-                <div className="max-w-[720px] mx-auto flex flex-col gap-5">
-                  {renderTitle()}
-                  {renderDescription()}
-                  {aiPanel}
-                  <div
-                    className="border-t mt-1 pt-6"
-                    style={{ borderColor: "var(--cf-edge)" }}
-                  >
-                    {renderWork()}
+              <div className="mtx-doc flex-1 min-w-0 flex flex-col">
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                  {renderCover()}
+                  <div className="max-w-[760px] mx-auto flex flex-col gap-5 px-8 pt-5 pb-10">
+                    {renderTitle()}
+                    <div className="mtx-sh">Liner notes · Description</div>
+                    {renderDescription()}
+                    {aiPanel}
+                    <div
+                      className="border-t mt-1 pt-6"
+                      style={{ borderColor: "var(--cf-edge)" }}
+                    >
+                      {renderWork()}
+                    </div>
                   </div>
                 </div>
+                {renderSpine()}
               </div>
-              <div
-                className="w-[300px] flex-shrink-0 overflow-y-auto border-l px-5 py-2"
-                style={{
-                  borderColor: "var(--cf-edge)",
-                  background: "rgba(0,0,0,0.15)",
-                }}
-              >
+              <div className="mtx-rail w-[320px] flex-shrink-0 overflow-y-auto px-5 py-3">
                 {propertiesPanel}
               </div>
             </div>
