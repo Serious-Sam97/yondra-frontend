@@ -1363,7 +1363,7 @@ input[type="number"]:focus {
   }
 }
 
-/* ── Project page scope ─────────────────────────────────────────────────────────
+/* ── Project page scope (projects/[id]) ─────────────────────────────────────────────────────────
    :root's --cf-mono references --font-geist-mono, which next/font only defines
    on <body>, so at :root the token computes to empty and .cf-mono falls back
    to the body face. Re-declaring it here (inside <body>) resolves it properly
