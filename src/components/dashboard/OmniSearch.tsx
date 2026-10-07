@@ -24,7 +24,11 @@ type Flat =
   | { kind: "board"; id: number }
   | { kind: "card"; id: number; board_id: number };
 
-export default function OmniSearch() {
+export default function OmniSearch({
+  placeholder = "⌕  Search cards, boards, deals…",
+}: {
+  placeholder?: string;
+}) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
@@ -125,7 +129,7 @@ export default function OmniSearch() {
       <input
         ref={inputRef}
         className="yd-screen yd-search"
-        placeholder="⌕  Search cards, boards, deals…"
+        placeholder={placeholder}
         value={q}
         onChange={(e) => setQ(e.target.value)}
         onFocus={() => {

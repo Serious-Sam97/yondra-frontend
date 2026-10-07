@@ -2,113 +2,41 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import * as React from "react";
 import YondraIcon from "@/components/icons/yondra.png";
+import { TapeWindow } from "@/components/dashboard/HiFiPanels";
 import NotificationsPanel from "@/components/layout/NotificationsPanel";
 import { useSystem } from "@/contexts/SystemContext";
 import { useNotifications } from "@/hooks/useNotifications";
+import type { DashCard } from "@/interfaces/DashboardInterface";
 import type { UserSummary } from "@/interfaces/ProjectInterface";
 import { logout } from "@/lib/auth";
 import { avatarColor, initials } from "@/lib/ui";
 
-const IconDashboard = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    aria-hidden
-  >
-    <rect x="3" y="3" width="7" height="7" rx="1" />
-    <rect x="14" y="3" width="7" height="7" rx="1" />
-    <rect x="3" y="14" width="7" height="7" rx="1" />
-    <rect x="14" y="14" width="7" height="7" rx="1" />
-  </svg>
-);
-const IconProjects = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    aria-hidden
-  >
-    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-  </svg>
-);
-const IconActivity = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    aria-hidden
-  >
-    <path d="M3 12h4l2-6 4 14 2-8h6" />
-  </svg>
-);
-const IconRevenue = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    aria-hidden
-  >
-    <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
-  </svg>
-);
-// Funnel — narrowing pipeline down to the won deals.
-const IconConversion = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    aria-hidden
-  >
-    <path d="M3 4h18l-7 8v7l-4 2v-9L3 4z" />
-  </svg>
-);
-// Document with a down-arrow — export the pipeline to a file.
-const IconExport = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    aria-hidden
-  >
-    <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6z" />
-    <path d="M12 11v6M9.5 14.5 12 17l2.5-2.5" />
-  </svg>
-);
-// Circle-slash — deals that fell out of the pipeline.
-const IconLoss = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    aria-hidden
-  >
-    <circle cx="12" cy="12" r="9" />
-    <path d="M5.6 5.6l12.8 12.8" />
-  </svg>
-);
-
-/** Left rail for the dashboard home base. Absorbs the header's notifications
- *  bell + user menu (both driven by the shared useNotifications hook). */
+/** Walnut side panel of the "home hi-fi" dashboard (design/dashboard-suggestion.png).
+ *  Absorbs the header's notifications bell + user menu (both driven by the
+ *  shared useNotifications hook). */
 export default function DashboardSidebar({
   user,
   projectsCount,
   boardsCount,
+  latestProjectId,
   onNewProject,
+  nowPlaying,
+  playing = false,
+  onOpenCard,
 }: {
   user: UserSummary | null;
   projectsCount: number;
   boardsCount: number;
+  // Freshest project — the Projects entry opens its library page.
+  latestProjectId: number | null;
   onNewProject: () => void;
+  // The card on the deck right now (an in-progress one, else the next cue).
+  nowPlaying?: DashCard | null;
+  playing?: boolean;
+  onOpenCard?: (c: DashCard) => void;
 }) {
   const { notifications, unreadCount, markOneRead, markAllRead } =
     useNotifications(user?.id);
@@ -137,43 +65,61 @@ export default function DashboardSidebar({
     setNotifOpen((o) => !o);
   };
 
-  const [activeNav, setActiveNav] = React.useState<
-    "dashboard" | "projects" | "activity"
-  >("dashboard");
-  const jump = (id: string, key: "dashboard" | "projects" | "activity") => {
-    setActiveNav(key);
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-    if (id !== "yd-top") {
-      el.classList.remove("yd-flash");
-      void el.offsetWidth; // restart the animation even if it's already in view
-      el.classList.add("yd-flash");
-      window.setTimeout(() => el.classList.remove("yd-flash"), 1300);
-    }
-  };
-
   const handleLogout = async () => {
     await logout();
     setIsLogged(false);
     window.location.href = "/login";
   };
 
+  const pathname = usePathname() ?? "";
+  const navLink = (href: string | null, label: string, count?: number) => {
+    const on =
+      href != null &&
+      (href === "/dashboard" ? pathname === href : pathname.startsWith(href));
+    const body = (
+      <>
+        <i aria-hidden />
+        {label}
+        {count != null && <span>{String(count).padStart(2, "0")}</span>}
+      </>
+    );
+    // Projects has nowhere to go until the first project exists.
+    if (href == null)
+      return (
+        <span className="hf-nav off" aria-disabled="true">
+          {body}
+        </span>
+      );
+    return (
+      <Link
+        className={`hf-nav${on ? " on" : ""}`}
+        href={href}
+        aria-current={on ? "page" : undefined}
+      >
+        {body}
+      </Link>
+    );
+  };
+
   return (
-    <aside className="yd-panel yd-side">
-      <div className="yd-brand">
-        <Image src={YondraIcon} alt="Yondra" width={30} height={30} />
-        <b>YONDRA</b>
+    <aside className="hf-side">
+      <div className="hf-brand">
+        <Image src={YondraIcon} alt="Yondra" width={34} height={34} />
+        <div>
+          <b>YONDRA</b>
+          <small>HOME HI-FI · MK-VII</small>
+        </div>
         <button
           ref={bellRef}
-          className="yd-bell"
+          type="button"
+          className="hf-bell"
           aria-label="Notifications"
           onClick={openNotif}
         >
           <svg
             viewBox="0 0 24 24"
-            width={15}
-            height={15}
+            width={14}
+            height={14}
             fill="none"
             stroke="currentColor"
             strokeWidth={2}
@@ -183,7 +129,7 @@ export default function DashboardSidebar({
             <path d="M13.7 21a2 2 0 0 1-3.4 0" />
           </svg>
           {unreadCount > 0 && (
-            <span className="yd-ndot">
+            <span className="hf-ndot">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
@@ -213,56 +159,52 @@ export default function DashboardSidebar({
         )}
       </div>
 
-      <button
-        className={`yd-nav ${activeNav === "dashboard" ? "on" : ""}`}
-        type="button"
-        onClick={() => jump("yd-top", "dashboard")}
-      >
-        <IconDashboard />
-        Dashboard
-      </button>
-      <button
-        className={`yd-nav ${activeNav === "projects" ? "on" : ""}`}
-        type="button"
-        onClick={() => jump("yd-projects", "projects")}
-      >
-        <IconProjects />
-        Projects
-      </button>
-      <button
-        className={`yd-nav ${activeNav === "activity" ? "on" : ""}`}
-        type="button"
-        onClick={() => jump("yd-activity", "activity")}
-      >
-        <IconActivity />
-        Activity
-      </button>
-      <Link className="yd-nav" href="/dashboard/revenue">
-        <IconRevenue />
-        Revenue
-      </Link>
-      <Link className="yd-nav" href="/dashboard/conversion">
-        <IconConversion />
-        Conversion
-      </Link>
-      <Link className="yd-nav" href="/dashboard/export">
-        <IconExport />
-        Export
-      </Link>
-      <Link className="yd-nav" href="/dashboard/loss">
-        <IconLoss />
-        Loss
-      </Link>
+      <nav className="hf-navs">
+        {navLink("/dashboard", "Dashboard")}
+        {navLink(
+          latestProjectId != null ? `/projects/${latestProjectId}` : null,
+          "Projects",
+          projectsCount,
+        )}
+        <div className="hf-navsec">Reports</div>
+        {navLink("/dashboard/revenue", "Revenue")}
+        {navLink("/dashboard/conversion", "Conversion")}
+        {navLink("/dashboard/loss", "Loss")}
+        {navLink("/dashboard/export", "Export")}
+      </nav>
 
-      <div className="yd-sp" />
+      {nowPlaying && (
+        <button
+          type="button"
+          className={`hf-np${playing ? " on" : ""}`}
+          onClick={() => onOpenCard?.(nowPlaying)}
+        >
+          <span className="h">
+            <i aria-hidden />
+            {playing ? "Now playing" : "Next up"}
+            <small>{nowPlaying.ticket_key}</small>
+          </span>
+          <span className="shell" aria-hidden>
+            <span className="lbl">
+              <b>{nowPlaying.name}</b>
+            </span>
+            <TapeWindow done={0.4} spin={playing} className="win" />
+          </span>
+          <span className="sub">
+            {[nowPlaying.board_name, nowPlaying.section]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+        </button>
+      )}
 
-      <button className="yd-newbtn" type="button" onClick={onNewProject}>
+      <button className="hf-newp" type="button" onClick={onNewProject}>
         + New project
       </button>
 
-      <div className="yd-userwrap">
+      <div className="hf-mewrap">
         {menuOpen && (
-          <div className="yd-usermenu">
+          <div className="hf-usermenu">
             <button
               type="button"
               onClick={() => {
@@ -272,61 +214,34 @@ export default function DashboardSidebar({
             >
               Profile
             </button>
-            <button
-              type="button"
-              onClick={handleLogout}
-              style={{
-                color: "var(--yd-red)",
-                borderTop: "1px solid var(--yd-edge)",
-              }}
-            >
+            <button type="button" className="out" onClick={handleLogout}>
               Logout
             </button>
           </div>
         )}
         <button
-          className="yd-userchip"
+          className="hf-me"
           type="button"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
           onClick={() => {
             setNotifOpen(false);
             setMenuOpen((o) => !o);
           }}
         >
           <span
-            className="yd-ava"
-            style={{ background: user ? avatarColor(user.id) : "#888" }}
+            className="hf-av"
+            style={{ backgroundColor: user ? avatarColor(user.id) : "#8a7356" }}
           >
             {user ? initials(user.name) : "?"}
           </span>
-          <div style={{ minWidth: 0 }}>
-            <div
-              style={{
-                fontSize: 13,
-                color: "#e7e2d4",
-                fontWeight: 700,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {user?.name ?? "…"}
-            </div>
-            <div className="yd-label" style={{ letterSpacing: ".02em" }}>
-              {projectsCount} proj · {boardsCount} brd
-            </div>
-          </div>
-          <svg
-            className="yd-cv"
-            width={14}
-            height={14}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            aria-hidden
-          >
-            <path d="M6 9l6 6 6-6" />
-          </svg>
+          <span className="who">
+            <b>{user?.name ?? "…"}</b>
+            <small>
+              {projectsCount} box set{projectsCount === 1 ? "" : "s"} ·{" "}
+              {boardsCount} tape{boardsCount === 1 ? "" : "s"}
+            </small>
+          </span>
         </button>
       </div>
     </aside>

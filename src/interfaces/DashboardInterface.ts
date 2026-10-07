@@ -29,6 +29,8 @@ export interface DashCard {
   story_points: number | null;
   value: number | null;
   ticket_key: string;
+  // Non-empty when the card is jammed (blocked) — the JAM sticker.
+  blocked_reason?: string | null;
 }
 
 export interface DashQueue {
@@ -111,6 +113,8 @@ export interface DashProjectMeta {
 export interface DashboardPayload {
   vitals: DashVitals;
   queue: DashQueue;
+  // Every open card assigned to me: overdue first, then by due date (max 8).
+  deck: DashCard[];
   throughput: number[];
   sprint: DashSprint | null;
   crm: DashCrm | null;
