@@ -172,8 +172,6 @@ export const Section = memo(function Section({
   }, [index, id]);
   const rail = useMemo(() => railArt(color), [color]);
 
-
-
   const lit = wipLimit
     ? Math.round(Math.min(count / wipLimit, 1.25) * VU_SEGMENTS * 0.8)
     : 0;
@@ -198,6 +196,11 @@ export const Section = memo(function Section({
     <section
       className={`mt-rack${shaking ? " wip-shake" : ""}`}
       style={{ "--st": color } as React.CSSProperties}
+      data-vx-rack={id}
+      data-vx-count={count}
+      data-vx-limit={wipLimit ?? undefined}
+      data-vx-over={overLimit ? "1" : undefined}
+      data-vx-done={isDone ? "1" : undefined}
       aria-label={`${name}, ${count} card${count === 1 ? "" : "s"}`}
     >
       <SvgArt className="mt-rail-art" svg={rail} aria-hidden />
@@ -316,7 +319,11 @@ export const Section = memo(function Section({
             </button>
           </div>
         ) : wipLimit != null ? (
-          <div className="mt-vu" title={`${count} of ${wipLimit} WIP`}>
+          <div
+            className="mt-vu"
+            title={`${count} of ${wipLimit} WIP`}
+            data-vx-vu
+          >
             <span>
               WIP {count}/{wipLimit}
             </span>

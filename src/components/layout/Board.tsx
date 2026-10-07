@@ -62,6 +62,7 @@ import type {
 } from "@/interfaces/BoardInterface";
 import type { CardInterface } from "@/interfaces/CardInterface";
 import type { TagInterface } from "@/interfaces/TagInterface";
+import { emitVortex, isOverVortex, subscribeVortex } from "@/lib/vortexBus";
 import {
   ApiError,
   createCard,
@@ -771,8 +772,11 @@ export function Board({
 
   // Stable identity — handed to every memoized Section (and the other views).
   const handleClick = useCallback(
-    (card: CardInterface) => openCard(card),
-    [openCard],
+    (card: CardInterface) => {
+      emitVortex({ type: "card.opened", boardId: Number(id), cardId: card.id });
+      openCard(card);
+    },
+    [openCard, id],
   );
 
   // Persist a manager-edited roadmap flowchart. Optimistically updates local
@@ -817,28 +821,39 @@ export function Board({
         demoUpdateCard(demoId, cardId as number, { section_id: toSectionId });
         return;
       }
-      reorderCards(id, toSectionId, orderedIds).catch((e) => {
-        if (
-          handleLossGate(
-            e,
-            (reason) =>
-              reorderCards(id, toSectionId, orderedIds, reason).catch(() => {
-                setCards(snapshot);
-                reportSyncError("Move failed — change reverted");
-              }),
-            () => setCards(snapshot),
-          )
+      reorderCards(id, toSectionId, orderedIds)
+        .then(() =>
+          emitVortex({
+            type: "card.moved",
+            boardId: Number(id),
+            cardId,
+            fromSectionId: card.section_id,
+            toSectionId,
+            done: destIsDone,
+          }),
         )
-          return;
-        setCards(snapshot);
-        if (e instanceof ApiError && e.status === 422) {
-          reportSyncError(
-            "Quality gate: card has tests that failed or were not run — move to Done blocked",
-          );
-        } else {
-          reportSyncError("Move failed — change reverted");
-        }
-      });
+        .catch((e) => {
+          if (
+            handleLossGate(
+              e,
+              (reason) =>
+                reorderCards(id, toSectionId, orderedIds, reason).catch(() => {
+                  setCards(snapshot);
+                  reportSyncError("Move failed — change reverted");
+                }),
+              () => setCards(snapshot),
+            )
+          )
+            return;
+          setCards(snapshot);
+          if (e instanceof ApiError && e.status === 422) {
+            reportSyncError(
+              "Quality gate: card has tests that failed or were not run — move to Done blocked",
+            );
+          } else {
+            reportSyncError("Move failed — change reverted");
+          }
+        });
     },
     [
       cardsProp,
@@ -1110,6 +1125,34 @@ export function Board({
               contact: card.contact,
               blocked_reason: card.blocked_reason,
             });
+        // Tell Vortex what changed (jams and column moves made in the editor).
+        const before = cardsProp.find((c) => c.id === card.id);
+        if (before && saved) {
+          const wasJammed = !!before.blocked_reason?.trim();
+          const isJammed = !!card.blocked_reason?.trim();
+          if (!wasJammed && isJammed)
+            emitVortex({
+              type: "card.jammed",
+              boardId: Number(id),
+              cardId: card.id,
+              reason: card.blocked_reason ?? "",
+            });
+          else if (wasJammed && !isJammed)
+            emitVortex({
+              type: "card.unjammed",
+              boardId: Number(id),
+              cardId: card.id,
+            });
+          if (before.section_id !== card.section_id)
+            emitVortex({
+              type: "card.moved",
+              boardId: Number(id),
+              cardId: card.id,
+              fromSectionId: before.section_id,
+              toSectionId: card.section_id,
+              done: card.section_id === doneSection?.id,
+            });
+        }
         // demoUpdateCard returns null when the card is gone — keep the row as-is
         // instead of replacing it with a husk that has no id/name.
         setCards((prev) =>
@@ -1222,6 +1265,53 @@ export function Board({
     reportSyncError,
   });
 
+  // Vortex asks the board to archive (via the normal confirm modal) or to shelve a
+  // card he was fed into the backlog. Requests for other boards are ignored.
+  useEffect(
+    () =>
+      subscribeVortex((e) => {
+        if (
+          (e.type !== "vortex.archive" &&
+            e.type !== "vortex.backlog" &&
+            e.type !== "vortex.open" &&
+            e.type !== "vortex.postpone") ||
+          e.boardId !== Number(id)
+        )
+          return;
+        const card = cardsProp.find((c) => String(c.id) === String(e.cardId));
+        if (!card) return;
+        // opening is read-only; archiving and shelving need write access
+        if (e.type === "vortex.open") openCard(card);
+        else if (isReadOnly) return;
+        else if (e.type === "vortex.archive") setCardToDelete(card);
+        else if (e.type === "vortex.postpone" && card.due_date && !isDemo) {
+          // the signed contract: due date + N days, through the normal update API
+          const d = new Date(`${card.due_date.slice(0, 10)}T00:00:00`);
+          d.setDate(d.getDate() + e.days);
+          const due = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+          updateCard(id, card.id, { due_date: due })
+            .then((saved) =>
+              setCards((prev) =>
+                prev.map((c) =>
+                  c.id === card.id && saved
+                    ? { ...c, due_date: saved.due_date }
+                    : c,
+                ),
+              ),
+            )
+            .catch(() => reportSyncError("Could not postpone the card"));
+        } else if (backlogSection) handleMoveCard(card.id, backlogSection.id);
+      }),
+    [
+      id,
+      isReadOnly,
+      cardsProp,
+      setCardToDelete,
+      backlogSection,
+      handleMoveCard,
+    ],
+  );
+
   // --- Keyboard shortcuts (Cmd/Ctrl+K, "C" to create) ---
   useBoardHotkeys({
     isReadOnly,
@@ -1333,6 +1423,7 @@ export function Board({
     lastOverIdRef.current = null;
     lastCrossMoveAtRef.current = 0;
     setActiveCard(cardsProp.find((c) => c.id === cardId) ?? null);
+    emitVortex({ type: "drag.start", cardId });
     playPickup();
     hapticPick();
   }
@@ -1396,6 +1487,7 @@ export function Board({
     resetTilt();
     isDraggingRef.current = false;
     flushPendingBoardEvents();
+    emitVortex({ type: "drag.end" });
   }
 
   // Deck "⋯" menu: the board tools that used to float in the side dock.
@@ -2151,6 +2243,21 @@ export function Board({
     resetTilt();
     try {
       const { active, over } = event;
+      // Dropped onto Vortex ("feed the void"): put the card back where it was and
+      // let him offer what to do with it — nothing moves unless the user picks.
+      if (
+        isOverVortex(lastPointerRef.current.x, lastPointerRef.current.y) &&
+        !isReadOnly
+      ) {
+        if (dragStartCardsRef.current) setCards(dragStartCardsRef.current);
+        emitVortex({
+          type: "card.fed",
+          boardId: Number(id),
+          cardId: Number(String(active.id).split("-")[1]),
+          hasBacklog: !!backlogSection,
+        });
+        return;
+      }
       // Dropped outside any column → undo the cross-column preview from handleDragOver.
       if (!over) {
         if (dragStartCardsRef.current) setCards(dragStartCardsRef.current);
@@ -2241,32 +2348,45 @@ export function Board({
         demoUpdateCard(demoId, activeCardId, { section_id: destSection });
         return;
       }
-      reorderCards(id, destSection, orderedIds).catch((e) => {
-        if (
-          handleLossGate(
-            e,
-            (reason) =>
-              reorderCards(id, destSection, orderedIds, reason).catch(() => {
-                setCards(snapshot);
-                reportSyncError("Move failed — change reverted");
-              }),
-            () => setCards(snapshot),
+      reorderCards(id, destSection, orderedIds)
+        .then(() => {
+          if (originalSection !== destSection)
+            emitVortex({
+              type: "card.moved",
+              boardId: Number(id),
+              cardId: activeCardId,
+              fromSectionId: originalSection,
+              toSectionId: destSection,
+              done: destIsDone,
+            });
+        })
+        .catch((e) => {
+          if (
+            handleLossGate(
+              e,
+              (reason) =>
+                reorderCards(id, destSection, orderedIds, reason).catch(() => {
+                  setCards(snapshot);
+                  reportSyncError("Move failed — change reverted");
+                }),
+              () => setCards(snapshot),
+            )
           )
-        )
-          return;
-        setCards(snapshot);
-        if (e instanceof ApiError && e.status === 422) {
-          reportSyncError(
-            "Quality gate: card has tests that failed or were not run — move to Done blocked",
-          );
-        } else {
-          reportSyncError("Reorder failed — change reverted");
-        }
-      });
+            return;
+          setCards(snapshot);
+          if (e instanceof ApiError && e.status === 422) {
+            reportSyncError(
+              "Quality gate: card has tests that failed or were not run — move to Done blocked",
+            );
+          } else {
+            reportSyncError("Reorder failed — change reverted");
+          }
+        });
     } finally {
       // Drag is over: unfreeze and replay any realtime events that arrived meanwhile.
       isDraggingRef.current = false;
       flushPendingBoardEvents();
+      emitVortex({ type: "drag.end" });
     }
   }
 }

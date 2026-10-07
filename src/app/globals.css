@@ -1491,16 +1491,42 @@ input[type="number"]:focus {
   height: 1px;
   background: rgba(0, 0, 0, 0.65);
 }
-.cs-screw.s1 { left: 4px; top: 4px; }
-.cs-screw.s2 { right: 4px; top: 4px; }
-.cs-screw.s3 { left: 4px; bottom: 4px; }
-.cs-screw.s4 { right: 4px; bottom: 4px; }
-.cs-screw.s5 { left: 50%; bottom: 5px; margin-left: -4px; }
-.cs-screw.s1::after { transform: rotate(30deg); }
-.cs-screw.s2::after { transform: rotate(-50deg); }
-.cs-screw.s3::after { transform: rotate(80deg); }
-.cs-screw.s4::after { transform: rotate(10deg); }
-.cs-screw.s5::after { transform: rotate(-20deg); }
+.cs-screw.s1 {
+  left: 4px;
+  top: 4px;
+}
+.cs-screw.s2 {
+  right: 4px;
+  top: 4px;
+}
+.cs-screw.s3 {
+  left: 4px;
+  bottom: 4px;
+}
+.cs-screw.s4 {
+  right: 4px;
+  bottom: 4px;
+}
+.cs-screw.s5 {
+  left: 50%;
+  bottom: 5px;
+  margin-left: -4px;
+}
+.cs-screw.s1::after {
+  transform: rotate(30deg);
+}
+.cs-screw.s2::after {
+  transform: rotate(-50deg);
+}
+.cs-screw.s3::after {
+  transform: rotate(80deg);
+}
+.cs-screw.s4::after {
+  transform: rotate(10deg);
+}
+.cs-screw.s5::after {
+  transform: rotate(-20deg);
+}
 
 .cs-paper {
   position: relative;
@@ -1721,7 +1747,11 @@ input[type="number"]:focus {
   top: 0;
   bottom: 0;
   clip-path: polygon(4% 0, 96% 0, 100% 100%, 0 100%);
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.14));
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.32),
+    rgba(0, 0, 0, 0.14)
+  );
   border-radius: 0 0 6px 6px;
 }
 .cs-hole {
@@ -1735,8 +1765,12 @@ input[type="number"]:focus {
     inset 0 2px 3px #000,
     0 1px 0 rgba(255, 255, 255, 0.1);
 }
-.cs-hole.l { left: 27px; }
-.cs-hole.r { right: 27px; }
+.cs-hole.l {
+  left: 27px;
+}
+.cs-hole.r {
+  right: 27px;
+}
 .cs-flow {
   position: relative;
   flex: 1;
@@ -1767,8 +1801,12 @@ input[type="number"]:focus {
   background: var(--cf-amber);
   box-shadow: 0 0 5px rgba(255, 176, 0, 0.5);
 }
-.cs-fbar i.todo { background: #55594f; }
-.cs-fbar i.empty { background: #24261f; }
+.cs-fbar i.todo {
+  background: #55594f;
+}
+.cs-fbar i.empty {
+  background: #24261f;
+}
 .cs-fnum {
   display: flex;
   gap: 11px;
@@ -1789,9 +1827,15 @@ input[type="number"]:focus {
   border-radius: 1px;
   background: currentColor;
 }
-.cs-fnum .done { color: var(--cf-phosphor); }
-.cs-fnum .doing { color: var(--cf-amber); }
-.cs-fnum .todo { color: #8a8f80; }
+.cs-fnum .done {
+  color: var(--cf-phosphor);
+}
+.cs-fnum .doing {
+  color: var(--cf-amber);
+}
+.cs-fnum .todo {
+  color: #8a8f80;
+}
 .cs-crew {
   position: relative;
   padding-right: 14px;
@@ -1816,7 +1860,11 @@ input[type="number"]:focus {
   height: 38px;
   transform: translateY(-50%);
   border-radius: 0 3px 3px 0;
-  background: repeating-linear-gradient(to bottom, var(--cf-amber) 0 2px, transparent 2px 5px);
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--cf-amber) 0 2px,
+    transparent 2px 5px
+  );
   opacity: 0.9;
 }
 .cs-editbadge {
@@ -1889,8 +1937,12 @@ input[type="number"]:focus {
   border-radius: 50%;
   border: 2px dashed var(--cf-edge);
 }
-.cs-blank span:first-child { left: 24px; }
-.cs-blank span:last-child { right: 24px; }
+.cs-blank span:first-child {
+  left: 24px;
+}
+.cs-blank span:last-child {
+  right: 24px;
+}
 
 /* List view: the tape edge-on, as a spine row. */
 .cs-row {
@@ -1931,7 +1983,11 @@ input[type="number"]:focus {
   align-self: stretch;
   width: 12px;
   flex-shrink: 0;
-  background: linear-gradient(to right, color-mix(in srgb, var(--ac) 70%, #000), var(--ac));
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--ac) 70%, #000),
+    var(--ac)
+  );
   box-shadow: 0 0 12px color-mix(in srgb, var(--ac) 60%, transparent);
 }
 .cs-row-label {
@@ -2035,8 +2091,11 @@ input[type="number"]:focus {
   border-radius: 14px;
   border: 1.5px solid #0f0e0b;
   background:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 3px),
-    linear-gradient(to bottom, #3a3832, #2a2823 60%, #25231e);
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.012) 0 1px,
+      transparent 1px 3px
+    ), linear-gradient(to bottom, #3a3832, #2a2823 60%, #25231e);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
     inset 0 -3px 8px rgba(0, 0, 0, 0.45),
@@ -2172,9 +2231,28 @@ input[type="number"]:focus {
   width: 14px;
   height: 7px;
   border-radius: 7px 7px 0 0;
-  background: linear-gradient(to bottom, #ffc23d, var(--cf-red) 55%, var(--cf-magenta));
-  -webkit-mask-image: linear-gradient(to bottom, #000 0 2px, transparent 2px 3px, #000 3px 4.5px, transparent 4.5px 5.5px, #000 5.5px);
-  mask-image: linear-gradient(to bottom, #000 0 2px, transparent 2px 3px, #000 3px 4.5px, transparent 4.5px 5.5px, #000 5.5px);
+  background: linear-gradient(
+    to bottom,
+    #ffc23d,
+    var(--cf-red) 55%,
+    var(--cf-magenta)
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0 2px,
+    transparent 2px 3px,
+    #000 3px 4.5px,
+    transparent 4.5px 5.5px,
+    #000 5.5px
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0 2px,
+    transparent 2px 3px,
+    #000 3px 4.5px,
+    transparent 4.5px 5.5px,
+    #000 5.5px
+  );
   opacity: 0.85;
   box-shadow: 0 0 8px rgba(255, 111, 216, 0.5);
 }
@@ -2209,10 +2287,17 @@ input[type="number"]:focus {
   pointer-events: none;
 }
 .ds-screen::before {
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.05), transparent 40%);
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.05),
+    transparent 40%
+  );
 }
 .ds-screen::after {
-  background: repeating-linear-gradient(rgba(0, 0, 0, 0.28) 0 1px, transparent 1px 3px);
+  background: repeating-linear-gradient(
+    rgba(0, 0, 0, 0.28) 0 1px,
+    transparent 1px 3px
+  );
 }
 @media (max-width: 1279px) {
   .ds-screen,
@@ -2369,9 +2454,15 @@ input[type="number"]:focus {
   background: currentColor;
   box-shadow: 0 0 5px currentColor;
 }
-.ds-legend .done { color: var(--cf-phosphor); }
-.ds-legend .doing { color: var(--cf-amber); }
-.ds-legend .todo { color: #8a8f80; }
+.ds-legend .done {
+  color: var(--cf-phosphor);
+}
+.ds-legend .doing {
+  color: var(--cf-amber);
+}
+.ds-legend .todo {
+  color: #8a8f80;
+}
 .ds-spark {
   display: flex;
   align-items: flex-end;
@@ -2608,7 +2699,11 @@ input[type="number"]:focus {
   margin: 2px 10px 0;
   padding: 10px;
   border-radius: 10px;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.26), rgba(0, 0, 0, 0.12));
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.26),
+    rgba(0, 0, 0, 0.12)
+  );
   box-shadow:
     inset 0 2px 6px rgba(0, 0, 0, 0.55),
     0 1px 0 rgba(255, 255, 255, 0.05);
@@ -2998,7 +3093,11 @@ input[type="number"]:focus {
   margin: 0 10px 10px;
   padding: 10px;
   border-radius: 10px;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.16));
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.3),
+    rgba(0, 0, 0, 0.16)
+  );
   box-shadow:
     inset 0 2px 6px rgba(0, 0, 0, 0.6),
     0 1px 0 rgba(255, 255, 255, 0.05);
@@ -3441,8 +3540,7 @@ input[type="number"]:focus {
       90deg,
       rgba(255, 255, 255, 0.012) 0 1px,
       transparent 1px 3px
-    ),
-    rgba(18, 13, 10, 0.9);
+    ), rgba(18, 13, 10, 0.9);
   border: 1px solid rgba(255, 220, 170, 0.08);
   border-radius: 14px;
   box-shadow:
@@ -3474,8 +3572,11 @@ input[type="number"]:focus {
   width: 13px;
   border-radius: 5px;
   background:
-    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.2) 0 1px, transparent 1px 6px),
-    linear-gradient(90deg, #5a3a22, #7a5134);
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.2) 0 1px,
+      transparent 1px 6px
+    ), linear-gradient(90deg, #5a3a22, #7a5134);
   border: 1px solid #2a1c12;
 }
 .ydc-ear.l {
@@ -3649,8 +3750,7 @@ input[type="number"]:focus {
       120% 120% at 50% 120%,
       rgba(255, 150, 60, 0.16),
       transparent 60%
-    ),
-    #120d09;
+    ), #120d09;
   border-radius: 7px;
   cursor: pointer;
   box-shadow:
@@ -3669,8 +3769,7 @@ input[type="number"]:focus {
       0deg,
       transparent 0 2px,
       rgba(0, 0, 0, 0.25) 2px 3px
-    ),
-    linear-gradient(165deg, rgba(255, 255, 255, 0.07), transparent 35%);
+    ), linear-gradient(165deg, rgba(255, 255, 255, 0.07), transparent 35%);
 }
 .ydc-scope canvas {
   position: absolute;
@@ -6558,29 +6657,63 @@ emoji-picker.cm-emoji-picker {
    the corner with a paper speech bubble — deliberately toy-like against the
    synthwave chrome, like a sticker on a rack unit. Hidden on small screens. */
 @keyframes vxa-bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
 }
 @keyframes vxa-glow-pulse {
-  0%, 100% { opacity: 0.45; transform: scale(1); }
-  50% { opacity: 0.8; transform: scale(1.12); }
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.12);
+  }
 }
 @keyframes vxa-blink {
-  0%, 92%, 100% { transform: scaleY(1); }
-  96% { transform: scaleY(0.08); }
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.08);
+  }
 }
 @keyframes vxa-swirl-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 @keyframes vxa-bounce-in {
-  0% { transform: scale(0.6); opacity: 0; }
-  60% { transform: scale(1.05); }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 @keyframes vxa-pop {
-  0% { transform: scale(1); }
-  40% { transform: scale(1.16) rotate(-4deg); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.16) rotate(-4deg);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .vxa-layer {
@@ -6595,7 +6728,9 @@ emoji-picker.cm-emoji-picker {
   pointer-events: none;
 }
 @media (max-width: 639px) {
-  .vxa-layer { display: none; }
+  .vxa-layer {
+    display: none;
+  }
 }
 
 .vxa-bubble {
@@ -6653,8 +6788,14 @@ emoji-picker.cm-emoji-picker {
   box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2);
   cursor: pointer;
 }
-.vxa-btn:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.2); }
-.vxa-btn:disabled { opacity: 0.5; cursor: default; }
+.vxa-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.2);
+}
+.vxa-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 .vxa-link {
   font-size: 12px;
   background: none;
@@ -6664,13 +6805,15 @@ emoji-picker.cm-emoji-picker {
   cursor: pointer;
   padding: 3px 2px;
 }
-.vxa-link:hover { color: #000; }
+.vxa-link:hover {
+  color: #000;
+}
 
 .vxa-sprite {
   pointer-events: auto;
   position: relative;
-  width: 84px;
-  height: 84px;
+  width: 136px;
+  height: 136px;
   cursor: pointer;
   animation: vxa-bob 3.4s ease-in-out infinite;
 }
@@ -6705,13 +6848,20 @@ emoji-picker.cm-emoji-picker {
   transition: opacity 0.15s;
   z-index: 2;
 }
-.vxa-sprite:hover .vxa-hide { opacity: 1; }
-.vxa-eyes {
-  transform-origin: 50px 46px;
+.vxa-sprite:hover .vxa-hide {
+  opacity: 1;
+}
+.vxa-eyesg {
+  transform-box: fill-box;
+  transform-origin: center;
   animation: vxa-blink 4.5s infinite;
 }
+.vxa-pupils {
+  transform: translate(var(--vx-lx, 0px), var(--vx-ly, 0px));
+  transition: transform 0.12s linear;
+}
 .vxa-swirl {
-  transform-origin: 50px 50px;
+  transform-origin: 70px 70px;
   animation: vxa-swirl-spin 7s linear infinite;
 }
 
@@ -6750,7 +6900,9 @@ emoji-picker.cm-emoji-picker {
   color: #555;
   cursor: pointer;
 }
-.vxa-chat-close:hover { color: #000; }
+.vxa-chat-close:hover {
+  color: #000;
+}
 .vxa-chat-log {
   flex: 1;
   min-height: 120px;
@@ -6781,7 +6933,9 @@ emoji-picker.cm-emoji-picker {
   border: 1px solid #f4b7da;
   color: #401a30;
 }
-.vxa-thinking { letter-spacing: 3px; }
+.vxa-thinking {
+  letter-spacing: 3px;
+}
 .vxa-chat-error {
   font-size: 12px;
   color: #b3261e;
@@ -6803,7 +6957,9 @@ emoji-picker.cm-emoji-picker {
   border-radius: 8px;
   outline: none;
 }
-.vxa-chat-input:focus { box-shadow: 0 0 0 2px #ff2d9544; }
+.vxa-chat-input:focus {
+  box-shadow: 0 0 0 2px #ff2d9544;
+}
 .vxa-face {
   display: block;
   width: 100%;
@@ -6824,8 +6980,8 @@ emoji-picker.cm-emoji-picker {
 }
 .vxa-dock--in {
   /* sprite is 84px wide at left:20 — shift 72px leaves a 32px sliver */
-  transform: translateX(-72px);
-  opacity: 0.75;
+  transform: translateX(-76px);
+  opacity: 0.8;
 }
 .vxa-dock--in:hover {
   opacity: 1;
@@ -6891,7 +7047,9 @@ emoji-picker.cm-emoji-picker {
   color: #a05580;
   cursor: pointer;
 }
-.vxa-mchip-x:hover { color: #401a30; }
+.vxa-mchip-x:hover {
+  color: #401a30;
+}
 .vxa-mchip--ghost {
   background: none;
   border: 1px dashed #b9b39a;
@@ -6931,8 +7089,13 @@ emoji-picker.cm-emoji-picker {
   color: #1a1a1a;
   cursor: pointer;
 }
-.vxa-picker-item:hover { background: #f2ecd4; }
-.vxa-picker-item--on .vxa-mchip-name { color: #a01a64; font-weight: 600; }
+.vxa-picker-item:hover {
+  background: #f2ecd4;
+}
+.vxa-picker-item--on .vxa-mchip-name {
+  color: #a01a64;
+  font-weight: 600;
+}
 .vxa-picker-item-state {
   margin-left: auto;
   font-size: 10px;
@@ -6957,10 +7120,871 @@ emoji-picker.cm-emoji-picker {
   border: 1px dashed #b895e0;
   color: #2c1a40;
 }
-.vxa-action-desc { line-height: 1.45; }
+.vxa-action-desc {
+  line-height: 1.45;
+}
 .vxa-action-state {
   margin-top: 5px;
   font-size: 11px;
   letter-spacing: 0.04em;
   color: #7b5ea3;
+}
+
+/* ── Vortex MK-II: movement, moods and stage effects ─────────────────────── */
+.vxa-layer {
+  transition: transform var(--vx-dur, 0ms) cubic-bezier(0.45, 0, 0.25, 1);
+  will-change: transform;
+}
+.vxa-body,
+.vxa-body svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.vxa-face {
+  cursor: grab;
+  touch-action: none;
+}
+.vxa-dragging .vxa-face {
+  cursor: grabbing;
+}
+.vxa-dragging .vxa-sprite,
+.vxa-traveling .vxa-sprite {
+  animation: none;
+}
+.vxa-flip .vxa-body svg {
+  transform: scaleX(-1);
+}
+.vxa-traveling .vxa-body {
+  animation: vxa-fly 0.42s ease-in-out infinite alternate;
+}
+.vxa-dragging .vxa-body {
+  transform: scale(1.08) rotate(-6deg);
+  filter: drop-shadow(0 14px 14px rgba(0, 0, 0, 0.45));
+}
+.vxa-mood-dizzy .vxa-body {
+  animation: vxa-dizzy 0.8s ease-in-out 3;
+}
+.vxa-stars {
+  transform-origin: 70px 26px;
+  animation: vxa-swirl-spin 1.2s linear infinite;
+}
+.vxa-mood-hungry .vxa-body {
+  animation: vxa-chomp 0.32s ease-in-out 4;
+}
+.vxa-mood-happy .vxa-body {
+  animation: vxa-hop 0.5s ease-out 3;
+}
+.vxa-orbit {
+  transform-origin: 70px 70px;
+  animation: vxa-swirl-spin 14s linear infinite reverse;
+}
+@keyframes vxa-fly {
+  from {
+    transform: rotate(-7deg) scale(1.02, 0.97);
+  }
+  to {
+    transform: rotate(5deg) scale(0.97, 1.03) translateY(-6px);
+  }
+}
+@keyframes vxa-dizzy {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  25% {
+    transform: rotate(-16deg);
+  }
+  75% {
+    transform: rotate(16deg);
+  }
+}
+@keyframes vxa-chomp {
+  50% {
+    transform: scale(1.06, 0.92);
+  }
+}
+@keyframes vxa-hop {
+  40% {
+    transform: translateY(-16px) scale(0.96, 1.05);
+  }
+}
+
+/* the hide dot sits on his body, not the corner of the (bigger) sprite box */
+.vxa-hide {
+  top: 30px;
+  right: 30px;
+}
+
+/* near the right edge: bubble and chat hang left of him (sprite is 136px) */
+.vxa-right .vxa-bubble {
+  margin-left: -114px;
+}
+.vxa-right .vxa-bubble::after {
+  left: auto;
+  right: 56px;
+}
+.vxa-right .vxa-chat {
+  margin-left: -184px;
+}
+
+/* stage effects (vortexEffects.ts) — a fixed overlay just under his layer */
+.vxa-fx {
+  position: fixed;
+  inset: 0;
+  z-index: 44;
+  pointer-events: none;
+  overflow: hidden;
+}
+.vxa-ghost {
+  position: absolute;
+  margin: 0;
+  pointer-events: none;
+  transform-origin: center;
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.5));
+}
+.mt-jx.vxa-eaten {
+  opacity: 0.16;
+  filter: grayscale(0.8) blur(0.6px);
+  transition:
+    opacity 0.45s ease,
+    filter 0.45s ease;
+}
+.vxa-crumb {
+  position: absolute;
+  width: 6px;
+  height: 4px;
+  border-radius: 1px;
+  background: #efe3c4;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.vxa-confetti {
+  position: absolute;
+  width: 4px;
+  height: 10px;
+  border-radius: 1px;
+}
+.vxa-tape {
+  position: absolute;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: repeating-linear-gradient(135deg, #ffcf3a 0 12px, #111 12px 24px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5);
+  transform: rotate(var(--rot, 0deg));
+  animation: vxa-tape-in 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+}
+.vxa-tape span {
+  padding: 1px 8px;
+  background: #ffcf3a;
+  color: #111;
+  font-family: "Share Tech Mono", ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  white-space: nowrap;
+}
+@keyframes vxa-tape-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+.vxa-stomped {
+  animation: vxa-stomp 0.18s ease-in-out 6;
+}
+@keyframes vxa-stomp {
+  50% {
+    transform: translateY(2px) scaleY(0.9);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vxa-layer {
+    transition: none;
+  }
+  .vxa-traveling .vxa-body,
+  .vxa-mood-dizzy .vxa-body,
+  .vxa-mood-hungry .vxa-body,
+  .vxa-mood-happy .vxa-body,
+  .vxa-orbit,
+  .vxa-stars,
+  .vxa-swirl,
+  .vxa-eyesg,
+  .vxa-stomped,
+  .vxa-tape {
+    animation: none;
+  }
+}
+
+/* ── Vortex phases 2–4: head games, rituals, secrets (vortexPranks.ts) ───── */
+.vxa-ghostcursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0.55;
+  filter: drop-shadow(0 0 6px rgba(255, 45, 149, 0.6));
+  transition: opacity 0.6s;
+}
+.vxa-ghostcursor.bye {
+  opacity: 0;
+  transform-origin: 0 0;
+}
+.vxa-dark {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    120% 90% at 50% 50%,
+    rgba(20, 0, 30, 0.35),
+    rgba(4, 0, 8, 0.88)
+  );
+  animation: vxa-dark-in 3s ease both;
+}
+.vxa-dark.flee {
+  animation: vxa-dark-out 0.9s ease both;
+}
+@keyframes vxa-dark-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes vxa-dark-out {
+  to {
+    opacity: 0;
+  }
+}
+.vxa-eye {
+  position: absolute;
+  display: flex;
+  gap: 4px;
+  transform: scale(var(--s, 1));
+  filter: drop-shadow(0 0 6px rgba(255, 45, 149, 0.7));
+  animation: vxa-eye-open 0.6s ease both var(--d, 0s);
+}
+.vxa-eye::before,
+.vxa-eye::after {
+  content: "";
+  width: 9px;
+  height: 11px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 58% 60%, #1a0033 0 2.4px, #fff 2.8px);
+  animation: vxa-blink 5s infinite var(--d, 0s);
+}
+.vxa-dark.flee .vxa-eye {
+  animation: vxa-eye-flee 0.5s ease-in both calc(var(--d, 0s) / 6);
+}
+@keyframes vxa-eye-open {
+  from {
+    opacity: 0;
+    transform: scale(var(--s, 1)) scaleY(0.1);
+  }
+}
+@keyframes vxa-eye-flee {
+  to {
+    opacity: 0;
+    transform: scale(0.2) translateY(-20px);
+  }
+}
+.vxa-glitch {
+  color: #ff5a8a !important;
+  text-shadow:
+    -2px 0 #ff2d95,
+    2px 0 #00e5d0 !important;
+}
+.vxa-screw {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.vxa-screw i {
+  display: block;
+  border-radius: 50%;
+}
+.hf-pn.vxa-screw-out::after {
+  background:
+    var(--screw) right top / 8px 8px no-repeat,
+    var(--screw) left bottom / 8px 8px no-repeat,
+    var(--screw) right bottom / 8px 8px no-repeat;
+}
+.vxa-possess {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    repeating-linear-gradient(rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px),
+    radial-gradient(
+      120% 100% at 50% 50%,
+      rgba(255, 20, 20, 0.12),
+      rgba(90, 0, 0, 0.45)
+    );
+  mix-blend-mode: multiply;
+  animation: vxa-dark-in 0.8s ease both;
+}
+.vxa-possess.out {
+  animation: vxa-dark-out 0.9s ease both;
+}
+.vxa-possess .bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 70px;
+  background: linear-gradient(
+    transparent,
+    rgba(255, 60, 60, 0.18) 40%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent
+  );
+  animation: vxa-track 4.5s linear infinite;
+}
+@keyframes vxa-track {
+  from {
+    top: -80px;
+  }
+  to {
+    top: 100%;
+  }
+}
+.vxa-wisp {
+  position: absolute;
+  padding: 3px 10px 9px;
+  border-radius: 999px 999px 40% 40%;
+  font-family: "Share Tech Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: #fff;
+  background: radial-gradient(
+    120% 100% at 50% 20%,
+    rgba(255, 255, 255, 0.28),
+    rgba(200, 160, 255, 0.12)
+  );
+  box-shadow: 0 0 18px rgba(255, 45, 149, 0.45);
+  text-shadow: 0 0 6px rgba(255, 45, 149, 0.9);
+  white-space: nowrap;
+}
+.vxa-spin .vxa-body {
+  animation: vxa-swirl-spin 0.9s cubic-bezier(0.5, 0, 0.3, 1);
+}
+.mt-jx .mt-web {
+  position: absolute;
+  left: -2px;
+  top: -2px;
+  width: 92px;
+  height: 92px;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0.8;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 90'%3E%3Cg stroke='%23f4ecd8' stroke-width='.8' fill='none'%3E%3Cpath d='M0 0 L86 30 M0 0 L60 60 M0 0 L30 86'/%3E%3Cpath d='M22 7 Q20 20 7 22 M44 15 Q38 38 15 44 M64 22 Q55 55 22 64 M80 28 Q70 70 28 80'/%3E%3C/g%3E%3Cpath d='M58 49 V30' stroke='%23f4ecd8' stroke-width='.5'/%3E%3Ccircle cx='58' cy='52' r='3' fill='%232b2219'/%3E%3C/svg%3E")
+    no-repeat;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
+}
+@media (prefers-reduced-motion: reduce) {
+  .vxa-dark,
+  .vxa-eye,
+  .vxa-eye::before,
+  .vxa-eye::after,
+  .vxa-possess,
+  .vxa-possess .bar,
+  .vxa-spin .vxa-body {
+    animation: none;
+  }
+}
+
+/* ── Vortex MK-III: body animation, lip-sync, portals, trail ─────────────── */
+/* breathing at rest (lowest specificity: any mood/travel animation wins) */
+.vxa-body {
+  animation: vxa-breathe 4.2s ease-in-out infinite;
+  transform-origin: 50% 70%;
+}
+@keyframes vxa-breathe {
+  50% {
+    transform: scale(1.025, 0.985);
+  }
+}
+.vxa-launch .vxa-body {
+  animation: vxa-launch 0.26s ease-out;
+}
+.vxa-land .vxa-body {
+  animation: vxa-land 0.52s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+@keyframes vxa-launch {
+  0% {
+    transform: scale(1.12, 0.84);
+  }
+  60% {
+    transform: scale(0.86, 1.16);
+  }
+}
+@keyframes vxa-land {
+  0% {
+    transform: translateY(-10px) scale(0.88, 1.12);
+  }
+  35% {
+    transform: translateY(4px) scale(1.2, 0.8);
+  }
+  65% {
+    transform: translateY(-3px) scale(0.95, 1.05);
+  }
+}
+.vxa-startle .vxa-body {
+  animation: vxa-startle 0.6s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+@keyframes vxa-startle {
+  30% {
+    transform: translateY(-26px) scale(0.9, 1.15);
+  }
+}
+.vxa-talking .vxa-mouth {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: vxa-talk 0.14s ease-in-out infinite alternate;
+}
+@keyframes vxa-talk {
+  to {
+    transform: scale(1.1, 0.55);
+  }
+}
+.vxa-portal-in .vxa-body {
+  animation: vxa-portal-in 0.3s ease-in forwards;
+}
+.vxa-portal-out .vxa-body {
+  animation: vxa-portal-out 0.36s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+@keyframes vxa-portal-in {
+  to {
+    transform: scale(0) rotate(540deg);
+    opacity: 0;
+  }
+}
+@keyframes vxa-portal-out {
+  from {
+    transform: scale(0) rotate(-540deg);
+    opacity: 0;
+  }
+}
+.vxa-portal {
+  position: absolute;
+  width: 120px;
+  height: 46px;
+  margin: -23px 0 0 -60px;
+  border-radius: 50%;
+  border: 3px solid #ff2d95;
+  box-shadow:
+    0 0 0 3px #00e5d0,
+    0 0 26px rgba(255, 45, 149, 0.7),
+    inset 0 0 22px rgba(0, 229, 208, 0.6);
+  background: radial-gradient(ellipse at center, #080010 30%, transparent 72%);
+  animation: vxa-ring 0.9s ease-out forwards;
+}
+@keyframes vxa-ring {
+  0% {
+    transform: scale(0.1) rotate(0deg);
+    opacity: 0;
+  }
+  30% {
+    transform: scale(1) rotate(90deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.2) rotate(240deg);
+    opacity: 0;
+  }
+}
+.vxa-trail {
+  position: absolute;
+  width: 14px;
+  height: 5px;
+  margin: -2px 0 0 -7px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #3a2416, #6b4a2f);
+  box-shadow: 0 0 4px rgba(255, 45, 149, 0.35);
+  transform: rotate(var(--rot, 0deg));
+  animation: vxa-trail 0.65s ease-out forwards;
+}
+@keyframes vxa-trail {
+  to {
+    opacity: 0;
+    transform: rotate(calc(var(--rot, 0deg) + 160deg)) scale(0.3)
+      translateY(10px);
+  }
+}
+.vxa-ghosttext {
+  visibility: hidden; /* reserves the bubble's final size while it types */
+}
+.vxa-mirror > div:nth-child(2) {
+  transform: scaleX(-1);
+}
+
+/* ── head games MK-III ─────────────────────────────────────────────────── */
+.hf-tuner .in.vxa-static::before {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.06) 0 1px,
+      transparent 1px 3px
+    ),
+    radial-gradient(
+      ellipse 60% 120% at 50% 100%,
+      rgba(255, 45, 149, 0.3),
+      transparent 70%
+    );
+  animation: vxa-static 0.12s steps(2) infinite;
+}
+@keyframes vxa-static {
+  50% {
+    background-position: 0 2px;
+  }
+}
+.vxa-station {
+  position: absolute;
+  left: 50%;
+  top: 46px;
+  z-index: 3;
+  transform: translateX(-50%);
+  font-family: "VT323", monospace;
+  font-size: 18px;
+  letter-spacing: 0.1em;
+  color: #ff5fa8;
+  text-shadow:
+    0 0 8px #ff2d95,
+    -2px 0 #00e5d0;
+  white-space: nowrap;
+}
+html.vxa-nocursor,
+html.vxa-nocursor * {
+  cursor: none !important;
+}
+.vxa-pulled {
+  opacity: 1;
+  filter: none;
+}
+.vxa-twin {
+  position: fixed;
+  right: 22px;
+  bottom: 36px;
+  z-index: 45;
+  width: 120px;
+  height: 120px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  filter: hue-rotate(150deg) saturate(1.4) brightness(0.85);
+  opacity: 0.9;
+  animation: vxa-twin-in 1.2s ease both;
+}
+.vxa-twin .vxa-body {
+  animation: vxa-twin-glitch 5s steps(1) infinite;
+}
+@keyframes vxa-twin-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+@keyframes vxa-twin-glitch {
+  0%,
+  92% {
+    transform: none;
+  }
+  94% {
+    transform: translateX(-4px) skewX(8deg);
+  }
+  96% {
+    transform: translateX(3px);
+  }
+}
+.vxa-visitors {
+  position: fixed;
+  right: 14px;
+  bottom: 12px;
+  z-index: 44;
+  display: flex;
+  gap: 6px;
+  pointer-events: none;
+}
+.vxa-visitor {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  opacity: 0.55;
+  filter: saturate(0.6) drop-shadow(0 0 8px rgba(255, 45, 149, 0.5));
+  animation: vxa-bob 3.8s ease-in-out infinite;
+}
+.vxa-visitor b {
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  transform: translateX(-50%);
+  font-family: "Share Tech Mono", ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  color: #ffd6ef;
+  white-space: nowrap;
+}
+
+/* the basement: lit only by a flashlight that follows the cursor */
+.vxa-basement {
+  position: fixed;
+  inset: 0;
+  z-index: 55; /* over the sticky header (50), under the contract (70) */
+  pointer-events: auto;
+  overflow: hidden;
+  padding: 80px 60px;
+  background: #0b0710;
+  color: #e9e1c9;
+  cursor: pointer;
+  animation: vxa-dark-in 0.6s ease both;
+}
+.vxa-basement.out {
+  animation: vxa-dark-out 0.5s ease both;
+}
+.vxa-basement::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle 180px at var(--lx) var(--ly),
+    rgba(255, 230, 180, 0.08) 0,
+    transparent 45%,
+    rgba(4, 2, 8, 0.97) 100%
+  );
+}
+.vxa-basement .ttl {
+  font-family: var(--font-marker), cursive;
+  font-size: 26px;
+  color: #ff8fd4;
+  margin-bottom: 26px;
+}
+.vxa-basement .shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+.vxa-basement .tape {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 6px;
+  background: linear-gradient(#2a2420, #1a1612);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  transform: rotate(-1deg);
+}
+.vxa-basement .tape:nth-child(even) {
+  transform: rotate(1.2deg);
+}
+.vxa-basement .tape b {
+  font-family: "VT323", monospace;
+  font-size: 18px;
+  font-weight: 400;
+  color: #ffb347;
+}
+.vxa-basement .tape span {
+  font-size: 13px;
+  color: #d9cdb0;
+}
+.vxa-basement .tape small {
+  font-family: "Share Tech Mono", monospace;
+  font-size: 10px;
+  color: #8c7a5c;
+}
+.vxa-basement .hint {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  font-family: "Share Tech Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #6b5a44;
+}
+
+/* the contract with the void */
+.vxa-contract-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  background: rgba(8, 0, 16, 0.7);
+  backdrop-filter: blur(3px);
+  animation: vxa-dark-in 0.4s ease both;
+}
+.vxa-contract {
+  width: min(420px, 90vw);
+  padding: 28px 30px 24px;
+  color: #2b1d10;
+  font-family: Georgia, "Times New Roman", serif;
+  background: radial-gradient(120% 90% at 50% 0%, #f6ecd2, #e2cfa2 70%, #c9ac78);
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 2px #6b4a2f,
+    0 0 40px rgba(255, 45, 149, 0.35),
+    0 20px 50px rgba(0, 0, 0, 0.6);
+  transform: rotate(-1.2deg);
+  animation: vxa-bounce-in 0.35s cubic-bezier(0.18, 0.9, 0.3, 1.2);
+}
+.vxa-contract h3 {
+  margin: 0 0 14px;
+  font-family: var(--font-marker), cursive;
+  font-size: 24px;
+  font-weight: 400;
+  text-align: center;
+  color: #6a1a2a;
+}
+.vxa-contract p {
+  margin: 0 0 10px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.vxa-contract .fine {
+  font-size: 11px;
+  font-style: italic;
+  color: #6b5a44;
+}
+.vxa-contract .sig {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed rgba(43, 29, 16, 0.4);
+}
+.vxa-contract .sig button {
+  padding: 8px 16px;
+  font-family: var(--font-marker), cursive;
+  font-size: 15px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.vxa-contract .sign {
+  color: #fff;
+  background: linear-gradient(#8a1a2e, #5a0e1c);
+  border: 1px solid #3a0610;
+}
+.vxa-contract .run {
+  color: #2b1d10;
+  background: transparent;
+  border: 1px solid rgba(43, 29, 16, 0.5);
+}
+
+/* ── dark stuff on the board (only while Vortex is around) ─────────────── */
+/* night: Done spines turn into tombstones */
+html.vxa-graveyard .mt-dsp {
+  border-radius: 14px 14px 3px 3px;
+  color: #e9e3d4;
+  background: linear-gradient(#8d887c, #5d594f);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    inset 0 2px 0 rgba(255, 255, 255, 0.18),
+    0 3px 6px rgba(0, 0, 0, 0.5);
+}
+html.vxa-graveyard .mt-dsp .sw {
+  width: auto;
+  padding: 0 8px;
+  font-size: 12px;
+  color: #2b2722;
+  background: linear-gradient(#b8b2a2, #8d887c);
+}
+html.vxa-graveyard .mt-dsp .sw::before {
+  content: "R.I.P. ";
+  letter-spacing: 0.06em;
+}
+html.vxa-graveyard .mt-dsp .t {
+  color: #f2ede0;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6);
+}
+html.vxa-graveyard .mt-dsp .d {
+  color: #d9d3c4;
+}
+html.vxa-graveyard .mt-dsp .d::before {
+  content: "shipped ";
+}
+/* tape rot: faded at 2 weeks idle, mold at 3, melting at a month */
+html.vxa-rot .mt-jx[data-vx-rot] .art {
+  filter: saturate(0.55) sepia(0.35);
+}
+html:not(.vxa-rot) .mt-rot {
+  display: none;
+}
+.mt-jx .mt-rot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 62px; /* the cover art only — never over the title */
+  overflow: visible;
+  border-radius: 4px 4px 0 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      circle at 18% 30%,
+      rgba(98, 120, 60, 0.55) 0 5px,
+      transparent 6px
+    ),
+    radial-gradient(
+      circle at 24% 38%,
+      rgba(98, 120, 60, 0.4) 0 3px,
+      transparent 4px
+    ),
+    radial-gradient(
+      circle at 72% 22%,
+      rgba(110, 130, 70, 0.5) 0 7px,
+      transparent 8px
+    ),
+    radial-gradient(
+      circle at 80% 30%,
+      rgba(98, 120, 60, 0.35) 0 3px,
+      transparent 4px
+    ),
+    radial-gradient(
+      circle at 55% 70%,
+      rgba(98, 120, 60, 0.4) 0 4px,
+      transparent 5px
+    );
+  mix-blend-mode: multiply;
+}
+.mt-jx .mt-rot.l3::after {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: -10px;
+  height: 12px;
+  background:
+    radial-gradient(ellipse 5px 10px at 10% 0, #3a2a1c 98%, transparent),
+    radial-gradient(ellipse 3px 7px at 34% 0, #3a2a1c 98%, transparent),
+    radial-gradient(ellipse 5px 11px at 61% 0, #3a2a1c 98%, transparent),
+    radial-gradient(ellipse 3px 6px at 88% 0, #3a2a1c 98%, transparent);
+  opacity: 0.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vxa-body,
+  .vxa-launch .vxa-body,
+  .vxa-land .vxa-body,
+  .vxa-startle .vxa-body,
+  .vxa-talking .vxa-mouth,
+  .vxa-portal,
+  .vxa-trail,
+  .vxa-twin,
+  .vxa-twin .vxa-body,
+  .vxa-visitor,
+  .hf-tuner .in.vxa-static::before {
+    animation: none;
+  }
 }

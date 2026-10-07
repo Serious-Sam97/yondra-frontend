@@ -1797,6 +1797,12 @@ export async function startCrmChat(
 // the CRM chat — post the whole transcript, get a 202, and the reply streams back — but
 // user-scoped: frames arrive on the caller's own private channel as scope:'vortex-chat'.
 // Optional mounts focus the grounding on specific boards (deep) / projects (wide);
+// Vortex's daily tape horoscope (one cached line per user per day). Throws on
+// 503 (no AI configured) / 502 — the mascot falls back to a local line.
+export async function fetchVortexRemark(): Promise<{ text: string }> {
+  return apiFetch(`/api/ai/vortex-remark`, { method: "POST" });
+}
+
 // a mount the caller lost access to gets a 422 with an eject-it message.
 export async function startVortexChat(
   requestId: string,

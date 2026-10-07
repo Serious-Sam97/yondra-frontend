@@ -21,6 +21,8 @@ import { SvgArt } from "./SvgArt";
 const CARD_TAG_LIMIT = 3;
 // A card untouched this long reads as "aged tape".
 const IDLE_DAYS = 7;
+// A month untouched: the card grows cobwebs (and Vortex calls it cursed).
+const CURSED_DAYS = 30;
 const DAY = 86_400_000;
 
 function firstImageSrc(html?: string): string | null {
@@ -136,11 +138,25 @@ export const Card = memo(function Card({
   const idleDays = done_at ? null : daysSince(updated_at);
   const idle = idleDays != null && idleDays >= IDLE_DAYS;
   const aged = slaAged || idle;
+  const cursed = idleDays != null && idleDays >= CURSED_DAYS;
+  // Tape rot (shown only while Vortex is around): fades at 2 weeks, molds at
+  // 3, melts at a month.
+  const rot =
+    idleDays == null
+      ? 0
+      : idleDays >= CURSED_DAYS
+        ? 3
+        : idleDays >= 21
+          ? 2
+          : idleDays >= 14
+            ? 1
+            : 0;
 
   const jammed = !!blocked_reason;
   const isPlaying = !!playing && !done_at && !jammed;
 
   let due: { label: string; late: boolean } | null = null;
+  let lateDays = 0;
   if (due_date && !done_at) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -149,8 +165,10 @@ export const Card = memo(function Card({
         today.getTime()) /
         DAY,
     );
-    if (diff < 0) due = { label: shortDate(due_date), late: true };
-    else if (diff <= 3)
+    if (diff < 0) {
+      due = { label: shortDate(due_date), late: true };
+      lateDays = -diff;
+    } else if (diff <= 3)
       due = { label: diff === 0 ? "TODAY" : shortDate(due_date), late: false };
   }
 
@@ -188,7 +206,19 @@ export const Card = memo(function Card({
       className={`mt-jx${isPlaying ? " is-playing" : ""}${jammed ? " is-jammed" : ""}${aged ? " is-aged" : ""}${overlay ? " is-overlay" : ""}`}
       style={{ "--a": a, "--b": b } as React.CSSProperties}
       data-card-id={id}
+      // Hooks for the Vortex mascot (reads only — see components/vortex).
+      data-vx-key={overlay ? undefined : (ticket_key ?? undefined)}
+      data-vx-late={!overlay && lateDays > 0 ? lateDays : undefined}
+      data-vx-jam={!overlay && jammed ? "1" : undefined}
+      data-vx-cursed={!overlay && cursed ? "1" : undefined}
+      data-vx-rot={!overlay && rot ? rot : undefined}
+      data-vx-idle={!overlay && cursed ? (idleDays ?? undefined) : undefined}
     >
+      {/* untouched for a month: cobwebs (Vortex calls it cursed) */}
+      {cursed && !overlay && <span className="mt-web" aria-hidden />}
+      {rot >= 2 && !overlay && (
+        <span className={`mt-rot l${rot}`} aria-hidden />
+      )}
       <div className="art">
         {coverSrc ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -327,7 +357,12 @@ export const DoneSpine = memo(function DoneSpine({
     ticket_number ?? (ticket_key ? ticket_key.split("-").pop() : null) ?? "";
   return (
     <Draggable id={`draggable-${id}`}>
-      <div className="mt-dsp" style={{ "--a": a } as React.CSSProperties}>
+      <div
+        className="mt-dsp"
+        style={{ "--a": a } as React.CSSProperties}
+        data-vx-spine={id}
+        data-vx-key={ticket_key ?? undefined}
+      >
         <span className="sw">{num}</span>
         <span className={`t${latin ? "" : " plain"}`}>{name}</span>
         {done_at && <span className="d">{shortDate(done_at)}</span>}
