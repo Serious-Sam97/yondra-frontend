@@ -105,7 +105,8 @@ export function TagsManagerModal({
                             (e.currentTarget.style.color = "var(--cf-red)")
                           }
                           onMouseLeave={(e) =>
-                            (e.currentTarget.style.color = "var(--cf-text-muted)")
+                            (e.currentTarget.style.color =
+                              "var(--cf-text-muted)")
                           }
                         >
                           ✕

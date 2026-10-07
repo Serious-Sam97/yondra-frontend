@@ -19,4 +19,9 @@ export interface SectionInterface {
   currency?: string;
   // CRM: per-stage SLA aging threshold (hours) passed down to cards.
   agingHours?: number | null;
+  // Multitrack rack: channel position, done shelf, in-progress ("playing") stage.
+  index?: number;
+  isDone?: boolean;
+  isInProgress?: boolean;
+  onAddCard?: (sectionId: number) => void;
 }

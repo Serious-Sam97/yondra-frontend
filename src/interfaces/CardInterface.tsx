@@ -177,4 +177,9 @@ export interface CardInterface {
   done_subtasks_count?: number;
   // Set client-side on a subtask card so the board can show a "↳ epic" chip.
   parent_ticket_key?: string | null;
+  // "Jammed" (blocked): set with a reason; cleared by saving an empty reason.
+  blocked_at?: string | null;
+  blocked_reason?: string | null;
+  // Board payload only: comment count for the card footer.
+  comments_count?: number;
 }

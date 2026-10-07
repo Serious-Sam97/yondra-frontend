@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Permanent_Marker } from "next/font/google";
 import "@fortawesome/fontawesome-svg-core/styles.css";
 import "./globals.css";
+import "./board-multitrack.css";
 
 // Tell Font Awesome to skip injecting its CSS at runtime; we import it above
 // so the icons don't flash at full size during SSR.

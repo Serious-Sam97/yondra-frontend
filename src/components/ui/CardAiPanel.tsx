@@ -82,7 +82,9 @@ export function CardAiPanel({
     if (ai.action && insertable.includes(ai.action))
       return "Insert into description";
     if (ai.action === "checklist")
-      return onAddChecklist && checklistItems().length ? "Add to checklist" : null;
+      return onAddChecklist && checklistItems().length
+        ? "Add to checklist"
+        : null;
     return null;
   })();
 
@@ -95,7 +97,9 @@ export function CardAiPanel({
         const list = checklistItems();
         if (list.length) {
           await onAddChecklist(list);
-          setApplied(`Added ${list.length} item${list.length > 1 ? "s" : ""} to checklist`);
+          setApplied(
+            `Added ${list.length} item${list.length > 1 ? "s" : ""} to checklist`,
+          );
         }
       }
     } catch {
@@ -206,7 +210,10 @@ export function CardAiPanel({
 
           {!ai.streaming && !ai.error && ai.text !== "" && (
             <div className="flex flex-wrap items-center gap-1.5">
-              {applyLabel && !applied && !readOnly && chip(applyLabel, apply, true)}
+              {applyLabel &&
+                !applied &&
+                !readOnly &&
+                chip(applyLabel, apply, true)}
               {applied && (
                 <span
                   className="cf-mono"

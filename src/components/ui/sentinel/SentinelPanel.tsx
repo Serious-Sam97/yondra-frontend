@@ -221,7 +221,11 @@ export function SentinelPanel({
     if (!wantSeed.current || ai.streaming) return;
     wantSeed.current = false;
     const gherkin = ai.text.trim();
-    if (ai.action === "tests" && gherkin && !gherkin.startsWith("# Not enough")) {
+    if (
+      ai.action === "tests" &&
+      gherkin &&
+      !gherkin.startsWith("# Not enough")
+    ) {
       (async () => {
         try {
           const c = await createCase("AI test case");
@@ -278,7 +282,10 @@ export function SentinelPanel({
           </div>
         )}
         {ai.error && (
-          <p className="cf-mono" style={{ fontSize: "11px", color: "var(--cf-red)" }}>
+          <p
+            className="cf-mono"
+            style={{ fontSize: "11px", color: "var(--cf-red)" }}
+          >
             {ai.error}
           </p>
         )}

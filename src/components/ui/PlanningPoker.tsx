@@ -15,7 +15,11 @@ const DECK_META: Record<
   PlanningDeck,
   { label: string; hint: string; preview: string[] }
 > = {
-  fib: { label: "Fibonacci", hint: "1–21 · the classic", preview: ["1", "5", "21"] },
+  fib: {
+    label: "Fibonacci",
+    hint: "1–21 · the classic",
+    preview: ["1", "5", "21"],
+  },
   "fib-x": {
     label: "Fibonacci XL",
     hint: "0–100 · with ½ and ☕",
@@ -277,7 +281,11 @@ export function PlanningPoker({
         </p>
 
         {!live && (
-          <div className="flex gap-2 flex-wrap justify-center" role="radiogroup" aria-label="Deck">
+          <div
+            className="flex gap-2 flex-wrap justify-center"
+            role="radiogroup"
+            aria-label="Deck"
+          >
             {(Object.keys(DECK_META) as PlanningDeck[]).map((d) => {
               const meta = DECK_META[d];
               const sel = pickedDeck === d;

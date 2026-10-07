@@ -25,7 +25,14 @@ import {
   faTriangleExclamation,
 } from "@fortawesome/free-solid-svg-icons";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { BoardSettings } from "@/components/ui/BoardSettings";
 import Icon from "@/components/ui/Icon";
 import {
@@ -80,7 +87,13 @@ import { BoardFilterStrip } from "../ui/BoardFilterStrip";
 import { BoardCrmChatModal } from "../ui/BoardCrmChatModal";
 import { BoardStandupModal } from "../ui/BoardStandupModal";
 import { BoardToolsDock } from "../ui/BoardToolsDock";
-import { BoardTopBar, type BoardViewMode } from "../ui/BoardTopBar";
+import {
+  BoardTopBar,
+  type BoardViewMode,
+  type DeckStats,
+  type DeckTool,
+  type QuickFilter,
+} from "../ui/BoardTopBar";
 import { CalendarView } from "../ui/CalendarView";
 import { Card } from "../ui/Card";
 import type { CardFormData } from "../ui/CardEdit";
@@ -98,14 +111,22 @@ import { SprintStatusBar } from "../ui/SprintStatusBar";
 import { TestPlansOverview } from "../ui/sentinel/TestPlansOverview";
 import { TagsManagerModal } from "../ui/TagsManagerModal";
 
+// Channel (rack) colours by position; the Done shelf is always green.
 const SECTION_COLORS = [
-  "#4CAF50",
-  "#FF9800",
-  "#1976D2",
-  "#F44336",
-  "#7B1FA2",
-  "#FFC107",
+  "#8a8f80",
+  "#ffb000",
+  "#ff6fd8",
+  "#6fe0ff",
+  "#a78bfa",
+  "#3fae6a",
 ];
+const DONE_COLOR = "#9aa67e";
+// Channels whose name reads as active work show the "▶ Playing" sticker.
+const IN_PROGRESS_RE =
+  /(doing|progress|wip|active|building|develop|working|playing)/i;
+const DAY_MS = 86_400_000;
+// Mirrors the card's own "aged tape" rule.
+const IDLE_MS = 7 * DAY_MS;
 
 // Left-to-right order of the view tabs (matches BoardTopBar) — used to pick the
 // slide direction so a new view enters from the side you're moving toward.
@@ -129,6 +150,10 @@ interface BoardProps extends BoardInterface {
   isDemo?: boolean;
   demoId?: string;
   projectId?: number | null;
+  // Multitrack deck label: the parent project's name and this board's track number.
+  projectName?: string | null;
+  trackNo?: number | null;
+  accent?: string;
   boardUsers?: SharedUser[];
   isReadOnly?: boolean;
   currentUserId?: number;
@@ -166,6 +191,9 @@ export function Board({
   isDemo = false,
   demoId = "demo",
   projectId = null,
+  projectName = null,
+  trackNo = null,
+  accent = "#6fe0ff",
   boardUsers = [],
   isReadOnly = false,
   currentUserId = 0,
@@ -193,6 +221,9 @@ export function Board({
   const [filterUserIds, setFilterUserIds] = useState<number[]>([]);
   const [filterTagIds, setFilterTagIds] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  // Deck toolbar quick filters (AND-ed) and the expanded user/tag filter strip.
+  const [quick, setQuick] = useState<Set<QuickFilter>>(() => new Set());
+  const [filterOpen, setFilterOpen] = useState(false);
   const [activeCard, setActiveCard] = useState<CardInterface | null>(null);
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const [isStandupOpen, setIsStandupOpen] = useState(false);
@@ -453,6 +484,23 @@ export function Board({
         !(card.tags ?? []).some((t) => filterTagIds.includes(t.id))
       )
         return false;
+      if (quick.size > 0) {
+        const now = Date.now();
+        if (quick.has("mine") && card.assigned_user_id !== currentUserId)
+          return false;
+        if (quick.has("jammed") && !card.blocked_reason) return false;
+        if (quick.has("due")) {
+          if (!card.due_date || card.done_at) return false;
+          const due = new Date(
+            `${card.due_date.slice(0, 10)}T23:59:59`,
+          ).getTime();
+          if (due - now > 3 * DAY_MS) return false;
+        }
+        if (quick.has("aged")) {
+          if (card.done_at || !card.updated_at) return false;
+          if (now - new Date(card.updated_at).getTime() < IDLE_MS) return false;
+        }
+      }
       if (searchQuery.trim()) {
         const q = searchQuery.trim().toLowerCase();
         if (
@@ -465,7 +513,7 @@ export function Board({
       }
       return true;
     },
-    [filterUserIds, filterTagIds, searchQuery],
+    [filterUserIds, filterTagIds, searchQuery, quick, currentUserId],
   );
 
   // Scrum boards show only the active sprint on the Board; planning lives in the Backlog.
@@ -529,6 +577,164 @@ export function Board({
   const doneCards = doneSection
     ? boardCards.filter((c) => c.section_id === doneSection.id).length
     : 0;
+
+  // ── Multitrack deck readouts ──
+  const inProgressIds = useMemo(
+    () =>
+      new Set(
+        boardSections
+          .filter(
+            (s) =>
+              s.id !== doneSection?.id && IN_PROGRESS_RE.test(s.name ?? ""),
+          )
+          .map((s) => s.id),
+      ),
+    [boardSections, doneSection],
+  );
+  const deckStats: DeckStats = useMemo(() => {
+    const now = Date.now();
+    const wip = boardCards.filter((c) =>
+      inProgressIds.has(c.section_id),
+    ).length;
+    const limits = [...inProgressIds]
+      .map((sid) => wipLimits[sid])
+      .filter((v): v is number => v != null);
+    const recentDone = boardCards.filter(
+      (c) =>
+        c.done_at &&
+        c.created_at &&
+        now - new Date(c.done_at).getTime() < 30 * DAY_MS,
+    );
+    const cycleDays = recentDone.length
+      ? recentDone.reduce(
+          (sum, c) =>
+            sum +
+            (new Date(c.done_at as string).getTime() -
+              new Date(c.created_at as string).getTime()) /
+              DAY_MS,
+          0,
+        ) / recentDone.length
+      : null;
+    // Approximate 14-day flow: done accumulates from done_at; work still open on a day
+    // is split across stages in the board's current proportions.
+    const order = boardSections.map((s) => s.id);
+    const stageOf = (sid: number): "todo" | "doing" | "review" | null => {
+      if (sid === doneSection?.id) return null;
+      if (inProgressIds.has(sid)) return "doing";
+      return order.indexOf(sid) <= 0 ? "todo" : "review";
+    };
+    const open = boardCards.filter(
+      (c) => !c.done_at && c.section_id !== doneSection?.id,
+    );
+    const mix = { todo: 0, doing: 0, review: 0 };
+    for (const c of open) {
+      const st = stageOf(c.section_id);
+      if (st) mix[st]++;
+    }
+    const openTotal = Math.max(1, open.length);
+    const start = new Date();
+    start.setHours(23, 59, 59, 999);
+    const flow = Array.from({ length: 14 }, (_, i) => {
+      const end = start.getTime() - (13 - i) * DAY_MS;
+      const windowStart = start.getTime() - 14 * DAY_MS;
+      const done = boardCards.filter((c) => {
+        if (!c.done_at) return false;
+        const t = new Date(c.done_at).getTime();
+        return t > windowStart && t <= end;
+      }).length;
+      const openThen = boardCards.filter((c) => {
+        const created = c.created_at ? new Date(c.created_at).getTime() : 0;
+        const doneT = c.done_at
+          ? new Date(c.done_at).getTime()
+          : Number.POSITIVE_INFINITY;
+        return created <= end && doneT > end;
+      }).length;
+      return {
+        done,
+        review: (openThen * mix.review) / openTotal,
+        doing: (openThen * mix.doing) / openTotal,
+        todo: (openThen * mix.todo) / openTotal,
+      };
+    });
+    return {
+      done: doneCards,
+      total: totalCards,
+      wip,
+      wipLimit: limits.length ? limits.reduce((s, v) => s + v, 0) : null,
+      cycleDays,
+      jams: boardCards.filter((c) => !!c.blocked_reason).length,
+      recording: boardCards.some(
+        (c) =>
+          c.updated_at && now - new Date(c.updated_at).getTime() < 3_600_000,
+      ),
+      flow,
+    };
+  }, [
+    boardCards,
+    inProgressIds,
+    wipLimits,
+    boardSections,
+    doneSection,
+    doneCards,
+    totalCards,
+  ]);
+
+  const quickCounts = useMemo(() => {
+    const now = Date.now();
+    const scope = boardCards.filter((c) => matchesSprint(c));
+    return {
+      mine: scope.filter((c) => c.assigned_user_id === currentUserId).length,
+      due: scope.filter(
+        (c) =>
+          c.due_date &&
+          !c.done_at &&
+          new Date(`${c.due_date.slice(0, 10)}T23:59:59`).getTime() - now <=
+            3 * DAY_MS,
+      ).length,
+      jammed: scope.filter((c) => !!c.blocked_reason).length,
+      aged: scope.filter(
+        (c) =>
+          !c.done_at &&
+          c.updated_at &&
+          now - new Date(c.updated_at).getTime() >= IDLE_MS,
+      ).length,
+    } as Record<QuickFilter, number>;
+  }, [boardCards, currentUserId, matchesSprint]);
+
+  // Stable "add card to this channel" handler shared by every rack.
+  const handleAddCardTo = useCallback((sectionId: number) => {
+    setNewCardSectionId(sectionId);
+    setIsCardVisible(true);
+  }, []);
+
+  // Racks fill the viewport below the deck (the page itself doesn't scroll on
+  // the board view; each rack scrolls its own tapes).
+  const [colsHeight, setColsHeight] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (viewMode !== "kanban") return;
+    const measure = () => {
+      const el = kanbanRef.current;
+      if (!el) return;
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      setColsHeight(Math.max(420, Math.floor(window.innerHeight - top - 8)));
+    };
+    measure();
+    const raf = requestAnimationFrame(measure);
+    window.addEventListener("resize", measure);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", measure);
+    };
+  }, [viewMode, filterOpen, activeSprint]);
+
+  const toggleQuick = useCallback((key: QuickFilter) => {
+    setQuick((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
 
   // CRM: total value of every deal on the board (the headline figure).
   const isCrm = type === "crm";
@@ -1165,8 +1371,88 @@ export function Board({
     flushPendingBoardEvents();
   }
 
+  // Deck "⋯" menu: the board tools that used to float in the side dock.
+  const deckTools: DeckTool[] = [
+    ...(!isDemo
+      ? [
+          {
+            key: "activity",
+            label: "Activity log",
+            onClick: handleOpenActivity,
+          },
+          { key: "chat", label: "Board chat", onClick: handleOpenChat },
+          {
+            key: "standup",
+            label: "AI standup",
+            onClick: () => setIsStandupOpen(true),
+          },
+        ]
+      : []),
+    ...(!isDemo && isCrm
+      ? [
+          {
+            key: "crmchat",
+            label: "Ask CRM",
+            onClick: () => setIsCrmChatOpen(true),
+          },
+        ]
+      : []),
+    {
+      key: "tags",
+      label: "Tags",
+      onClick: () => setIsTagsOpen(true),
+      divider: !isDemo,
+    },
+    ...(!isDemo
+      ? [
+          {
+            key: "import",
+            label: "Import cards",
+            onClick: () => setIsImportOpen(true),
+          },
+        ]
+      : []),
+    { key: "archived", label: "Archived cards", onClick: handleOpenArchived },
+    {
+      key: "background",
+      label: "Background",
+      onClick: () => setIsBgOpen(true),
+    },
+    ...(subtaskTotal > 0
+      ? [
+          {
+            key: "subtasks",
+            label: showSubtasks
+              ? "Hide subtasks"
+              : `Show ${subtaskTotal} subtasks`,
+            onClick: toggleShowSubtasks,
+          },
+        ]
+      : []),
+    ...(isCrm && !isDemo
+      ? [
+          {
+            key: "export",
+            label: "Export deals",
+            onClick: () => router.push(`/dashboard/export?board=${id}`),
+          },
+        ]
+      : []),
+    ...(showShare && canManage && onOpenShare
+      ? [{ key: "share", label: "Share board", onClick: onOpenShare }]
+      : []),
+  ];
+
   return (
     <>
+      {/* Studio room behind the board (a custom background replaces it) */}
+      {!boardBg && (
+        <>
+          <div className="mt-studio" aria-hidden />
+          <div className="mt-reflect" aria-hidden />
+        </>
+      )}
+
       {/* Board background overlay */}
       {boardBg && (
         <div
@@ -1190,7 +1476,7 @@ export function Board({
         </div>
       )}
 
-      {/* Top bar: search + shortcuts */}
+      {/* Deck: cassette label, flow LCD, crew, record key + the toolbar */}
       <BoardTopBar
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
@@ -1201,9 +1487,6 @@ export function Board({
         doneCards={doneCards}
         viewMode={viewMode}
         qaEnabled={qaEnabled}
-        showSubtasks={showSubtasks}
-        subtaskTotal={subtaskTotal}
-        onToggleSubtasks={toggleShowSubtasks}
         onSelectView={(key) => {
           if (key === "backlog" && type !== "scrum")
             ensureBacklogSection().catch(() => {});
@@ -1212,44 +1495,68 @@ export function Board({
         onOpenCommand={() => setIsCommandOpen(true)}
         boardName={name}
         boardType={type}
-        memberCount={boardUsers.length}
         backTitle={backTitle}
+        backLabel={projectName ?? (isDemo ? "Demo" : "Boards")}
+        trackNo={trackNo}
+        accent={accent}
         onBack={() => onBack?.()}
         canManage={canManage}
-        showShare={showShare}
         onOpenSettings={onOpenSettings}
-        onOpenShare={onOpenShare}
-        onExport={
-          isDemo
+        stats={deckStats}
+        crew={boardUsers}
+        quick={quick}
+        quickCounts={quickCounts}
+        onToggleQuick={toggleQuick}
+        filterOpen={filterOpen}
+        filterActive={filterUserIds.length > 0 || filterTagIds.length > 0}
+        onToggleFilter={() => setFilterOpen((o) => !o)}
+        onNewCard={
+          isReadOnly
             ? undefined
-            : () => router.push(`/dashboard/export?board=${id}`)
+            : () => {
+                setNewCardSectionId(null);
+                setIsCardVisible(true);
+              }
         }
+        tools={deckTools}
       />
 
       {/* Due date banner — always visible when there are overdue/due-today cards */}
-      <DueDateBanner
-        cards={boardCards}
-        sections={boardSections}
-        onCardClick={handleClick}
-      />
-
-      {/* Filter strip — kanban + list + backlog */}
-      {(viewMode === "kanban" ||
-        viewMode === "list" ||
-        viewMode === "backlog") && (
-        <BoardFilterStrip
-          boardUsers={boardUsers}
-          tags={tags}
-          filterUserIds={filterUserIds}
-          filterTagIds={filterTagIds}
-          setFilterUserIds={setFilterUserIds}
-          setFilterTagIds={setFilterTagIds}
+      {viewMode !== "kanban" && (
+        <DueDateBanner
+          cards={boardCards}
+          sections={boardSections}
+          onCardClick={handleClick}
         />
       )}
 
+      {/* Filter strip — kanban + list + backlog */}
+      {filterOpen &&
+        (viewMode === "kanban" ||
+          viewMode === "list" ||
+          viewMode === "backlog") && (
+          <div style={{ padding: "0 calc(var(--mt-inset) + 1.5px)" }}>
+            <BoardFilterStrip
+              boardUsers={boardUsers}
+              tags={tags}
+              filterUserIds={filterUserIds}
+              filterTagIds={filterTagIds}
+              setFilterUserIds={setFilterUserIds}
+              setFilterTagIds={setFilterTagIds}
+            />
+          </div>
+        )}
+
       {/* View body — keyed by viewMode so each switch replays an entrance animation.
           Outer clip stops the horizontal slide from spilling a page scrollbar. */}
-      <div className="view-swap-clip">
+      <div
+        className="view-swap-clip"
+        style={
+          viewMode === "kanban"
+            ? undefined
+            : { padding: "0 calc(var(--mt-inset) + 1.5px) 16px" }
+        }
+      >
         <div
           key={viewMode}
           className="view-swap"
@@ -1411,10 +1718,11 @@ export function Board({
             >
               <div
                 ref={kanbanRef}
-                className="flex gap-5 items-start overflow-x-auto pb-4"
+                className="mt-cols"
                 style={{
                   transformOrigin: "center center",
                   willChange: "transform",
+                  height: colsHeight ?? undefined,
                 }}
               >
                 {boardSections.map((section, i) => (
@@ -1424,7 +1732,15 @@ export function Board({
                     cards={sectionCardsById.get(section.id) ?? []}
                     id={section.id}
                     name={section.name}
-                    color={SECTION_COLORS[i % SECTION_COLORS.length]}
+                    index={i}
+                    isDone={section.id === doneSection?.id}
+                    isInProgress={inProgressIds.has(section.id)}
+                    onAddCard={isReadOnly ? undefined : handleAddCardTo}
+                    color={
+                      section.id === doneSection?.id
+                        ? DONE_COLOR
+                        : SECTION_COLORS[i % SECTION_COLORS.length]
+                    }
                     parent={null}
                     onDelete={
                       isReadOnly ? undefined : handleRequestDeleteSection
@@ -1447,16 +1763,9 @@ export function Board({
                     sectionError={sectionError}
                     setSectionError={setSectionError}
                     onAddSection={handleAddSection}
+                    channelNo={boardSections.length + 1}
                   />
                 )}
-
-                {/* Right gutter so the last column can scroll clear of the
-                    fixed tools dock instead of tucking under it (lg only). */}
-                <div
-                  aria-hidden
-                  className="hidden lg:block flex-shrink-0"
-                  style={{ width: "72px" }}
-                />
               </div>
 
               <DragOverlay dropAnimation={null}>
@@ -1490,36 +1799,6 @@ export function Board({
           )}
         </div>
       </div>
-
-      {/* FAB */}
-      {!isReadOnly && (
-        <button
-          onClick={() => {
-            setNewCardSectionId(null);
-            setIsCardVisible(true);
-          }}
-          style={{
-            background:
-              "linear-gradient(to bottom, #3a3730 0%, #2b2a26 50%, #1c1a16 100%)",
-            border: "1px solid var(--cf-edge)",
-            boxShadow:
-              "inset 0 1px 0 rgba(255,255,255,0.08), 0 0 16px rgba(154,166,126,0.45), 0 8px 22px rgba(0,0,0,0.55)",
-            color: "var(--cf-phosphor)",
-            textShadow: "0 0 8px rgba(154,166,126,0.6)",
-          }}
-          className="fab-physical fixed bottom-16 lg:bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center cursor-pointer text-2xl font-bold z-40"
-          title="Add ticket"
-        >
-          <span
-            className="cf-led absolute top-2 right-2"
-            style={{
-              background: "var(--cf-phosphor)",
-              boxShadow: "0 0 6px var(--cf-phosphor)",
-            }}
-          />
-          <Icon icon={faPlus} />
-        </button>
-      )}
 
       {/* Tool launchers: desktop toolbar + mobile bottom drawer */}
       <BoardToolsDock

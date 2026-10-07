@@ -45,7 +45,10 @@ export function LossReasonModal({
           >
             Why was this deal lost?
           </p>
-          <p className="cf-mono text-xs" style={{ color: "var(--cf-text-muted)" }}>
+          <p
+            className="cf-mono text-xs"
+            style={{ color: "var(--cf-text-muted)" }}
+          >
             A reason is required to move a deal to the Lost stage.
           </p>
         </div>
@@ -70,9 +73,12 @@ export function LossReasonModal({
             );
           })}
           {reasons.length === 0 && (
-            <p className="cf-mono text-xs" style={{ color: "var(--cf-text-dim)" }}>
-              No loss reasons are configured for this board yet — add some in board
-              settings.
+            <p
+              className="cf-mono text-xs"
+              style={{ color: "var(--cf-text-dim)" }}
+            >
+              No loss reasons are configured for this board yet — add some in
+              board settings.
             </p>
           )}
         </div>

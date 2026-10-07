@@ -1,143 +1,33 @@
 "use client";
 
-import { memo, useRef } from "react";
-import Icon from "@/components/ui/Icon";
+import { memo, useMemo } from "react";
 import type { BoardType } from "@/interfaces/BoardInterface";
 import type { CardInterface } from "@/interfaces/CardInterface";
 import { useAged } from "@/lib/aging";
+import {
+  artKindFor,
+  barcode,
+  cardInks,
+  coverArt,
+  spineArt,
+} from "@/lib/boardArt";
 import { formatMoney } from "@/lib/currency";
 import { channelIcon } from "@/lib/tags";
+import { avatarColor, initials } from "@/lib/ui";
 import { Draggable } from "../shared/Draggable";
 
-// How many named tags a card shows before the rest collapse into "+N".
+// How many named tags a card prints before the rest collapse into "+N".
 const CARD_TAG_LIMIT = 3;
+// A card untouched this long reads as "aged tape".
+const IDLE_DAYS = 7;
+const DAY = 86_400_000;
 
-// Console palette with dark-ink initials (the app-wide avatarColor keeps white
-// text, which these brighter hues can't carry).
-const AVATAR_COLORS = [
-  "#ffb000",
-  "#ff5a4d",
-  "#6fe0ff",
-  "#9aa67e",
-  "#e08c3a",
-  "#ff6fd8",
-  "#a78bfa",
-  "#22c55e",
-];
-
-// Cassette-futurism status-LED colors keyed to priority
-const PRIORITY_COLORS: Record<string, string> = {
-  high: "var(--cf-red)",
-  medium: "var(--cf-amber)",
-  low: "var(--cf-phosphor)",
-};
-
-// Ink levels on the graphite cartridge face
-const INK_DIM = "rgba(232,228,214,0.55)";
-const INK_FAINT = "rgba(232,228,214,0.5)";
-
-const SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
-const REST_SHADOW =
-  "inset 0 1px 0 rgba(255,255,255,0.12), 0 6px 16px rgba(0,0,0,0.45)";
-
-function resetCard(
-  el: HTMLDivElement,
-  transition = `transform 400ms ${SPRING}, box-shadow 400ms ${SPRING}`,
-) {
-  el.style.transition = transition;
-  el.style.transform = "";
-  el.style.boxShadow = "";
-  el.style.zIndex = "";
-}
-
-function initials(name: string): string {
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
-
-function Avatar({
-  user,
-  size = 18,
-}: {
-  user: { id: number; name: string };
-  size?: number;
-}) {
-  return (
-    <div
-      style={{
-        backgroundColor: AVATAR_COLORS[user.id % AVATAR_COLORS.length],
-        fontSize: size * 0.45,
-        width: size,
-        height: size,
-        color: "#1c1a15",
-        border: "1.5px solid #232220",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.5)",
-      }}
-      className="cf-mono rounded-full flex items-center justify-center font-bold flex-shrink-0"
-      title={user.name}
-    >
-      {initials(user.name)}
-    </div>
-  );
-}
-
-function DueDateBadge({ dueDate }: { dueDate: string }) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(dueDate + "T00:00:00");
-  const diff = Math.ceil((due.getTime() - today.getTime()) / 86400000);
-
-  let label = due.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-  let led = "var(--cf-cyan)";
-  let ink = "var(--cf-text)";
-  if (diff < 0) {
-    led = "var(--cf-red)";
-    ink = "var(--cf-red)";
-    label = `${label} OVERDUE`;
-  } else if (diff === 0) {
-    led = "var(--cf-amber)";
-    ink = "var(--cf-amber)";
-    label = "TODAY";
-  } else if (diff <= 2) {
-    led = "var(--cf-amber)";
-  } else {
-    led = "var(--cf-cyan)";
-  }
-
-  return (
-    <span className="kc-chip flex-shrink-0">
-      <span
-        className="cf-led flex-shrink-0"
-        style={{
-          background: led,
-          boxShadow: `0 0 5px ${led}`,
-          width: 5,
-          height: 5,
-        }}
-      />
-      <span style={{ color: ink }}>{label}</span>
-    </span>
-  );
-}
-
-// The description is rich-text HTML. Derive the cover from its first image, and a
-// plain-text snippet (tags stripped) for the small card preview.
 function firstImageSrc(html?: string): string | null {
   if (!html) return null;
   const m = html.match(/<img[^>]+src="([^"]+)"/i);
   if (!m) return null;
-  // The src is a raw HTML attribute value, so entities are still encoded
-  // (e.g. query params joined with `&amp;`). Unlike the modal, which renders
-  // via dangerouslySetInnerHTML and lets the parser decode them, here we feed
-  // the string straight to React's `src` prop, which does NOT decode entities —
-  // so signed URLs would arrive with a literal `&amp;` and break. Decode them.
+  // The src is a raw attribute value, so entities are still encoded; React's `src`
+  // prop won't decode them (signed URLs would break on `&amp;`).
   return m[1]
     .replace(/&amp;/g, "&")
     .replace(/&#38;/g, "&")
@@ -146,19 +36,45 @@ function firstImageSrc(html?: string): string | null {
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">");
 }
-function stripHtml(html?: string): string {
-  if (!html) return "";
-  return html
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim();
+
+function shortDate(iso: string): string {
+  return new Date(`${iso.slice(0, 10)}T00:00:00`)
+    .toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    .toUpperCase();
 }
 
-// Memoized: card fields arrive spread from a stable card object (Board only
-// replaces the objects that actually changed), so untouched cards skip
-// re-rendering when their Section re-renders.
+function daysSince(iso?: string | null, now = Date.now()): number | null {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return null;
+  return Math.floor((now - t) / DAY);
+}
+
+function durationLabel(iso?: string | null): string {
+  if (!iso) return "";
+  const ms = Date.now() - new Date(iso).getTime();
+  if (Number.isNaN(ms) || ms < 0) return "";
+  if (ms < 3_600_000) return "NOW";
+  if (ms < DAY) return `${Math.floor(ms / 3_600_000)}H`;
+  return `${Math.floor(ms / DAY)}D`;
+}
+
+function MiniAvatar({ user }: { user: { id: number; name: string } }) {
+  return (
+    <span
+      className="mt-av"
+      style={{ backgroundColor: avatarColor(user.id) }}
+      title={user.name}
+    >
+      {initials(user.name)}
+    </span>
+  );
+}
+
+// "J-card" tape insert (design/board-final.png): generated two-ink cover art, a
+// cream paper body, stickers for status (due / late / playing / jam / idle) and a
+// colour spine with printed art carrying crew, progress, barcode and points.
+// Memoized: Board only replaces card objects that actually changed.
 export const Card = memo(function Card({
   id,
   name,
@@ -179,419 +95,244 @@ export const Card = memo(function Card({
   subtasks_count,
   done_subtasks_count,
   section_entered_at,
+  blocked_reason,
+  blocked_at,
+  comments_count,
   overlay,
+  playing,
   boardType = "kanban",
   currency = "BRL",
   agingHours,
 }: CardInterface & {
-  color: string;
+  color?: string;
   overlay?: boolean;
+  // Set by the rack for in-progress channels: shows the "▶ Playing" sticker.
+  playing?: boolean;
   boardType?: BoardType;
   currency?: string;
   agingHours?: number | null;
 }) {
-  const cardRef = useRef<HTMLDivElement>(null);
-
-  const showBottom = assigned_user || created_by;
-  const priorityColor = priority ? PRIORITY_COLORS[priority] : null;
+  const [a, b] = cardInks({ id, tags });
+  const kind = artKindFor(id);
+  const seed = typeof id === "number" ? id : 1;
+  const uid = String(id).replace(/[^a-z0-9]/gi, "");
   const coverSrc = firstImageSrc(description);
-  const descText = stripHtml(description);
 
-  // CRM deal value (Laravel serializes decimals as strings).
+  const cover = useMemo(
+    () =>
+      coverSrc
+        ? null
+        : coverArt(kind, a, b, seed, `${uid}${overlay ? "o" : ""}`),
+    [coverSrc, kind, a, b, seed, uid, overlay],
+  );
+  const spine = useMemo(
+    () => spineArt(kind, a, b, seed, `${uid}${overlay ? "o" : ""}`),
+    [kind, a, b, seed, uid, overlay],
+  );
+
+  // CRM SLA aging (stage past its threshold) and plain staleness both read as aged tape.
+  const slaAged =
+    boardType === "crm" && useAged(section_entered_at, agingHours, done_at);
+  const idleDays = done_at ? null : daysSince(updated_at);
+  const idle = idleDays != null && idleDays >= IDLE_DAYS;
+  const aged = slaAged || idle;
+
+  const jammed = !!blocked_reason;
+  const isPlaying = !!playing && !done_at && !jammed;
+
+  let due: { label: string; late: boolean } | null = null;
+  if (due_date && !done_at) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diff = Math.round(
+      (new Date(`${due_date.slice(0, 10)}T00:00:00`).getTime() -
+        today.getTime()) /
+        DAY,
+    );
+    if (diff < 0) due = { label: shortDate(due_date), late: true };
+    else if (diff <= 3)
+      due = { label: diff === 0 ? "TODAY" : shortDate(due_date), late: false };
+  }
+
+  const cardTags = tags ?? [];
+  const namedTags = cardTags.filter((t) => !channelIcon(t));
+  const shownTags = namedTags.slice(0, CARD_TAG_LIMIT);
+  const extraTags = namedTags.length - shownTags.length;
+
+  const crew = [assigned_user, created_by]
+    .filter((u): u is { id: number; name: string } => !!u)
+    .filter((u, i, all) => all.findIndex((x) => x.id === u.id) === i)
+    .slice(0, 3);
+
+  const doneItems = (checklist_items ?? []).filter((i) => i.is_done).length;
+  const totalItems = (checklist_items ?? []).length;
+  const subTotal = subtasks_count ?? 0;
+  const progress =
+    subTotal > 0
+      ? [done_subtasks_count ?? 0, subTotal]
+      : totalItems > 0
+        ? [doneItems, totalItems]
+        : null;
+
   const hasValue =
     boardType === "crm" &&
     value !== null &&
     value !== undefined &&
     value !== "";
 
-  // SLA aging ("rot"): a CRM deal that has sat in its stage past the stage's
-  // aging_hours threshold turns red — spot overdue deals without opening the card.
-  // useAged re-renders exactly when the threshold passes, so an open board flips live.
-  const aged =
-    boardType === "crm" && useAged(section_entered_at, agingHours, done_at);
+  const catLabel = parent_card_id
+    ? `${parent_ticket_key ?? "EPIC"} EP`
+    : ticket_key && seed % 2 === 0
+      ? ticket_key.replace("-", " · ")
+      : "SIDE A";
 
-  // First tag anodizes the casing; priority (or aging, which outranks it)
-  // claims the glowing left rail.
-  const tagColor = tags && tags.length > 0 ? tags[0].color : null;
-  const railColor = aged ? "var(--cf-red)" : (priorityColor ?? "transparent");
-
-  // A card is scanned for its title, crew and progress — tags are context, so
-  // they get a fixed budget instead of pushing everything else off the casing.
-  // Channels shrink to their glyph; the rest spill into a "+N" chip.
-  const cardTags = tags ?? [];
-  const channelTags = cardTags.filter((t) => channelIcon(t));
-  const namedTags = cardTags.filter((t) => !channelIcon(t));
-  const shownTags = namedTags.slice(0, CARD_TAG_LIMIT);
-  const hiddenTags = namedTags.slice(CARD_TAG_LIMIT);
-
-  const doneItems = (checklist_items ?? []).filter((i) => i.is_done).length;
-  const totalItems = (checklist_items ?? []).length;
-
-  const hasStrip =
-    (tags && tags.length > 0) ||
-    hasValue ||
-    aged ||
-    (boardType === "scrum" && story_points != null) ||
-    priorityColor ||
-    done_at ||
-    (subtasks_count ?? 0) > 0;
-
-  // ── Subtle cursor-follow tilt: card leans toward the cursor, clean light shadow ──
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const el = cardRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width - 0.5; // -0.5 … 0.5
-    const y = (e.clientY - rect.top) / rect.height - 0.5;
-
-    const shadowX = -x * 8 + 2;
-    const shadowY = -y * 8 + 6;
-
-    el.style.transition = `box-shadow 80ms ease-out`;
-    el.style.transform = `perspective(600px) rotateX(${-y * 5}deg) rotateY(${x * 5}deg) translateY(-3px) scale(1.01)`;
-    el.style.boxShadow = `inset 0 1px 0 rgba(255,255,255,0.12), ${shadowX}px ${shadowY}px 20px rgba(0,0,0,0.5)`;
-    el.style.zIndex = "10";
-  };
-
-  const handleMouseLeave = () => {
-    const el = cardRef.current;
-    if (!el) return;
-    resetCard(el);
-  };
-
-  // ── Press depth: card dents slightly on click ────────────────────────────
-  const handlePointerDown = () => {
-    const el = cardRef.current;
-    if (!el) return;
-    el.style.transition = `transform 60ms ease-out, box-shadow 60ms ease-out`;
-    el.style.transform = `perspective(600px) translateY(1px) scale(0.99)`;
-    el.style.boxShadow = `inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 6px rgba(0,0,0,0.4)`;
-  };
-
-  const handlePointerUp = () => {
-    const el = cardRef.current;
-    if (!el) return;
-    el.style.transition = `transform 350ms ${SPRING}, box-shadow 350ms ${SPRING}`;
-    el.style.transform = `perspective(600px) translateY(-3px) scale(1.01)`;
-    el.style.boxShadow = REST_SHADOW;
-  };
-
-  // Fires when dnd-kit captures the pointer — resets pressed state cleanly
-  const handlePointerCancel = () => {
-    const el = cardRef.current;
-    if (!el) return;
-    resetCard(el, "none");
-  };
-
-  const handlePointerLeave = () => {
-    const el = cardRef.current;
-    if (!el) return;
-    resetCard(el);
-  };
+  const blockedFor = blocked_at ? durationLabel(blocked_at).toLowerCase() : "";
 
   const body = (
     <div
-      ref={cardRef}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerCancel}
-      onPointerLeave={handlePointerLeave}
-      style={
-        {
-          minHeight: "56px",
-          willChange: "transform",
-          "--kc-ac": tagColor ?? "transparent",
-          "--kc-rail": railColor,
-        } as React.CSSProperties
-      }
-      className={`kc-card cursor-pointer flex flex-col overflow-hidden${
-        aged ? " kc-card--aged" : ""
-      }${done_at ? " kc-card--done" : ""}`}
+      className={`mt-jx${isPlaying ? " is-playing" : ""}${jammed ? " is-jammed" : ""}${aged ? " is-aged" : ""}${overlay ? " is-overlay" : ""}`}
+      style={{ "--a": a, "--b": b } as React.CSSProperties}
+      data-card-id={id}
     >
-      {/* priority / aging rail + tag backlight wash */}
-      <span className="kc-rail" />
-      {!coverSrc && <span className="kc-wash" />}
+      <div className="art">
+        {coverSrc ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={coverSrc} alt="" loading="lazy" />
+        ) : (
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: generated SVG from numeric params + palette constants only
+          <span dangerouslySetInnerHTML={{ __html: cover ?? "" }} />
+        )}
+        <span className="cat">{catLabel}</span>
+        <span className="side">A</span>
+      </div>
 
-      {/* Cover — first image embedded in the description, full-bleed above the body */}
-      {coverSrc && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={coverSrc}
-          alt=""
-          style={{
-            height: "120px",
-            borderBottom: "1px solid rgba(0,0,0,0.4)",
-          }}
-          className="w-full object-cover flex-shrink-0"
-        />
+      {due && (
+        <span className={`mt-stk due${due.late ? " late" : ""}`}>
+          {due.late ? "Late" : "Due"}
+          <b>{due.label}</b>
+        </span>
+      )}
+      {jammed && (
+        <span className="mt-stk jam">
+          <span>JAM</span>
+        </span>
+      )}
+      {isPlaying && (
+        <span className="mt-stk play">
+          Playing {durationLabel(section_entered_at ?? updated_at)}
+        </span>
+      )}
+      {idle && !jammed && (
+        <span className="mt-stk idle">◷ {idleDays}D idle</span>
       )}
 
-      {/* Body */}
-      <div className="pl-3.5 pr-3 pt-2.5 pb-3 flex flex-col gap-1.5 flex-1 relative">
-        {/* Ticket key (+ ↳ epic for subtasks) top-left, due date docked top-right */}
-        {(ticket_key || due_date || parent_card_id) && (
-          <div className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1.5 min-w-0">
-              {ticket_key && (
-                <span
-                  className="cf-mono font-bold tracking-wider"
-                  style={{
-                    color: INK_FAINT,
-                    fontSize: "10px",
-                    letterSpacing: "0.08em",
-                  }}
-                >
-                  {ticket_key}
-                </span>
-              )}
-              {parent_card_id && (
-                <span
-                  className="cf-mono inline-flex items-center rounded truncate flex-shrink-0"
-                  style={{
-                    fontSize: "9px",
-                    letterSpacing: "0.04em",
-                    padding: "1px 5px",
-                    color: "var(--cf-phosphor)",
-                    background:
-                      "color-mix(in srgb, var(--cf-phosphor) 12%, transparent)",
-                    border:
-                      "1px solid color-mix(in srgb, var(--cf-phosphor) 40%, transparent)",
-                  }}
-                  title={`Subtask of epic ${parent_ticket_key ?? ""}`}
-                >
-                  ↳ {parent_ticket_key ?? "epic"}
-                </span>
-              )}
-            </span>
-            {due_date && <DueDateBadge dueDate={due_date} />}
-          </div>
-        )}
-
-        <p
-          style={{
-            color: "var(--cf-cream)",
-            fontSize: "13px",
-            lineHeight: "1.3",
-          }}
-          className="font-bold"
-        >
-          {name}
-        </p>
-
-        {/* One wrapping strip: tags, value, aging, points, priority, done stamp */}
-        {hasStrip && (
-          <div className="flex flex-wrap gap-1">
-            {(subtasks_count ?? 0) > 0 && (
-              <span className="kc-chip" title="Subtasks done / total">
-                <span style={{ color: "var(--cf-text)" }}>
-                  ↳ {done_subtasks_count ?? 0}/{subtasks_count}
-                </span>
-              </span>
-            )}
-            {channelTags.map((tag) => {
-              const icon = channelIcon(tag);
-              if (!icon) return null;
-              return (
-                <span
-                  key={tag.id}
-                  className="kc-chip"
-                  title={tag.name}
-                  style={{ padding: "2.5px 5px", color: tag.color }}
-                >
-                  <Icon icon={icon} />
-                </span>
-              );
-            })}
-            {shownTags.map((tag) => (
-              <span key={tag.id} className="kc-chip" title={tag.name}>
-                <span
-                  className="cf-led flex-shrink-0"
-                  style={{
-                    background: tag.color,
-                    boxShadow: `0 0 5px ${tag.color}`,
-                    width: 5,
-                    height: 5,
-                  }}
-                />
-                <span
-                  className="truncate"
-                  style={{ color: "var(--cf-text)", maxWidth: "104px" }}
-                >
-                  {tag.name}
-                </span>
+      <div className="body">
+        <div className="k">
+          {ticket_key && <b>{ticket_key}</b>}
+          {parent_card_id && (
+            <span className="ep">↳ {parent_ticket_key ?? "epic"}</span>
+          )}
+          {priority === "high" && !ticket_key && <b>HIGH</b>}
+        </div>
+        <div className="tt">{name}</div>
+        {(shownTags.length > 0 || slaAged) && (
+          <div className="tags">
+            {shownTags.map((t) => (
+              <span key={t.id}>
+                <i style={{ background: t.color }} />
+                {t.name}
               </span>
             ))}
-            {hiddenTags.length > 0 && (
-              <span
-                className="kc-chip"
-                title={hiddenTags.map((t) => t.name).join(", ")}
-                style={{ color: "var(--cf-text-muted)" }}
-              >
-                +{hiddenTags.length}
-              </span>
-            )}
-            {hasValue && (
-              <span
-                className="kc-chip font-bold"
-                style={{ fontSize: "10px", letterSpacing: "0.02em" }}
-              >
-                <span
-                  className="cf-led flex-shrink-0"
-                  style={{
-                    background: "var(--cf-phosphor)",
-                    boxShadow: "0 0 5px var(--cf-phosphor)",
-                    width: 5,
-                    height: 5,
-                  }}
-                />
-                <span style={{ color: "var(--cf-phosphor)" }}>
-                  {formatMoney(value, currency)}
-                </span>
-              </span>
-            )}
-            {aged && (
-              <span
-                className="kc-chip"
-                title="This deal has been in its stage past the SLA limit"
-              >
-                <span
-                  className="cf-led flex-shrink-0"
-                  style={{
-                    background: "var(--cf-red)",
-                    boxShadow: "0 0 5px var(--cf-red)",
-                    width: 5,
-                    height: 5,
-                  }}
-                />
-                <span style={{ color: "var(--cf-red)" }}>Aging</span>
-              </span>
-            )}
-            {boardType === "scrum" && story_points != null && (
-              <span className="kc-chip" title="Story points">
-                <span
-                  className="cf-led flex-shrink-0"
-                  style={{
-                    background: "var(--cf-cyan)",
-                    boxShadow: "0 0 5px var(--cf-cyan)",
-                    width: 5,
-                    height: 5,
-                  }}
-                />
-                <span style={{ color: "var(--cf-text)" }}>
-                  {story_points} pts
-                </span>
-              </span>
-            )}
-            {priorityColor && (
-              <span className="kc-chip">
-                <span
-                  className="cf-led flex-shrink-0"
-                  style={{
-                    background: priorityColor,
-                    boxShadow: `0 0 5px ${priorityColor}`,
-                    width: 5,
-                    height: 5,
-                  }}
-                />
-                <span style={{ color: priorityColor }}>{priority}</span>
-              </span>
-            )}
-            {/* Done stamp — plays the slam animation on every render where done_at is set */}
-            {done_at && (
-              <span key={done_at} className="kc-stamp stamp-in">
-                ✓ done ·{" "}
-                {new Date(done_at).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })}{" "}
-                {new Date(done_at).toLocaleTimeString("en-US", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+            {extraTags > 0 && <span>+{extraTags}</span>}
+            {slaAged && (
+              <span style={{ color: "#b8352a" }}>
+                <i style={{ background: "#e2402f" }} />
+                Past SLA
               </span>
             )}
           </div>
         )}
+        {jammed && (
+          <div className="jamnote">
+            {blocked_reason}
+            {blockedFor ? ` · ${blockedFor}` : ""}
+          </div>
+        )}
+      </div>
 
-        {descText && (
-          <p
-            style={{ color: INK_DIM, fontSize: "11px", lineHeight: "1.4" }}
-            className="line-clamp-3"
+      <div className="fold">
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: generated SVG from numeric params + palette constants only */}
+        <span className="sp" dangerouslySetInnerHTML={{ __html: spine }} />
+        {crew.length > 0 && (
+          <span className="mt-avs">
+            {crew.map((u) => (
+              <MiniAvatar key={u.id} user={u} />
+            ))}
+          </span>
+        )}
+        {progress && (
+          <span
+            className="m"
+            title={subTotal > 0 ? "Subtasks done" : "Checklist"}
           >
-            {descText}
-          </p>
-        )}
-
-        {/* Checklist progress: inset phosphor bar + LCD counter */}
-        {totalItems > 0 && (
-          <div className="flex items-center gap-2 mt-0.5">
-            <div
-              className="flex-1 h-1.5 rounded-sm overflow-hidden"
-              style={{
-                background: "#0d1410",
-                boxShadow: "inset 0 1px 2px rgba(0,0,0,0.8)",
-              }}
-            >
-              <div
-                className="h-full"
-                style={{
-                  width: `${(doneItems / totalItems) * 100}%`,
-                  background: "#9aa67e",
-                  boxShadow: "0 0 6px #9aa67e",
-                  transition: "width 300ms cubic-bezier(0.16,1,0.3,1)",
-                }}
-              />
-            </div>
-            <span
-              style={{
-                fontSize: "14px",
-                lineHeight: 1,
-                color: "var(--cf-phosphor)",
-              }}
-              className="cf-lcd flex-shrink-0 tabular-nums"
-            >
-              {doneItems}/{totalItems}
+            <span className="mini">
+              <i style={{ width: `${(progress[0] / progress[1]) * 100}%` }} />
             </span>
-          </div>
+            {progress[0]}/{progress[1]}
+          </span>
         )}
-
-        {/* Bottom row: creator left, assignee right */}
-        {showBottom && (
-          <div className="mt-auto pt-1 flex items-center justify-between">
-            {created_by ? (
-              <div
-                className="flex items-center gap-1"
-                title={`Created by ${created_by.name}`}
-              >
-                <Avatar user={created_by} />
-                <span
-                  style={{ color: INK_FAINT, fontSize: "10px" }}
-                  className="cf-mono truncate"
-                >
-                  {created_by.name.split(" ")[0]}
-                </span>
-              </div>
-            ) : (
-              <div />
-            )}
-
-            {assigned_user && (
-              <div title={`Assigned to ${assigned_user.name}`}>
-                <Avatar user={assigned_user} size={16} />
-              </div>
-            )}
-          </div>
+        {(comments_count ?? 0) > 0 && (
+          <span className="m" title="Comments">
+            ✉ {comments_count}
+          </span>
         )}
+        <span className="bc">
+          <span className="bars" aria-hidden>
+            {barcode(seed).map((w, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: fixed barcode bars
+              <i key={i} style={{ width: w }} />
+            ))}
+          </span>
+          {hasValue ? (
+            <span className="val">{formatMoney(Number(value), currency)}</span>
+          ) : story_points != null ? (
+            <span className="pts">
+              {story_points}
+              <small>PT</small>
+            </span>
+          ) : null}
+        </span>
       </div>
     </div>
   );
 
-  // The DragOverlay copy must NOT register a sortable: useSortable is keyed by id, and a
-  // second registration with the list copy's id makes the two fight over dnd-kit's registry
-  // (each re-registration invalidates the other → nested updates → React #185 crash).
+  // The DragOverlay copy must NOT register a sortable (two registrations with the
+  // same id fight over dnd-kit's registry → React #185).
   if (overlay) return body;
 
   return <Draggable id={`draggable-${id}`}>{body}</Draggable>;
+});
+
+// A finished card filed on the Done shelf as its tape spine.
+export const DoneSpine = memo(function DoneSpine({
+  id,
+  name,
+  tags,
+  ticket_number,
+  ticket_key,
+  done_at,
+}: CardInterface) {
+  const [a] = cardInks({ id, tags });
+  const latin = /^[\p{Script=Latin}\p{N}\p{P}\p{S}\s]*$/u.test(name);
+  const num =
+    ticket_number ?? (ticket_key ? ticket_key.split("-").pop() : null) ?? "";
+  return (
+    <Draggable id={`draggable-${id}`}>
+      <div className="mt-dsp" style={{ "--a": a } as React.CSSProperties}>
+        <span className="sw">{num}</span>
+        <span className={`t${latin ? "" : " plain"}`}>{name}</span>
+        {done_at && <span className="d">{shortDate(done_at)}</span>}
+      </div>
+    </Draggable>
+  );
 });

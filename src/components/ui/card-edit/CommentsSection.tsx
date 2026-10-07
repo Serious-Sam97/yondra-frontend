@@ -12,7 +12,11 @@ import { EmojiPickerPopover } from "@/components/ui/EmojiPickerPopover";
 import Icon from "@/components/ui/Icon";
 import RichTextContent from "@/components/ui/RichTextContent";
 import RichTextEditor from "@/components/ui/RichTextEditor";
-import { type Comment, isHtmlEmpty, type ThreadState } from "@/hooks/useCardComments";
+import {
+  type Comment,
+  isHtmlEmpty,
+  type ThreadState,
+} from "@/hooks/useCardComments";
 
 interface CommentsSectionProps {
   isDemo: boolean;
@@ -333,7 +337,11 @@ export function CommentsSection({
         flashIds.has(comment.id) ? "cm-new" : ""
       }`}
     >
-      {avatar(comment.user?.id ?? 0, comment.user?.name ?? "?", isReply ? 26 : 34)}
+      {avatar(
+        comment.user?.id ?? 0,
+        comment.user?.name ?? "?",
+        isReply ? 26 : 34,
+      )}
       <div className="min-w-0 flex flex-col gap-0.5 relative">
         {editingCommentId !== comment.id && actionBar(comment, isReply)}
 
@@ -386,7 +394,10 @@ export function CommentsSection({
             </div>
           </div>
         ) : (
-          <RichTextContent html={comment.body} className="text-[12.5px] mt-0.5" />
+          <RichTextContent
+            html={comment.body}
+            className="text-[12.5px] mt-0.5"
+          />
         )}
 
         {reactionChips(comment)}
@@ -545,7 +556,10 @@ export function CommentsSection({
             onClick={() => setComposerOpen(true)}
             className="cm-composer-pill cf-mono"
           >
-            <Icon icon={faReply} style={{ fontSize: "11px", transform: "scaleX(-1)" }} />
+            <Icon
+              icon={faReply}
+              style={{ fontSize: "11px", transform: "scaleX(-1)" }}
+            />
             <span>Write a comment…</span>
             <span className="cm-composer-pill__keys">
               <span>@ MENTION</span>

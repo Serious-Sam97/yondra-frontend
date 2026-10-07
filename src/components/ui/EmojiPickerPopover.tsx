@@ -45,7 +45,12 @@ export function EmojiPickerPopover({
   }, [onPick, onClose]);
 
   return (
-    <div ref={hostRef} className="cm-emoji-host" role="dialog" aria-label="Emoji picker">
+    <div
+      ref={hostRef}
+      className="cm-emoji-host"
+      role="dialog"
+      aria-label="Emoji picker"
+    >
       <p className="cm-gif__note cf-mono">LOADING…</p>
     </div>
   );

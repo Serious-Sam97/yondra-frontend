@@ -68,7 +68,9 @@ export function BoardStandupModal({
             </span>
           )}
           {!ai.hasRun && (
-            <span style={{ color: "var(--cf-text-muted)" }}>Reading the board…</span>
+            <span style={{ color: "var(--cf-text-muted)" }}>
+              Reading the board…
+            </span>
           )}
         </div>
 

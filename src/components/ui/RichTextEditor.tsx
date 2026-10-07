@@ -507,7 +507,11 @@ export default function RichTextEditor({
         <GifPicker
           onClose={() => setGifOpen(false)}
           onPick={(url, alt) => {
-            editorRef.current?.chain().focus().setImage({ src: url, alt }).run();
+            editorRef.current
+              ?.chain()
+              .focus()
+              .setImage({ src: url, alt })
+              .run();
             setGifOpen(false);
           }}
         />

@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
 import { Board } from "@/components/layout/Board";
 import type { BoardInterface } from "@/interfaces/BoardInterface";
-import { ApiError, deleteBoard, fetchBoard } from "@/lib/api";
+import { ApiError, deleteBoard, fetchBoard, fetchProject } from "@/lib/api";
+import { boardColor } from "@/lib/ui";
 import { fetchUser } from "@/lib/auth";
 import {
   deleteDemoBoard,
@@ -33,6 +34,12 @@ export default function BoardPage({ params }: { params: Promise<Params> }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Cassette label on the deck: parent project + this board's track number.
+  const [deck, setDeck] = useState<{
+    projectName: string | null;
+    trackNo: number | null;
+    accent: string;
+  }>({ projectName: null, trackNo: null, accent: "#6fe0ff" });
 
   const isDemo = id === "demo" || id.startsWith("demo-");
   const isOwner = board.user_id === currentUserId;
@@ -116,7 +123,24 @@ export default function BoardPage({ params }: { params: Promise<Params> }) {
           can_manage: data.can_manage,
         });
         setCurrentUserId(user?.id ?? null);
+        setDeck((d) => ({ ...d, accent: boardColor(data, d.accent) }));
         setLoading(false);
+        if (data.project_id) {
+          fetchProject(data.project_id)
+            .then((p) => {
+              if (controller.signal.aborted || !p) return;
+              const ordered = [...(p.boards ?? [])].sort(
+                (a, b) => (a.position ?? 0) - (b.position ?? 0),
+              );
+              const idx = ordered.findIndex((b) => b.id === data.id);
+              setDeck({
+                projectName: p.name,
+                trackNo: idx >= 0 ? idx + 1 : null,
+                accent: boardColor(data, p.color),
+              });
+            })
+            .catch(() => {});
+        }
       })
       .catch((e) => {
         if (controller.signal.aborted) return;
@@ -177,13 +201,16 @@ export default function BoardPage({ params }: { params: Promise<Params> }) {
   }
 
   return (
-    <div className="min-h-screen px-4 pt-3 pb-6 md:px-8 md:pt-4 md:pb-8">
+    <div className="mt-board min-h-screen px-2 pt-0.5 pb-2">
       {/* Board — the neon status rail + identity (Back · name · Settings · Share)
           now live fused into the board faceplate itself (BoardTopBar). */}
       <Board
         id={board.id}
         name={board.name}
         projectId={board.project_id ?? null}
+        projectName={deck.projectName}
+        trackNo={deck.trackNo}
+        accent={deck.accent}
         type={board.type}
         currency={board.currency}
         description={board.description}
@@ -220,13 +247,9 @@ export default function BoardPage({ params }: { params: Promise<Params> }) {
           )
         }
         onOpenSettings={() =>
-          isDemo
-            ? setSettingsOpen(true)
-            : router.push(`/boards/${id}/settings`)
+          isDemo ? setSettingsOpen(true) : router.push(`/boards/${id}/settings`)
         }
-        onOpenShare={() =>
-          router.push(`/boards/${id}/settings?tab=members`)
-        }
+        onOpenShare={() => router.push(`/boards/${id}/settings?tab=members`)}
         onBoardMetaSaved={(n, d, prefix) =>
           setBoard((b) => ({
             ...b,

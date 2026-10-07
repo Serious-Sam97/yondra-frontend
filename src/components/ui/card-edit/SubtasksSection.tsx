@@ -67,12 +67,18 @@ export function SubtasksSection({
             {aiBreaking ? "Breaking down…" : "Break down"}
           </button>
           {aiRationale && (
-            <p style={{ fontSize: "11px", color: "var(--cf-text-muted)" }} className="cf-mono">
+            <p
+              style={{ fontSize: "11px", color: "var(--cf-text-muted)" }}
+              className="cf-mono"
+            >
               {aiRationale}
             </p>
           )}
           {aiError && (
-            <p style={{ fontSize: "11px", color: "var(--cf-amber)" }} className="cf-mono">
+            <p
+              style={{ fontSize: "11px", color: "var(--cf-amber)" }}
+              className="cf-mono"
+            >
               {aiError}
             </p>
           )}
@@ -103,12 +109,18 @@ export function SubtasksSection({
       )}
 
       {loadingSubtasks && (
-        <p style={{ fontSize: "12px", color: "var(--cf-text-muted)" }} className="cf-mono text-center py-3">
+        <p
+          style={{ fontSize: "12px", color: "var(--cf-text-muted)" }}
+          className="cf-mono text-center py-3"
+        >
           Loading…
         </p>
       )}
       {!loadingSubtasks && subtasks.length === 0 && (
-        <p style={{ fontSize: "12px", color: "var(--cf-text-muted)" }} className="cf-mono text-center py-3">
+        <p
+          style={{ fontSize: "12px", color: "var(--cf-text-muted)" }}
+          className="cf-mono text-center py-3"
+        >
           No subtasks yet.
         </p>
       )}
@@ -134,7 +146,11 @@ export function SubtasksSection({
             {s.ticket_key && (
               <span
                 className="cf-mono flex-shrink-0"
-                style={{ fontSize: "9px", color: "var(--cf-text-muted)", letterSpacing: "0.06em" }}
+                style={{
+                  fontSize: "9px",
+                  color: "var(--cf-text-muted)",
+                  letterSpacing: "0.06em",
+                }}
               >
                 {s.ticket_key}
               </span>

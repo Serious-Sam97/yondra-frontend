@@ -2,23 +2,73 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import {
-  faGear,
-  faTriangleExclamation,
-} from "@fortawesome/free-solid-svg-icons";
+import { faGear, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import Icon from "@/components/ui/Icon";
 import type { CardInterface } from "@/interfaces/CardInterface";
 import type { SectionInterface } from "@/interfaces/SectionInterface";
+import { coverArt, LINER_ART, railArt } from "@/lib/boardArt";
 import { formatMoney, toNumber } from "@/lib/currency";
 import { hapticReject } from "@/lib/haptics";
 import { playWipReject } from "@/lib/sound";
 import { Droppable } from "../shared/Droppable";
-import { Card } from "./Card";
+import { Card, DoneSpine } from "./Card";
 
-// Memoized: Board re-renders on every search keystroke / modal toggle, and its
-// props are kept referentially stable (see Board.tsx), so unchanged columns —
-// and every Card inside them — skip re-rendering entirely.
+const DAY = 86_400_000;
+const VU_SEGMENTS = 12;
+// Done shelf shows this many spines before "+N more on the shelf".
+const SHELF_LIMIT = 12;
+
+// Rack stickers per channel position (design/board-final.png). Purely decorative;
+// they sit behind the cards so a full rack covers them.
+const DECALS: React.ReactNode[] = [
+  null,
+  <>
+    <span key="s" className="mt-decal star" style={{ right: 18, bottom: 96 }}>
+      Peak
+      <br />
+      Level
+    </span>
+    <span key="b" className="mt-decal badge" style={{ left: 24, bottom: 66 }}>
+      Type II · <b>CrO2</b>
+    </span>
+  </>,
+  <>
+    <span key="r" className="mt-decal round" style={{ right: 20, bottom: 64 }}>
+      Rev<b>B</b>
+    </span>
+    <span key="b" className="mt-decal badge" style={{ left: 24, bottom: 66 }}>
+      Dolby · <b>NR</b>
+    </span>
+  </>,
+  <>
+    <span key="c" className="mt-decal chrome" style={{ right: 26, bottom: 62 }}>
+      Metal
+    </span>
+    <span key="b" className="mt-decal badge" style={{ left: 24, bottom: 66 }}>
+      Type IV · <b>Archive</b>
+    </span>
+  </>,
+];
+
+function weekBucket(doneAt?: string | null): number {
+  if (!doneAt) return 2;
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  startOfWeek.setHours(0, 0, 0, 0);
+  startOfWeek.setDate(startOfWeek.getDate() - ((startOfWeek.getDay() + 6) % 7));
+  const t = new Date(doneAt).getTime();
+  if (t >= startOfWeek.getTime()) return 0;
+  if (t >= startOfWeek.getTime() - 7 * DAY) return 1;
+  return 2;
+}
+
+const SHELF_GROUPS = ["This week · on the shelf", "Last week", "Earlier"];
+
+// A board column as a neon-lit tape rack: channel number, label-tape title, LCD
+// count, a WIP VU meter, the rack body the cards rest in, liner art + stickers in
+// the empty space, and an "add card" key at the foot. Memoized: Board keeps every
+// prop referentially stable so unchanged racks skip re-rendering.
 export const Section = memo(function Section({
   id,
   name,
@@ -32,24 +82,24 @@ export const Section = memo(function Section({
   boardType = "kanban",
   currency = "BRL",
   agingHours,
+  index = 0,
+  isDone = false,
+  isInProgress = false,
+  onAddCard,
 }: SectionInterface) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(name);
   const [editingWip, setEditingWip] = useState(false);
   const [wipInput, setWipInput] = useState("");
   const [shaking, setShaking] = useState(false);
+  const [shelfOpen, setShelfOpen] = useState(false);
   const wipInputRef = useRef<HTMLInputElement>(null);
-  const cardListRef = useRef<HTMLDivElement>(null);
   const prevOverLimit = useRef(false);
-  const prevCount = useRef(cards.length);
 
   const commitRename = () => {
     const trimmed = editValue.trim();
-    if (trimmed && trimmed !== name) {
-      onRename?.(id, trimmed);
-    } else {
-      setEditValue(name);
-    }
+    if (trimmed && trimmed !== name) onRename?.(id, trimmed);
+    else setEditValue(name);
     setEditing(false);
   };
 
@@ -60,46 +110,20 @@ export const Section = memo(function Section({
   };
 
   const commitWip = () => {
-    const n = parseInt(wipInput);
-    onSetWipLimit?.(id, isNaN(n) || n <= 0 ? null : n);
+    const n = parseInt(wipInput, 10);
+    onSetWipLimit?.(id, Number.isNaN(n) || n <= 0 ? null : n);
     setEditingWip(false);
   };
 
   const count = cards.length;
-  // CRM: sum of the column's deal values, shown as a funnel-stage total.
   const isCrm = boardType === "crm";
   const columnTotal = isCrm
     ? cards.reduce((sum, c) => sum + toNumber(c.value), 0)
     : 0;
   const atLimit = wipLimit != null && count === wipLimit;
   const overLimit = wipLimit != null && count > wipLimit;
-  // Status LED cycles green (nominal) / amber (at limit) / red (over limit)
-  const ledColor = overLimit
-    ? "var(--cf-red)"
-    : atLimit
-      ? "var(--cf-amber)"
-      : "var(--cf-phosphor)";
-  const countColor = overLimit
-    ? "var(--cf-red)"
-    : atLimit
-      ? "var(--cf-amber)"
-      : "var(--cf-text)";
-  const countBg = "#1c1a16";
 
-  // Ring animation when a card lands in this column — direct DOM to restart reliably
-  useEffect(() => {
-    if (cards.length > prevCount.current) {
-      const el = cardListRef.current;
-      if (el) {
-        el.classList.remove("col-ring");
-        void el.offsetWidth; // force reflow so browser sees the removal
-        el.classList.add("col-ring");
-      }
-    }
-    prevCount.current = cards.length;
-  }, [cards.length]);
-
-  // Shake + sound when a card pushes the column over its WIP limit
+  // Shake + sound when a card pushes the rack over its WIP limit.
   useEffect(() => {
     if (overLimit && !prevOverLimit.current) {
       setShaking(true);
@@ -110,17 +134,8 @@ export const Section = memo(function Section({
     prevOverLimit.current = overLimit;
   }, [overLimit]);
 
-  const style = {
-    minHeight: "300px",
-    display: "flex",
-    flexDirection: "column" as const,
-    gap: "8px",
-  };
-
-  // dnd-kit requires a STABLE items array for SortableContext. `cards` is a fresh array
-  // on every Board render, so key the memo on the id sequence: the reference only changes
-  // when the actual order changes, which stops dnd-kit from re-registering/re-measuring
-  // the sortable set every render (a source of the "max update depth" loop, React #185).
+  // dnd-kit needs a STABLE items array: key the memo on the id sequence so the
+  // reference only changes when the order does (avoids the React #185 loop).
   const cardIdsKey = cards.map((c) => c.id).join(",");
   const sortableIds = useMemo(
     () =>
@@ -130,214 +145,282 @@ export const Section = memo(function Section({
     [cardIdsKey],
   );
 
-  return (
-    <div
-      className={`aero-column flex flex-col w-64 flex-shrink-0 group/section pb-2 ${shaking ? "wip-shake" : ""}`}
-    >
-      {/* Column header — status LED + mono label + readout count */}
-      <div className="flex items-center gap-2 mb-3 px-3 pt-2">
-        <span
-          style={{
-            background: ledColor,
-            boxShadow: `0 0 6px ${ledColor}, 0 0 11px ${ledColor}`,
-          }}
-          className="cf-led flex-shrink-0"
-        />
+  // Pace note shown when the rack has no WIP limit.
+  const note = useMemo(() => {
+    if (isDone) {
+      const thisWeek = cards.filter((c) => weekBucket(c.done_at) === 0).length;
+      const lastWeek = cards.filter((c) => weekBucket(c.done_at) === 1).length;
+      return `▲ ${thisWeek} this week · ${lastWeek} last`;
+    }
+    if (count === 0) return "Empty · waiting for tape";
+    const now = Date.now();
+    const ages = cards
+      .map((c) =>
+        c.created_at ? (now - new Date(c.created_at).getTime()) / DAY : null,
+      )
+      .filter((v): v is number => v != null && !Number.isNaN(v));
+    if (ages.length === 0) return `${count} on the rack`;
+    const avg = ages.reduce((s, v) => s + v, 0) / ages.length;
+    return `Avg age ${avg.toFixed(1)}d · oldest ${Math.floor(Math.max(...ages))}d`;
+  }, [cards, count, isDone]);
 
-        {editing ? (
-          <input
-            autoFocus
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={commitRename}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") commitRename();
-              if (e.key === "Escape") {
-                setEditValue(name);
-                setEditing(false);
-              }
-            }}
-            className="cf-mono flex-1 bg-transparent text-xs uppercase tracking-widest font-bold focus:outline-none border-b min-w-0"
-            style={{
-              color: "var(--cf-text)",
-              borderColor: "var(--cf-phosphor)",
-            }}
-          />
-        ) : (
-          <p
-            className="cf-label cursor-pointer truncate"
-            style={{
-              color: "var(--cf-text)",
-              fontSize: "12px",
-              fontWeight: 700,
-            }}
+  const liner = useMemo(() => {
+    const [kind, a, b] = LINER_ART[index % LINER_ART.length];
+    return coverArt(kind, a, b, index + 3, `ln${id}`);
+  }, [index, id]);
+  const rail = useMemo(() => railArt(color), [color]);
+
+  const lit = wipLimit
+    ? Math.round(Math.min(count / wipLimit, 1.25) * VU_SEGMENTS * 0.8)
+    : 0;
+
+  // Done shelf: grouped by week, capped until expanded.
+  const shelf = useMemo(() => {
+    if (!isDone) return null;
+    const sorted = [...cards].sort(
+      (x, y) =>
+        new Date(y.done_at ?? 0).getTime() - new Date(x.done_at ?? 0).getTime(),
+    );
+    const shown = shelfOpen ? sorted : sorted.slice(0, SHELF_LIMIT);
+    return { shown, hidden: sorted.length - shown.length };
+  }, [cards, isDone, shelfOpen]);
+
+  return (
+    <section
+      className={`mt-rack${shaking ? " wip-shake" : ""}`}
+      style={{ "--st": color } as React.CSSProperties}
+      aria-label={`${name}, ${count} card${count === 1 ? "" : "s"}`}
+    >
+      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: generated SVG */}
+      <span
+        className="mt-rail-art"
+        dangerouslySetInnerHTML={{ __html: rail }}
+      />
+      <span className="mt-foot" aria-hidden />
+      <span className="mt-scw" style={{ left: 4, top: 80 }} aria-hidden />
+      <span className="mt-scw" style={{ right: 4, top: 80 }} aria-hidden />
+      <span className="mt-scw" style={{ left: 4, bottom: 20 }} aria-hidden />
+      <span className="mt-scw" style={{ right: 4, bottom: 20 }} aria-hidden />
+      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: generated SVG */}
+      <div
+        className="mt-liner"
+        aria-hidden
+        dangerouslySetInnerHTML={{ __html: liner }}
+      />
+      {DECALS[index % DECALS.length]}
+
+      <div className="mt-rack-h">
+        <div className="mt-rack-t">
+          <span className="ch">CH{index + 1}</span>
+          <span
+            className="nm"
             onDoubleClick={() => {
+              if (!onRename) return;
               setEditValue(name);
               setEditing(true);
             }}
-            title="Double-click to rename"
+            title={onRename ? "Double-click to rename" : name}
           >
-            {name}
-          </p>
+            {editing ? (
+              <input
+                // biome-ignore lint/a11y/noAutofocus: inline rename starts focused
+                autoFocus
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={commitRename}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitRename();
+                  if (e.key === "Escape") {
+                    setEditValue(name);
+                    setEditing(false);
+                  }
+                }}
+                aria-label="Channel name"
+              />
+            ) : (
+              name
+            )}
+          </span>
+          <span
+            className="cnt"
+            title={
+              wipLimit != null
+                ? `${count} / ${wipLimit} WIP limit`
+                : `${count} cards`
+            }
+          >
+            {count}
+          </span>
+          {onSetWipLimit && (
+            <button
+              type="button"
+              className="tool"
+              onClick={openWipEdit}
+              title="Set WIP limit"
+              aria-label="Set WIP limit"
+            >
+              <Icon icon={faGear} />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              className="tool"
+              onClick={() => onDelete(id, name)}
+              title="Delete channel"
+              aria-label="Delete channel"
+            >
+              <Icon icon={faXmark} />
+            </button>
+          )}
+          {onAddCard && !isDone && (
+            <button
+              type="button"
+              className="add"
+              onClick={() => onAddCard(id)}
+              title="Add card"
+              aria-label={`Add card to ${name}`}
+            >
+              +
+            </button>
+          )}
+        </div>
+
+        {editingWip ? (
+          <div className="mt-wip-edit">
+            <input
+              ref={wipInputRef}
+              type="number"
+              min="1"
+              value={wipInput}
+              onChange={(e) => setWipInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitWip();
+                if (e.key === "Escape") setEditingWip(false);
+              }}
+              placeholder="Limit"
+              aria-label="WIP limit"
+            />
+            <button type="button" className="ok" onClick={commitWip}>
+              Set
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onSetWipLimit?.(id, null);
+                setEditingWip(false);
+              }}
+            >
+              Clear
+            </button>
+          </div>
+        ) : wipLimit != null ? (
+          <div className="mt-vu" title={`${count} of ${wipLimit} WIP`}>
+            <span>
+              WIP {count}/{wipLimit}
+            </span>
+            <span className="bar" aria-hidden>
+              {Array.from({ length: VU_SEGMENTS }, (_, i) => {
+                if (i >= lit) return <i key={`v${i}`} />;
+                const f = i / VU_SEGMENTS;
+                return (
+                  <i
+                    key={`v${i}`}
+                    className={f < 0.55 ? "g" : f < 0.8 ? "a" : "r"}
+                  />
+                );
+              })}
+            </span>
+            {overLimit ? (
+              <span className="over">Over</span>
+            ) : atLimit ? (
+              <span className="peak">Peak</span>
+            ) : null}
+          </div>
+        ) : (
+          <div className="mt-vu">
+            <span>{note}</span>
+          </div>
         )}
 
-        {/* Count / WIP readout */}
-        {/* (CRM value total rendered on its own strip below the header) */}
-        <span
-          style={{
-            color: countColor,
-            backgroundColor: countBg,
-            fontSize: "11px",
-            letterSpacing: "0.06em",
-          }}
-          className="cf-mono ml-auto px-2 py-0.5 rounded-sm flex-shrink-0 tabular-nums"
-          title={
-            wipLimit != null
-              ? `${count} / ${wipLimit} WIP limit`
-              : `${count} cards`
-          }
-        >
-          {wipLimit != null ? `${count}/${wipLimit}` : count}
-        </span>
-
-        {/* WIP edit trigger */}
-        {onSetWipLimit && (
-          <button
-            onClick={openWipEdit}
-            className="btn-physical opacity-0 group-hover/section:opacity-100 text-xs cursor-pointer leading-none flex-shrink-0"
-            style={{ color: "var(--cf-text-muted)" }}
-            title="Set WIP limit"
+        {isCrm && (
+          <div
+            className="mt-rack-crm"
+            title={`${count} deal${count !== 1 ? "s" : ""}`}
           >
-            <Icon icon={faGear} />
-          </button>
-        )}
-
-        {onDelete && (
-          <button
-            onClick={() => onDelete(id, name)}
-            className="btn-physical opacity-0 group-hover/section:opacity-100 text-xs cursor-pointer leading-none ml-1 flex-shrink-0"
-            style={{ color: "var(--cf-text-muted)" }}
-            title="Delete section"
-          >
-            ✕
-          </button>
+            <b>{formatMoney(columnTotal, currency)}</b>
+            {count} deal{count !== 1 ? "s" : ""}
+          </div>
         )}
       </div>
 
-      {/* CRM funnel-stage total: sum of deal values + deal count */}
-      {isCrm && (
-        <div className="flex items-center gap-2 mx-3 mb-2">
-          <span
-            className="cf-mono px-2 py-0.5 rounded-sm tabular-nums font-bold"
-            style={{
-              color: "var(--cf-phosphor)",
-              background: "#0d1410",
-              fontSize: "11px",
-              letterSpacing: "0.04em",
-            }}
-            title={`${count} deal${count !== 1 ? "s" : ""} · ${formatMoney(columnTotal, currency)}`}
-          >
-            {formatMoney(columnTotal, currency)}
-          </span>
-          <span
-            className="cf-mono"
-            style={{
-              color: "var(--cf-text-muted)",
-              fontSize: "9px",
-              letterSpacing: "0.08em",
-            }}
-          >
-            {count} deal{count !== 1 ? "s" : ""}
-          </span>
-        </div>
-      )}
-
-      {/* WIP limit inline editor */}
-      {editingWip && (
-        <div className="flex items-center gap-2 mb-2 px-3">
-          <input
-            ref={wipInputRef}
-            type="number"
-            min="1"
-            value={wipInput}
-            onChange={(e) => setWipInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") commitWip();
-              if (e.key === "Escape") setEditingWip(false);
-            }}
-            placeholder="Limit..."
-            className="glass-input w-20 text-xs px-2 py-1"
-          />
-          <button
-            onClick={commitWip}
-            className="btn-physical cf-mono text-xs font-bold uppercase cursor-pointer hover:brightness-110"
-            style={{ color: "var(--cf-phosphor)" }}
-          >
-            Set
-          </button>
-          <button
-            onClick={() => {
-              onSetWipLimit?.(id, null);
-              setEditingWip(false);
-            }}
-            className="btn-physical cf-mono text-xs uppercase cursor-pointer hover:brightness-110"
-            style={{ color: "var(--cf-text-muted)" }}
-          >
-            Clear
-          </button>
-        </div>
-      )}
-
-      {/* WIP warning banner */}
-      {overLimit && (
-        <div
-          className="cf-mono mx-3 mb-2 px-2 py-1 rounded-sm text-xs font-bold uppercase tracking-widest"
+      <div className="mt-rack-b">
+        <Droppable
           style={{
-            color: "var(--cf-red)",
-            background: "#0d1410",
-            border: "1px solid var(--cf-red)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 14,
+            minHeight: "100%",
           }}
+          key={id}
+          id={`section-${id}`}
         >
-          <Icon icon={faTriangleExclamation} /> WIP limit exceeded
-        </div>
-      )}
-      {atLimit && (
-        <div
-          className="cf-mono mx-3 mb-2 px-2 py-1 rounded-sm text-xs font-bold uppercase tracking-widest"
-          style={{
-            color: "var(--cf-amber)",
-            background: "#0d1410",
-            border: "1px solid var(--cf-amber)",
-          }}
-        >
-          WIP limit reached
-        </div>
-      )}
-
-      {/* Card list */}
-      <div
-        ref={cardListRef}
-        className="mx-2 rounded-xl p-2 flex-1 max-h-[50vh] md:max-h-[calc(100vh-320px)] overflow-y-auto"
-      >
-        <Droppable style={style} key={id} id={`section-${id}`}>
           <SortableContext
             items={sortableIds}
             strategy={verticalListSortingStrategy}
           >
-            {cards.map((card: CardInterface) => (
-              <div key={card.id} onClick={() => handleClick(card)}>
-                <Card
-                  {...card}
-                  color={color}
-                  boardType={boardType}
-                  currency={currency}
-                  agingHours={agingHours}
-                />
-              </div>
-            ))}
+            {isDone && shelf
+              ? shelf.shown.map((card, i) => {
+                  const bucket = weekBucket(card.done_at);
+                  const prev =
+                    i > 0 ? weekBucket(shelf.shown[i - 1].done_at) : -1;
+                  return (
+                    <div key={card.id} style={{ display: "contents" }}>
+                      {bucket !== prev && (
+                        <div className="mt-dn-group">
+                          {SHELF_GROUPS[bucket]}
+                        </div>
+                      )}
+                      <div onClick={() => handleClick(card)}>
+                        <DoneSpine {...card} />
+                      </div>
+                    </div>
+                  );
+                })
+              : cards.map((card: CardInterface) => (
+                  <div key={card.id} onClick={() => handleClick(card)}>
+                    <Card
+                      {...card}
+                      color={color}
+                      playing={isInProgress}
+                      boardType={boardType}
+                      currency={currency}
+                      agingHours={agingHours}
+                    />
+                  </div>
+                ))}
+            {isDone && shelf && (shelf.hidden > 0 || shelfOpen) && (
+              <button
+                type="button"
+                className="mt-more"
+                onClick={() => setShelfOpen((o) => !o)}
+              >
+                {shelfOpen
+                  ? "− Show less"
+                  : `+ ${shelf.hidden} more on the shelf`}
+              </button>
+            )}
           </SortableContext>
         </Droppable>
       </div>
-    </div>
+
+      {onAddCard && !isDone && (
+        <div className="mt-rack-f">
+          <button type="button" onClick={() => onAddCard(id)}>
+            + Add card <span className="mt-kbd">N</span>
+          </button>
+        </div>
+      )}
+    </section>
   );
 });
