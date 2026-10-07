@@ -702,6 +702,16 @@ export function Board({
     } as Record<QuickFilter, number>;
   }, [boardCards, currentUserId, matchesSprint]);
 
+  // Per-column card counts for the open card's channel selector.
+  const sectionCounts = useMemo(() => {
+    const out: Record<number, number> = {};
+    for (const c of boardCards) {
+      if (!matchesSprint(c)) continue;
+      out[c.section_id] = (out[c.section_id] ?? 0) + 1;
+    }
+    return out;
+  }, [boardCards, matchesSprint]);
+
   // Stable "add card to this channel" handler shared by every rack.
   const handleAddCardTo = useCallback((sectionId: number) => {
     setNewCardSectionId(sectionId);
@@ -2017,6 +2027,8 @@ export function Board({
               qaEnabled={qaEnabled}
               onOpenSubtask={handleOpenSubtask}
               onOpenParent={handleOpenParent}
+              sectionCounts={sectionCounts}
+              wipLimits={wipLimits}
               card={liveSelectedCard}
               sections={sections}
               users={boardUsers}

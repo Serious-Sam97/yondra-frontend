@@ -8,12 +8,13 @@ import {
   faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { cloneElement, useEffect, useMemo, useRef, useState } from "react";
 import { ChecklistSection } from "@/components/ui/card-edit/ChecklistSection";
 import { CommentsSection } from "@/components/ui/card-edit/CommentsSection";
 import { HistorySection } from "@/components/ui/card-edit/HistorySection";
 import { Lightbox } from "@/components/ui/card-edit/Lightbox";
 import { PaymentsSection } from "@/components/ui/card-edit/PaymentsSection";
+import { CaseRail } from "@/components/ui/card-edit/CaseRail";
 import { PropertiesPanel } from "@/components/ui/card-edit/PropertiesPanel";
 import { SubtasksSection } from "@/components/ui/card-edit/SubtasksSection";
 import { WhatsAppSection } from "@/components/ui/card-edit/WhatsAppSection";
@@ -119,6 +120,9 @@ export interface CardEditProps {
   onOpenSubtask?: (subtask: CardInterface) => void;
   // Open this subtask's parent epic card (resolved from board state by id).
   onOpenParent?: (parentId: number) => void;
+  // Board context for the cassette-case rail's channel selector.
+  sectionCounts?: Record<number, number>;
+  wipLimits?: Record<number, number | null>;
 }
 
 const CardEdit: React.FC<CardEditProps> = ({
@@ -151,6 +155,8 @@ const CardEdit: React.FC<CardEditProps> = ({
   currentUserId = 0,
   onOpenSubtask,
   onOpenParent,
+  sectionCounts,
+  wipLimits,
 }) => {
   const router = useRouter();
   const [id, setId] = useState<number | string>(0);
@@ -180,8 +186,9 @@ const CardEdit: React.FC<CardEditProps> = ({
   // Top-level switch between the card, Planning Poker, and Sentinel (QA).
   const [topTab, setTopTab] = useState<"card" | "planning" | "qa">("card");
   // Desktop worklog: Checklist + Subtasks + Payments are collapsible, starting minimized.
+  // The tracklist (checklist) starts open — it's the card's main work surface.
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
-    checklist: true,
+    checklist: false,
     subtasks: true,
     payments: true,
     history: true,
@@ -534,10 +541,7 @@ const CardEdit: React.FC<CardEditProps> = ({
   const history = useCardHistory({
     boardId,
     cardId: card?.id,
-    enabled:
-      !isNew &&
-      !isDemo &&
-      (isDesktop ? !collapsed.history : activeTab === "history"),
+    enabled: !isNew && !isDemo && (isDesktop ? true : activeTab === "history"),
   });
 
   // ── Cassette case (design/card-open-dark-graphite.png) ──
@@ -654,9 +658,15 @@ const CardEdit: React.FC<CardEditProps> = ({
         ref={titleRef}
         autoFocus={isNew || !isDesktop}
         placeholder="What needs to be done?"
-        rows={2}
+        rows={1}
         disabled={isReadOnly}
-        style={{ color: "var(--cf-text)", caretColor: "var(--cf-phosphor)" }}
+        style={
+          {
+            color: "var(--cf-text)",
+            caretColor: "var(--cf-phosphor)",
+            fieldSizing: "content",
+          } as React.CSSProperties
+        }
         className="mtx-title w-full bg-transparent text-2xl lg:text-[28px] font-bold placeholder-white/25 focus:outline-none resize-none leading-tight disabled:opacity-70 flex-shrink-0 px-1 pt-1"
         value={name}
         onChange={(e) => {
@@ -1015,7 +1025,7 @@ const CardEdit: React.FC<CardEditProps> = ({
   };
 
   // Work sections stacked in the main column (desktop).
-  const renderWork = () => (
+  const renderWork = (inCase = false) => (
     <div className="flex flex-col gap-6">
       <div>
         {collapsibleSection(
@@ -1068,14 +1078,19 @@ const CardEdit: React.FC<CardEditProps> = ({
           )}
         </div>
       )}
-      <div className="border-t pt-6" style={{ borderColor: "var(--cf-edge)" }}>
-        {workHeader(
-          "Talkback · Comments",
-          comments.length ? String(comments.length) : null,
-        )}
-        {commentsSection}
-      </div>
-      {!isNew && !isDemo && (
+      {!inCase && (
+        <div
+          className="border-t pt-6"
+          style={{ borderColor: "var(--cf-edge)" }}
+        >
+          {workHeader(
+            "Talkback · Comments",
+            comments.length ? String(comments.length) : null,
+          )}
+          {commentsSection}
+        </div>
+      )}
+      {!inCase && !isNew && !isDemo && (
         <div
           className="border-t pt-6"
           style={{ borderColor: "var(--cf-edge)" }}
@@ -1109,168 +1124,176 @@ const CardEdit: React.FC<CardEditProps> = ({
         <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
       )}
 
-      {/* Glue strip — identity, status readouts, actions, save */}
-      <div
-        style={{ borderColor: "var(--cf-edge)" }}
-        className="h-9 lg:h-12 w-full flex items-center justify-between px-4 flex-shrink-0 border-b"
-      >
-        <div className="flex items-center gap-2 min-w-0">
-          <span
-            className="cf-led"
-            style={{
-              background: "var(--cf-phosphor)",
-              boxShadow: "0 0 6px var(--cf-phosphor)",
-            }}
-          />
-          <span
-            className="chrome-text"
-            style={{
-              fontFamily: "monospace",
-              fontSize: "11px",
-              letterSpacing: "0.15em",
-            }}
+      {!(isDesktop && !isNew) && (
+        <>
+          {/* Glue strip — identity, status readouts, actions, save */}
+          <div
+            style={{ borderColor: "var(--cf-edge)" }}
+            className="h-9 lg:h-12 w-full flex items-center justify-between px-4 flex-shrink-0 border-b"
           >
-            {isNew
-              ? "NEW"
-              : (card?.ticket_key ?? `#${String(id).padStart(4, "0")}`)}
-          </span>
-          {!isNew && card?.created_at && (
-            <span
-              style={{
-                fontFamily: "monospace",
-                fontSize: "10px",
-                color: "var(--cf-text-muted)",
-              }}
-            >
-              ·{" "}
-              {new Date(card.created_at).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })}
-            </span>
-          )}
-          {isReadOnly && (
-            <span
-              style={{
-                fontFamily: "monospace",
-                fontSize: "9px",
-                letterSpacing: "0.1em",
-                color: "var(--cf-amber)",
-              }}
-            >
-              · READ ONLY
-            </span>
-          )}
-          {/* Status readouts (desktop, saved cards) */}
-          {!isNew && (
-            <div
-              className="hidden lg:flex items-center gap-5 ml-3 pl-4 border-l overflow-hidden"
-              style={{ borderColor: "var(--cf-edge)" }}
-            >
-              {readout(
-                boardType === "crm" ? "Stage" : "Column",
-                sectionName,
-                "var(--cf-amber)",
-              )}
-              {boardType !== "scrum" &&
-                readout(
-                  "Priority",
-                  priority ?? "—",
-                  priority ? undefined : "var(--cf-text-dim)",
-                )}
-              {boardType === "scrum" &&
-                readout(
-                  "Points",
-                  storyPoints || "—",
-                  storyPoints ? undefined : "var(--cf-text-dim)",
-                )}
-              {boardType === "scrum" && readout("Sprint", sprintName)}
-              {readout(
-                "Due",
-                dueReadout,
-                dueDate ? undefined : "var(--cf-text-dim)",
-              )}
-              {boardType === "crm" &&
-                readout(
-                  "Value",
-                  value ? `${currencySymbol(currency)} ${value}` : "—",
-                  value ? undefined : "var(--cf-text-dim)",
-                )}
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          {!isNew && isBacklogCard && !isReadOnly && onAddToBoard && (
-            <button
-              onClick={onAddToBoard}
-              className="aero-btn aero-btn--cyan cf-mono text-[9px] uppercase tracking-widest font-bold px-2.5 py-1 cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap"
-              title="Move this ticket onto the board (To Do)"
-            >
-              <Icon icon={faArrowRightToBracket} /> Add to Board
-            </button>
-          )}
-          {!isNew && !isBacklogCard && !isReadOnly && onSendToBacklog && (
-            <button
-              onClick={onSendToBacklog}
-              className="aero-btn aero-btn--ghost cf-mono text-[9px] uppercase tracking-widest font-bold px-2.5 py-1 cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap"
-              title="Move this card back to the backlog"
-            >
-              <Icon icon={faLayerGroup} /> Send to Backlog
-            </button>
-          )}
-          {canShareLink && (
-            <button
-              onClick={handleCopyLink}
-              className="aero-btn aero-btn--ghost cf-mono text-[9px] uppercase tracking-widest font-bold px-2.5 py-1 cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap"
-              title="Copy a direct link to this card"
-              style={linkCopied ? { color: "var(--cf-phosphor)" } : undefined}
-            >
-              <Icon icon={linkCopied ? faCheck : faLink} />
-              {linkCopied ? "Copied" : "Copy Link"}
-            </button>
-          )}
-          {/* Save lives here on desktop (footer removed); the LED lights amber
-              while there are unsaved changes. Mobile keeps its inline save.
-              Gated on isDesktop because .aero-btn's display beats Tailwind's
-              `hidden` in the cascade. */}
-          {!isNew && !isReadOnly && isDesktop && (
-            <button
-              onClick={handleSubmit}
-              className="aero-btn aero-btn--cyan cf-mono text-[10px] uppercase tracking-widest font-bold px-4 py-1.5 cursor-pointer inline-flex items-center gap-2 whitespace-nowrap"
-              title={dirty ? "You have unsaved changes" : "All changes saved"}
-            >
+            <div className="flex items-center gap-2 min-w-0">
               <span
                 className="cf-led"
                 style={{
-                  width: 6,
-                  height: 6,
-                  background: dirty ? "var(--cf-amber)" : "var(--cf-edge)",
-                  boxShadow: dirty ? "0 0 6px var(--cf-amber)" : "none",
+                  background: "var(--cf-phosphor)",
+                  boxShadow: "0 0 6px var(--cf-phosphor)",
                 }}
               />
-              Save Changes
-            </button>
-          )}
-          {!isNew && !isReadOnly && onDelete && (
-            <button
-              onClick={onDelete}
-              style={{ color: "var(--cf-red)" }}
-              className="text-xs hover:opacity-60 cursor-pointer transition-opacity"
-              title="Archive card"
-            >
-              <Icon icon={faTrash} />
-            </button>
-          )}
-          <button
-            onClick={goBack}
-            className="text-sm cursor-pointer transition-colors leading-none"
-            style={{ color: "var(--cf-text-muted)" }}
-          >
-            ✕
-          </button>
-        </div>
-      </div>
+              <span
+                className="chrome-text"
+                style={{
+                  fontFamily: "monospace",
+                  fontSize: "11px",
+                  letterSpacing: "0.15em",
+                }}
+              >
+                {isNew
+                  ? "NEW"
+                  : (card?.ticket_key ?? `#${String(id).padStart(4, "0")}`)}
+              </span>
+              {!isNew && card?.created_at && (
+                <span
+                  style={{
+                    fontFamily: "monospace",
+                    fontSize: "10px",
+                    color: "var(--cf-text-muted)",
+                  }}
+                >
+                  ·{" "}
+                  {new Date(card.created_at).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </span>
+              )}
+              {isReadOnly && (
+                <span
+                  style={{
+                    fontFamily: "monospace",
+                    fontSize: "9px",
+                    letterSpacing: "0.1em",
+                    color: "var(--cf-amber)",
+                  }}
+                >
+                  · READ ONLY
+                </span>
+              )}
+              {/* Status readouts (desktop, saved cards) */}
+              {!isNew && (
+                <div
+                  className="hidden lg:flex items-center gap-5 ml-3 pl-4 border-l overflow-hidden"
+                  style={{ borderColor: "var(--cf-edge)" }}
+                >
+                  {readout(
+                    boardType === "crm" ? "Stage" : "Column",
+                    sectionName,
+                    "var(--cf-amber)",
+                  )}
+                  {boardType !== "scrum" &&
+                    readout(
+                      "Priority",
+                      priority ?? "—",
+                      priority ? undefined : "var(--cf-text-dim)",
+                    )}
+                  {boardType === "scrum" &&
+                    readout(
+                      "Points",
+                      storyPoints || "—",
+                      storyPoints ? undefined : "var(--cf-text-dim)",
+                    )}
+                  {boardType === "scrum" && readout("Sprint", sprintName)}
+                  {readout(
+                    "Due",
+                    dueReadout,
+                    dueDate ? undefined : "var(--cf-text-dim)",
+                  )}
+                  {boardType === "crm" &&
+                    readout(
+                      "Value",
+                      value ? `${currencySymbol(currency)} ${value}` : "—",
+                      value ? undefined : "var(--cf-text-dim)",
+                    )}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              {!isNew && isBacklogCard && !isReadOnly && onAddToBoard && (
+                <button
+                  onClick={onAddToBoard}
+                  className="aero-btn aero-btn--cyan cf-mono text-[9px] uppercase tracking-widest font-bold px-2.5 py-1 cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap"
+                  title="Move this ticket onto the board (To Do)"
+                >
+                  <Icon icon={faArrowRightToBracket} /> Add to Board
+                </button>
+              )}
+              {!isNew && !isBacklogCard && !isReadOnly && onSendToBacklog && (
+                <button
+                  onClick={onSendToBacklog}
+                  className="aero-btn aero-btn--ghost cf-mono text-[9px] uppercase tracking-widest font-bold px-2.5 py-1 cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap"
+                  title="Move this card back to the backlog"
+                >
+                  <Icon icon={faLayerGroup} /> Send to Backlog
+                </button>
+              )}
+              {canShareLink && (
+                <button
+                  onClick={handleCopyLink}
+                  className="aero-btn aero-btn--ghost cf-mono text-[9px] uppercase tracking-widest font-bold px-2.5 py-1 cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap"
+                  title="Copy a direct link to this card"
+                  style={
+                    linkCopied ? { color: "var(--cf-phosphor)" } : undefined
+                  }
+                >
+                  <Icon icon={linkCopied ? faCheck : faLink} />
+                  {linkCopied ? "Copied" : "Copy Link"}
+                </button>
+              )}
+              {/* Save lives here on desktop (footer removed); the LED lights amber
+              while there are unsaved changes. Mobile keeps its inline save.
+              Gated on isDesktop because .aero-btn's display beats Tailwind's
+              `hidden` in the cascade. */}
+              {!isNew && !isReadOnly && isDesktop && (
+                <button
+                  onClick={handleSubmit}
+                  className="aero-btn aero-btn--cyan cf-mono text-[10px] uppercase tracking-widest font-bold px-4 py-1.5 cursor-pointer inline-flex items-center gap-2 whitespace-nowrap"
+                  title={
+                    dirty ? "You have unsaved changes" : "All changes saved"
+                  }
+                >
+                  <span
+                    className="cf-led"
+                    style={{
+                      width: 6,
+                      height: 6,
+                      background: dirty ? "var(--cf-amber)" : "var(--cf-edge)",
+                      boxShadow: dirty ? "0 0 6px var(--cf-amber)" : "none",
+                    }}
+                  />
+                  Save Changes
+                </button>
+              )}
+              {!isNew && !isReadOnly && onDelete && (
+                <button
+                  onClick={onDelete}
+                  style={{ color: "var(--cf-red)" }}
+                  className="text-xs hover:opacity-60 cursor-pointer transition-opacity"
+                  title="Archive card"
+                >
+                  <Icon icon={faTrash} />
+                </button>
+              )}
+              <button
+                onClick={goBack}
+                className="text-sm cursor-pointer transition-colors leading-none"
+                style={{ color: "var(--cf-text-muted)" }}
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Top-level Card / Planning Poker / Sentinel switch (saved cards) */}
       {(planningTab || qaTab) && (
@@ -1433,30 +1456,117 @@ const CardEdit: React.FC<CardEditProps> = ({
 
           {/* Body */}
           {isDesktop && !isNew ? (
-            /* Desktop: document (title + description + work) on the left at a
-               readable measure, properties rail on the right. Save is in the
-               header — no footer. */
+            /* Desktop: the cassette case (design/card-open-dark-graphite.png) —
+               the J-card document on the left (cover, title, liner notes and
+               tracklist beside the talkback column, colour spine at the foot)
+               and the spec rail on the right with the transport keys. */
             <div className="flex flex-1 min-h-0">
               <div className="mtx-doc flex-1 min-w-0 flex flex-col">
                 <div className="flex-1 min-h-0 overflow-y-auto">
                   {renderCover()}
-                  <div className="max-w-[760px] mx-auto flex flex-col gap-5 px-8 pt-5 pb-10">
+                  <div className="mtx-body">
+                    <div className="mtx-head">
+                      <b>
+                        {card?.ticket_key ?? `#${String(id).padStart(4, "0")}`}
+                      </b>
+                      {isSubtask && card?.parent_ticket_key && (
+                        <span className="ep">↳ {card.parent_ticket_key}</span>
+                      )}
+                      {isReadOnly && <span className="ro">Read only</span>}
+                      <span className="acts">
+                        {isBacklogCard && !isReadOnly && onAddToBoard && (
+                          <button
+                            type="button"
+                            onClick={onAddToBoard}
+                            title="Move this ticket onto the board"
+                          >
+                            <Icon icon={faArrowRightToBracket} /> Add to board
+                          </button>
+                        )}
+                        {!isBacklogCard && !isReadOnly && onSendToBacklog && (
+                          <button
+                            type="button"
+                            onClick={onSendToBacklog}
+                            title="Move this card back to the backlog"
+                          >
+                            <Icon icon={faLayerGroup} /> To backlog
+                          </button>
+                        )}
+                        {canShareLink && (
+                          <button
+                            type="button"
+                            onClick={handleCopyLink}
+                            title="Copy a direct link to this card"
+                            className={linkCopied ? "ok" : undefined}
+                          >
+                            <Icon icon={linkCopied ? faCheck : faLink} />
+                            {linkCopied ? " Copied" : " Copy link"}
+                          </button>
+                        )}
+                      </span>
+                    </div>
                     {renderTitle()}
-                    <div className="mtx-sh">Liner notes · Description</div>
-                    {renderDescription()}
-                    {aiPanel}
-                    <div
-                      className="border-t mt-1 pt-6"
-                      style={{ borderColor: "var(--cf-edge)" }}
-                    >
-                      {renderWork()}
+                    {caseTags.length > 0 && (
+                      <div className="mtx-tags">
+                        {caseTags.map((t) => (
+                          <span key={t.id}>
+                            <i style={{ background: t.color }} />
+                            {t.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="mtx-cols">
+                      <div className="mtx-main">
+                        <div className="mtx-sh">Liner notes · Description</div>
+                        {renderDescription()}
+                        {aiPanel}
+                        {renderWork(true)}
+                      </div>
+                      <div className="mtx-talk">
+                        <div className="mtx-sh">
+                          Talkback · Comments
+                          {comments.length > 0 && <b>{comments.length}</b>}
+                        </div>
+                        {commentsSection}
+                      </div>
                     </div>
                   </div>
                 </div>
                 {renderSpine()}
               </div>
-              <div className="mtx-rail w-[320px] flex-shrink-0 overflow-y-auto px-5 py-3">
-                {propertiesPanel}
+              <div className="mtx-rail w-[330px] flex-shrink-0 overflow-y-auto">
+                <CaseRail
+                  isReadOnly={isReadOnly}
+                  boardType={boardType}
+                  ticketKey={card?.ticket_key}
+                  sectionEnteredAt={card?.section_entered_at}
+                  createdAt={card?.created_at}
+                  doneAt={card?.done_at}
+                  sections={sections}
+                  backlogSectionId={backlogSectionId}
+                  sectionId={sectionId}
+                  setSectionId={dirtify(setSectionId)}
+                  sectionCounts={sectionCounts}
+                  wipLimits={wipLimits}
+                  users={users}
+                  assignedUserId={assignedUserId}
+                  setAssignedUserId={dirtify(setAssignedUserId)}
+                  priority={priority}
+                  setPriority={dirtify(setPriority)}
+                  dueDate={dueDate}
+                  setDueDate={dirtify(setDueDate)}
+                  blockedReason={blockedReason}
+                  setBlockedReason={dirtify(setBlockedReason)}
+                  extra={cloneElement(propertiesPanel, { caseMode: true })}
+                  history={
+                    isDemo ? undefined : { ...history, boardType, currency }
+                  }
+                  dirty={dirty}
+                  onSave={handleSubmit}
+                  onArchive={onDelete}
+                  onClose={goBack}
+                />
               </div>
             </div>
           ) : (

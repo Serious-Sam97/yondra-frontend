@@ -33,7 +33,7 @@ export function ChecklistSection({
       : 0;
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="trk-list flex flex-col gap-1">
       {/* Segmented LCD progress bar — completion at a glance */}
       {checklistItems.length > 0 && (
         <div className="flex gap-[3px] mb-2">
@@ -60,7 +60,7 @@ export function ChecklistSection({
       {checklistItems.map((item) => (
         <div
           key={item.id}
-          className="flex items-center gap-2.5 group rounded-md px-1 py-1.5 hover:bg-white/[0.02]"
+          className={`trk-row flex items-center gap-2.5 group rounded-md px-1 py-1.5 hover:bg-white/[0.02]${item.is_done ? " is-done" : ""}`}
         >
           {/* key changes on toggle → React remounts → check-pop replays */}
           <div
@@ -100,7 +100,7 @@ export function ChecklistSection({
 
       {/* Inline ghost add-row — Enter keeps appending */}
       {!isReadOnly && (
-        <div className="flex items-center gap-2.5 px-1 py-1.5">
+        <div className="trk-add flex items-center gap-2.5 px-1 py-1.5">
           <span
             className="flex-shrink-0 w-4 h-4 rounded-[3px] flex items-center justify-center"
             style={{

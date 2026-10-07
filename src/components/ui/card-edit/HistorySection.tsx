@@ -525,3 +525,75 @@ export function HistorySection({
     </div>
   );
 }
+
+// Compact "recording log" for the cassette-case rail: one line per event with a
+// coloured dot by kind, the actor, the same wording as the full history, and a
+// relative time.
+const LOG_DOT: [RegExp, string][] = [
+  [/^comment/, "#c9a46a"],
+  [/^checklist\.(completed)|^subtask\.completed/, "#6f8a4a"],
+  [/^card\.(archived)/, "#b5533c"],
+  [/^card\.created/, "#8c7a5c"],
+];
+function logDot(type: string): string {
+  return LOG_DOT.find(([re]) => re.test(type))?.[1] ?? "#d9822b";
+}
+function ago(iso: string): string {
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 3600) return `${Math.max(1, Math.round(s / 60))}m`;
+  if (s < 86400) return `${Math.round(s / 3600)}h`;
+  return `${Math.round(s / 86400)}d`;
+}
+
+export function HistoryLog({
+  entries,
+  loading,
+  loaded,
+  hasMore,
+  loadingOlder,
+  loadOlder,
+  error,
+  boardType,
+  currency = "BRL",
+  limit = 6,
+}: HistorySectionProps & { limit?: number }) {
+  const [expanded, setExpanded] = useState(false);
+  const ctx: Ctx = {
+    stage: boardType === "crm" ? "Stage" : "Column",
+    currency,
+  };
+  if ((loading || !loaded) && entries.length === 0)
+    return <p className="mtx-log-empty">Loading log…</p>;
+  if (error && entries.length === 0)
+    return <p className="mtx-log-empty">{error}</p>;
+  if (entries.length === 0)
+    return <p className="mtx-log-empty">No history yet.</p>;
+  return (
+    <ul className="mtx-log">
+      {(expanded ? entries : entries.slice(0, limit)).map((e) => {
+        const d = describe(e, ctx);
+        const who = e.user?.name.split(" ")[0] ?? "Someone";
+        return (
+          <li key={e.id ?? `created-${e.card_id}`} title={`${who} ${d.text}`}>
+            <span className="d" style={{ background: logDot(e.type) }} />
+            <span className="x">
+              {who} {d.text}
+            </span>
+            <span className="t">{ago(e.created_at)}</span>
+          </li>
+        );
+      })}
+      {((!expanded && entries.length > limit) || (expanded && hasMore)) && (
+        <li className="more">
+          <button
+            type="button"
+            onClick={() => (expanded ? loadOlder() : setExpanded(true))}
+            disabled={loadingOlder}
+          >
+            {loadingOlder ? "Loading…" : "Older entries"}
+          </button>
+        </li>
+      )}
+    </ul>
+  );
+}

@@ -191,6 +191,8 @@ interface PropertiesPanelProps {
   handleSaveTemplate: () => void;
   handleApplyTemplate: (t: Template) => void;
   handleDeleteTemplate: (tId: number) => void;
+  // Cassette-case rail renders crew, column and signals itself.
+  caseMode?: boolean;
 }
 
 // The card editor's metadata rail (sidebar on desktop, stacked on mobile),
@@ -198,6 +200,7 @@ interface PropertiesPanelProps {
 // Links, Crew, Tags, Template. Purely presentational — all state and handlers
 // live in CardEdit's hooks and arrive via props.
 export function PropertiesPanel({
+  caseMode = false,
   isReadOnly,
   boardId,
   cardId,
@@ -344,232 +347,240 @@ export function PropertiesPanel({
 
   return (
     <div className="flex flex-col">
-      {/* Crew — assignee */}
-      {users.length > 0 && (
-        <div className="flex flex-col gap-2.5 pt-3 pb-4">
-          {clusterHead(
-            `Crew${
-              assignedUserId !== null
-                ? ` · ${users.find((u) => u.id === assignedUserId)?.name ?? ""}`
-                : ""
-            }`,
-          )}
-          <div className="flex gap-2 flex-wrap items-center">
-            <button
-              disabled={isReadOnly}
-              onClick={() => setAssignedUserId(null)}
-              title="Unassigned"
-              style={{
-                fontSize: "9px",
-                borderColor: "var(--cf-edge)",
-                color:
-                  assignedUserId === null
-                    ? "var(--cf-text)"
-                    : "var(--cf-text-muted)",
-                backgroundColor:
-                  assignedUserId === null
-                    ? "var(--cf-graphite)"
-                    : "transparent",
-                width: 32,
-                height: 32,
-              }}
-              className="cf-mono rounded-full border-2 flex items-center justify-center font-bold cursor-pointer disabled:opacity-60 flex-shrink-0 transition-all"
-            >
-              —
-            </button>
-            {users.map((u) => {
-              const color = AVATAR_COLORS[u.id % AVATAR_COLORS.length];
-              const isActive = assignedUserId === u.id;
-              return (
+      {!caseMode && (
+        <>
+          {/* Crew — assignee */}
+          {users.length > 0 && (
+            <div className="flex flex-col gap-2.5 pt-3 pb-4">
+              {clusterHead(
+                `Crew${
+                  assignedUserId !== null
+                    ? ` · ${users.find((u) => u.id === assignedUserId)?.name ?? ""}`
+                    : ""
+                }`,
+              )}
+              <div className="flex gap-2 flex-wrap items-center">
                 <button
-                  key={u.id}
                   disabled={isReadOnly}
-                  onClick={() => setAssignedUserId(isActive ? null : u.id)}
-                  title={u.name}
+                  onClick={() => setAssignedUserId(null)}
+                  title="Unassigned"
                   style={{
-                    borderColor: color,
-                    backgroundColor: isActive ? color : "transparent",
-                    color: isActive ? "#1c1a16" : color,
-                    boxShadow: isActive ? `0 0 8px ${color}55` : "none",
-                    fontSize: "10px",
+                    fontSize: "9px",
+                    borderColor: "var(--cf-edge)",
+                    color:
+                      assignedUserId === null
+                        ? "var(--cf-text)"
+                        : "var(--cf-text-muted)",
+                    backgroundColor:
+                      assignedUserId === null
+                        ? "var(--cf-graphite)"
+                        : "transparent",
                     width: 32,
                     height: 32,
                   }}
                   className="cf-mono rounded-full border-2 flex items-center justify-center font-bold cursor-pointer disabled:opacity-60 flex-shrink-0 transition-all"
                 >
-                  {initials(u.name)}
+                  —
                 </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Pipeline / Column — the board's stages as a vertical stepper: passed
-          stages glow dim phosphor, the current one amber, the rest unlit. */}
-      <div
-        className={`flex flex-col gap-2.5 py-4 ${users.length > 0 ? "border-t" : ""}`}
-        style={{
-          borderColor: "color-mix(in srgb, var(--cf-edge) 60%, transparent)",
-        }}
-      >
-        {clusterHead(boardType === "crm" ? "Pipeline" : "Column", "amber")}
-        <div className="flex flex-col">
-          {boardSections.map((s, i) => {
-            const isCurrent = s.id === sectionId;
-            const isPast = currentStepIdx >= 0 && i < currentStepIdx;
-            const isLast = i === boardSections.length - 1;
-            return (
-              <button
-                key={s.id}
-                disabled={isReadOnly}
-                onClick={() => setSectionId(s.id)}
-                className="relative grid items-center gap-2.5 text-left cursor-pointer disabled:cursor-not-allowed group/step"
-                style={{ gridTemplateColumns: "14px 1fr", minHeight: 30 }}
-              >
-                {/* connector */}
-                {!isLast && (
-                  <span
-                    className="absolute"
-                    style={{
-                      left: 6.5,
-                      top: 22,
-                      bottom: -8,
-                      width: 1,
-                      background: "var(--cf-edge)",
-                    }}
-                  />
-                )}
-                <span
-                  className="rounded-full flex items-center justify-center transition-all"
-                  style={{
-                    width: 13,
-                    height: 13,
-                    border: `1px solid ${
-                      isCurrent ? "var(--cf-amber)" : "var(--cf-edge)"
-                    }`,
-                    background: "var(--cf-graphite-2)",
-                  }}
-                >
-                  <span
-                    className="rounded-full transition-all"
-                    style={{
-                      width: 5,
-                      height: 5,
-                      background: isCurrent
-                        ? "var(--cf-amber)"
-                        : isPast
-                          ? "color-mix(in srgb, var(--cf-phosphor) 70%, var(--cf-edge))"
-                          : "transparent",
-                      boxShadow: isCurrent ? "0 0 7px var(--cf-amber)" : "none",
-                    }}
-                  />
-                </span>
-                <span
-                  className="cf-mono uppercase transition-colors group-hover/step:text-[var(--cf-text)]"
-                  style={{
-                    fontSize: "10px",
-                    letterSpacing: "0.12em",
-                    fontWeight: isCurrent ? 700 : 400,
-                    color: isCurrent
-                      ? "var(--cf-amber)"
-                      : isPast
-                        ? "var(--cf-text-muted)"
-                        : "var(--cf-text-dim)",
-                  }}
-                >
-                  {s.name}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Signals — priority + due date */}
-      <div
-        className="flex flex-col gap-2.5 py-4 border-t"
-        style={{
-          borderColor: "color-mix(in srgb, var(--cf-edge) 60%, transparent)",
-        }}
-      >
-        {clusterHead("Signals")}
-        {subLabel("Priority")}
-        <div
-          className="flex rounded-md overflow-hidden"
-          style={{ border: "1px solid var(--cf-edge)" }}
-        >
-          {PRIORITY_OPTS.map((opt, i) => {
-            const isActive = priority === opt.value;
-            return (
-              <button
-                key={opt.value}
-                disabled={isReadOnly}
-                onClick={() => setPriority(isActive ? null : opt.value)}
-                style={{
-                  fontSize: "9px",
-                  letterSpacing: "0.14em",
-                  color: isActive ? "#1c1a16" : opt.color,
-                  background: isActive ? opt.color : "rgba(0,0,0,0.2)",
-                  boxShadow: isActive
-                    ? `inset 0 0 10px ${opt.color}55`
-                    : "none",
-                  borderLeft: i > 0 ? "1px solid var(--cf-edge)" : "none",
-                }}
-                className="cf-mono uppercase font-bold flex-1 py-1.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed transition-all"
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
-        {subLabel("Due date")}
-        <input
-          type="date"
-          disabled={isReadOnly}
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-          style={{ fontSize: "12px" }}
-          className="glass-input px-2 py-1.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed w-full"
-        />
-        {blockedReason !== undefined && setBlockedReason && (
-          <>
-            {subLabel("Jammed")}
-            <div className="flex gap-2">
-              <input
-                type="text"
-                disabled={isReadOnly}
-                value={blockedReason}
-                maxLength={160}
-                onChange={(e) => setBlockedReason(e.target.value)}
-                placeholder="Blocked by… (empty = flowing)"
-                aria-label="Jam reason"
-                style={{
-                  fontSize: "12px",
-                  borderColor: blockedReason.trim()
-                    ? "var(--cf-red)"
-                    : undefined,
-                }}
-                className="glass-input px-2 py-1.5 w-full disabled:opacity-60"
-              />
-              {blockedReason.trim() && !isReadOnly && (
-                <button
-                  type="button"
-                  onClick={() => setBlockedReason("")}
-                  className="cf-mono uppercase cursor-pointer flex-shrink-0"
-                  style={{
-                    fontSize: "9px",
-                    letterSpacing: "0.14em",
-                    color: "var(--cf-phosphor)",
-                  }}
-                >
-                  Unjam
-                </button>
-              )}
+                {users.map((u) => {
+                  const color = AVATAR_COLORS[u.id % AVATAR_COLORS.length];
+                  const isActive = assignedUserId === u.id;
+                  return (
+                    <button
+                      key={u.id}
+                      disabled={isReadOnly}
+                      onClick={() => setAssignedUserId(isActive ? null : u.id)}
+                      title={u.name}
+                      style={{
+                        borderColor: color,
+                        backgroundColor: isActive ? color : "transparent",
+                        color: isActive ? "#1c1a16" : color,
+                        boxShadow: isActive ? `0 0 8px ${color}55` : "none",
+                        fontSize: "10px",
+                        width: 32,
+                        height: 32,
+                      }}
+                      className="cf-mono rounded-full border-2 flex items-center justify-center font-bold cursor-pointer disabled:opacity-60 flex-shrink-0 transition-all"
+                    >
+                      {initials(u.name)}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </>
-        )}
-      </div>
+          )}
+
+          {/* Pipeline / Column — the board's stages as a vertical stepper: passed
+          stages glow dim phosphor, the current one amber, the rest unlit. */}
+          <div
+            className={`flex flex-col gap-2.5 py-4 ${users.length > 0 ? "border-t" : ""}`}
+            style={{
+              borderColor:
+                "color-mix(in srgb, var(--cf-edge) 60%, transparent)",
+            }}
+          >
+            {clusterHead(boardType === "crm" ? "Pipeline" : "Column", "amber")}
+            <div className="flex flex-col">
+              {boardSections.map((s, i) => {
+                const isCurrent = s.id === sectionId;
+                const isPast = currentStepIdx >= 0 && i < currentStepIdx;
+                const isLast = i === boardSections.length - 1;
+                return (
+                  <button
+                    key={s.id}
+                    disabled={isReadOnly}
+                    onClick={() => setSectionId(s.id)}
+                    className="relative grid items-center gap-2.5 text-left cursor-pointer disabled:cursor-not-allowed group/step"
+                    style={{ gridTemplateColumns: "14px 1fr", minHeight: 30 }}
+                  >
+                    {/* connector */}
+                    {!isLast && (
+                      <span
+                        className="absolute"
+                        style={{
+                          left: 6.5,
+                          top: 22,
+                          bottom: -8,
+                          width: 1,
+                          background: "var(--cf-edge)",
+                        }}
+                      />
+                    )}
+                    <span
+                      className="rounded-full flex items-center justify-center transition-all"
+                      style={{
+                        width: 13,
+                        height: 13,
+                        border: `1px solid ${
+                          isCurrent ? "var(--cf-amber)" : "var(--cf-edge)"
+                        }`,
+                        background: "var(--cf-graphite-2)",
+                      }}
+                    >
+                      <span
+                        className="rounded-full transition-all"
+                        style={{
+                          width: 5,
+                          height: 5,
+                          background: isCurrent
+                            ? "var(--cf-amber)"
+                            : isPast
+                              ? "color-mix(in srgb, var(--cf-phosphor) 70%, var(--cf-edge))"
+                              : "transparent",
+                          boxShadow: isCurrent
+                            ? "0 0 7px var(--cf-amber)"
+                            : "none",
+                        }}
+                      />
+                    </span>
+                    <span
+                      className="cf-mono uppercase transition-colors group-hover/step:text-[var(--cf-text)]"
+                      style={{
+                        fontSize: "10px",
+                        letterSpacing: "0.12em",
+                        fontWeight: isCurrent ? 700 : 400,
+                        color: isCurrent
+                          ? "var(--cf-amber)"
+                          : isPast
+                            ? "var(--cf-text-muted)"
+                            : "var(--cf-text-dim)",
+                      }}
+                    >
+                      {s.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Signals — priority + due date */}
+          <div
+            className="flex flex-col gap-2.5 py-4 border-t"
+            style={{
+              borderColor:
+                "color-mix(in srgb, var(--cf-edge) 60%, transparent)",
+            }}
+          >
+            {clusterHead("Signals")}
+            {subLabel("Priority")}
+            <div
+              className="flex rounded-md overflow-hidden"
+              style={{ border: "1px solid var(--cf-edge)" }}
+            >
+              {PRIORITY_OPTS.map((opt, i) => {
+                const isActive = priority === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    disabled={isReadOnly}
+                    onClick={() => setPriority(isActive ? null : opt.value)}
+                    style={{
+                      fontSize: "9px",
+                      letterSpacing: "0.14em",
+                      color: isActive ? "#1c1a16" : opt.color,
+                      background: isActive ? opt.color : "rgba(0,0,0,0.2)",
+                      boxShadow: isActive
+                        ? `inset 0 0 10px ${opt.color}55`
+                        : "none",
+                      borderLeft: i > 0 ? "1px solid var(--cf-edge)" : "none",
+                    }}
+                    className="cf-mono uppercase font-bold flex-1 py-1.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+            {subLabel("Due date")}
+            <input
+              type="date"
+              disabled={isReadOnly}
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              style={{ fontSize: "12px" }}
+              className="glass-input px-2 py-1.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed w-full"
+            />
+            {blockedReason !== undefined && setBlockedReason && (
+              <>
+                {subLabel("Jammed")}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    disabled={isReadOnly}
+                    value={blockedReason}
+                    maxLength={160}
+                    onChange={(e) => setBlockedReason(e.target.value)}
+                    placeholder="Blocked by… (empty = flowing)"
+                    aria-label="Jam reason"
+                    style={{
+                      fontSize: "12px",
+                      borderColor: blockedReason.trim()
+                        ? "var(--cf-red)"
+                        : undefined,
+                    }}
+                    className="glass-input px-2 py-1.5 w-full disabled:opacity-60"
+                  />
+                  {blockedReason.trim() && !isReadOnly && (
+                    <button
+                      type="button"
+                      onClick={() => setBlockedReason("")}
+                      className="cf-mono uppercase cursor-pointer flex-shrink-0"
+                      style={{
+                        fontSize: "9px",
+                        letterSpacing: "0.14em",
+                        color: "var(--cf-phosphor)",
+                      }}
+                    >
+                      Unjam
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      )}
 
       {/* CRM: Deal — amber LCD value readout, still an input */}
       {boardType === "crm" && (
