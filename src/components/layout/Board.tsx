@@ -1092,6 +1092,7 @@ export function Board({
               story_points: card.story_points,
               sprint_id: card.sprint_id,
               contact: card.contact,
+              blocked_reason: card.blocked_reason,
             });
         // demoUpdateCard returns null when the card is gone — keep the row as-is
         // instead of replacing it with a husk that has no id/name.
@@ -1123,6 +1124,7 @@ export function Board({
                 story_points: card.story_points,
                 sprint_id: card.sprint_id,
                 contact: card.contact,
+                blocked_reason: card.blocked_reason,
                 loss_reason: reason,
               });
               setCards((prev) =>
@@ -1523,11 +1525,13 @@ export function Board({
 
       {/* Due date banner — always visible when there are overdue/due-today cards */}
       {viewMode !== "kanban" && (
-        <DueDateBanner
-          cards={boardCards}
-          sections={boardSections}
-          onCardClick={handleClick}
-        />
+        <div style={{ padding: "0 calc(var(--mt-inset) + 1.5px)" }}>
+          <DueDateBanner
+            cards={boardCards}
+            sections={boardSections}
+            onCardClick={handleClick}
+          />
+        </div>
       )}
 
       {/* Filter strip — kanban + list + backlog */}

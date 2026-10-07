@@ -665,6 +665,8 @@ export async function updateCard(
     contact?: CardContactInput | null;
     // Required when this update moves a CRM deal into the Lost stage (YON-66).
     loss_reason?: string;
+    // "Jammed": non-empty blocks the card, "" unblocks it.
+    blocked_reason?: string;
   },
 ): Promise<CardInterface> {
   return apiFetch(`/api/boards/${boardId}/cards/${cardId}`, {

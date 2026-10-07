@@ -76,7 +76,10 @@ export default function RevenueBars({
             />
           )}
           {data.map((m, i) => {
-            const h = Math.max((m.revenue / max) * innerH, m.revenue > 0 ? 2 : 0);
+            const h = Math.max(
+              (m.revenue / max) * innerH,
+              m.revenue > 0 ? 2 : 0,
+            );
             const x = i * slot + (slot - barW) / 2;
             const y = padT + innerH - h;
             const isJan = m.month.endsWith("-01");

@@ -8,6 +8,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "@/components/ui/Icon";
+import { SvgArt } from "@/components/ui/SvgArt";
 import {
   type FlowDay,
   flowWave,
@@ -213,12 +214,7 @@ export function BoardTopBar({
           className="mt-deck"
           style={{ "--bc": accent } as React.CSSProperties}
         >
-          {/* biome-ignore lint/security/noDangerouslySetInnerHtml: generated SVG art */}
-          <div
-            className="mt-hart"
-            aria-hidden
-            dangerouslySetInnerHTML={{ __html: art }}
-          />
+          <SvgArt as="div" className="mt-hart" svg={art} aria-hidden />
           <div className="mt-trim" aria-hidden>
             {stripes.map((c) => (
               <i key={c} style={{ background: c }} />
@@ -268,10 +264,10 @@ export function BoardTopBar({
                 <div className="mt-cell">
                   <span className="k">{isCrm ? "Pipeline" : "Tape"}</span>
                   <div className="mt-reels">
-                    {/* biome-ignore lint/security/noDangerouslySetInnerHtml: generated SVG */}
-                    <span
-                      dangerouslySetInnerHTML={{ __html: reels }}
+                    <SvgArt
+                      svg={reels}
                       style={{ display: "flex" }}
+                      aria-hidden
                     />
                     {isCrm ? (
                       <span className="v" style={{ fontSize: 20 }}>
@@ -293,11 +289,11 @@ export function BoardTopBar({
                     <b style={{ color: "#ffb000" }}>Doing</b>
                     <b style={{ color: "#8a8f80" }}>To do</b>
                   </div>
-                  {/* biome-ignore lint/security/noDangerouslySetInnerHtml: generated SVG */}
-                  <div
+                  <SvgArt
+                    as="div"
+                    svg={wave}
                     role="img"
                     aria-label="Card flow over the last 14 days"
-                    dangerouslySetInnerHTML={{ __html: wave }}
                   />
                 </div>
                 <div className="mt-cell">
@@ -431,7 +427,11 @@ export function BoardTopBar({
           />
           {!searchQuery && <kbd aria-hidden>/</kbd>}
         </div>
-        <div className="mt-chips" role="group" aria-label="Quick filters">
+        <fieldset
+          className="mt-chips"
+          aria-label="Quick filters"
+          style={{ border: 0, margin: 0, padding: 0 }}
+        >
           {QUICK.map((q) => (
             <button
               key={q.key}
@@ -457,7 +457,7 @@ export function BoardTopBar({
           >
             + Filter
           </button>
-        </div>
+        </fieldset>
         <div className="mt-transport" role="tablist" aria-label="Board view">
           {views.map((v) => (
             <button

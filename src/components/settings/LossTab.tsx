@@ -84,7 +84,10 @@ export default function LossTab({ board, onSaved }: Props) {
       {/* Lost stage selector */}
       <div className="flex flex-col gap-3">
         <PanelHeading>Lost stage</PanelHeading>
-        <p className="cf-mono text-xs" style={{ color: "var(--cf-text-muted)" }}>
+        <p
+          className="cf-mono text-xs"
+          style={{ color: "var(--cf-text-muted)" }}
+        >
           Moving a deal into this stage marks it lost and requires a reason.
         </p>
         <select
@@ -109,9 +112,12 @@ export default function LossTab({ board, onSaved }: Props) {
       {/* Reasons list editor */}
       <div className="flex flex-col gap-3">
         <PanelHeading>Loss reasons</PanelHeading>
-        <p className="cf-mono text-xs" style={{ color: "var(--cf-text-muted)" }}>
-          The list a salesperson must pick from when losing a deal. Feeds the loss
-          report.
+        <p
+          className="cf-mono text-xs"
+          style={{ color: "var(--cf-text-muted)" }}
+        >
+          The list a salesperson must pick from when losing a deal. Feeds the
+          loss report.
         </p>
 
         <div className="flex flex-col gap-2">
@@ -141,7 +147,10 @@ export default function LossTab({ board, onSaved }: Props) {
             </div>
           ))}
           {reasons.length === 0 && (
-            <p className="cf-mono text-xs" style={{ color: "var(--cf-text-dim)" }}>
+            <p
+              className="cf-mono text-xs"
+              style={{ color: "var(--cf-text-dim)" }}
+            >
               No reasons yet — add at least one so deals can be marked lost.
             </p>
           )}

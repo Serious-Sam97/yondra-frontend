@@ -105,8 +105,8 @@ export default function ConversionBars({
                     rx={2}
                   >
                     <title>
-                      {monthLabel(m.month, true)} — {pct(m.rate)} · {m.won} won /{" "}
-                      {m.total} total
+                      {monthLabel(m.month, true)} — {pct(m.rate)} · {m.won} won
+                      / {m.total} total
                     </title>
                   </rect>
                 )}

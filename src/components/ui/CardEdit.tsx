@@ -62,6 +62,8 @@ export interface CardFormData {
   value: number | null;
   story_points: number | null;
   sprint_id: number | null;
+  // "Jammed": non-empty reason blocks the card; "" unblocks. Undefined = untouched.
+  blocked_reason?: string;
   // CRM contact upsert payload (null on non-CRM boards — leaves contact untouched).
   contact: { name: string; email: string; phone: string } | null;
 }
@@ -162,6 +164,7 @@ const CardEdit: React.FC<CardEditProps> = ({
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [storyPoints, setStoryPoints] = useState("");
+  const [blockedReason, setBlockedReason] = useState("");
   const [sprintId, setSprintId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<
     "details" | "checklist" | "subtasks" | "comments" | "whatsapp" | "history"
@@ -435,6 +438,7 @@ const CardEdit: React.FC<CardEditProps> = ({
         card.story_points != null ? String(card.story_points) : "",
       );
       setSprintId(card.sprint_id ?? null);
+      setBlockedReason(card.blocked_reason ?? "");
     } else if (boardType === "scrum") {
       // New scrum cards default into the active sprint, if one exists.
       setSprintId(sprints.find((s) => s.is_active)?.id ?? null);
@@ -465,6 +469,7 @@ const CardEdit: React.FC<CardEditProps> = ({
         value: parseMoneyInput(value),
         story_points: storyPoints.trim() === "" ? null : Number(storyPoints),
         sprint_id: sprintId,
+        blocked_reason: isNew ? undefined : blockedReason.trim(),
         // Only CRM boards surface the contact fields; elsewhere leave contact untouched.
         contact:
           boardType === "crm"
@@ -664,6 +669,8 @@ const CardEdit: React.FC<CardEditProps> = ({
       setPriority={dirtify(setPriority)}
       dueDate={dueDate}
       setDueDate={dirtify(setDueDate)}
+      blockedReason={isNew ? undefined : blockedReason}
+      setBlockedReason={dirtify(setBlockedReason)}
       boardType={boardType}
       currency={currency}
       value={value}

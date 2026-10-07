@@ -129,6 +129,9 @@ interface PropertiesPanelProps {
   setPriority: (v: "low" | "medium" | "high" | null) => void;
   dueDate: string;
   setDueDate: (v: string) => void;
+  // "Jammed" (blocked) reason — saved cards only.
+  blockedReason?: string;
+  setBlockedReason?: (v: string) => void;
   // Board-type extras
   boardType: "kanban" | "scrum" | "crm";
   currency: string;
@@ -206,6 +209,8 @@ export function PropertiesPanel({
   setPriority,
   dueDate,
   setDueDate,
+  blockedReason,
+  setBlockedReason,
   boardType,
   currency,
   value,
@@ -527,6 +532,43 @@ export function PropertiesPanel({
           style={{ fontSize: "12px" }}
           className="glass-input px-2 py-1.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed w-full"
         />
+        {blockedReason !== undefined && setBlockedReason && (
+          <>
+            {subLabel("Jammed")}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                disabled={isReadOnly}
+                value={blockedReason}
+                maxLength={160}
+                onChange={(e) => setBlockedReason(e.target.value)}
+                placeholder="Blocked by… (empty = flowing)"
+                aria-label="Jam reason"
+                style={{
+                  fontSize: "12px",
+                  borderColor: blockedReason.trim()
+                    ? "var(--cf-red)"
+                    : undefined,
+                }}
+                className="glass-input px-2 py-1.5 w-full disabled:opacity-60"
+              />
+              {blockedReason.trim() && !isReadOnly && (
+                <button
+                  type="button"
+                  onClick={() => setBlockedReason("")}
+                  className="cf-mono uppercase cursor-pointer flex-shrink-0"
+                  style={{
+                    fontSize: "9px",
+                    letterSpacing: "0.14em",
+                    color: "var(--cf-phosphor)",
+                  }}
+                >
+                  Unjam
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* CRM: Deal — amber LCD value readout, still an input */}

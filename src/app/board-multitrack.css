@@ -7,7 +7,8 @@
 .mt-studio {
   position: fixed;
   inset: 0;
-  z-index: 0;
+  /* Behind page content but above the app's own fixed background (-10). */
+  z-index: -2;
   pointer-events: none;
   background:
     radial-gradient(60vw 50vh at 15% 35%, color-mix(in srgb, #2ab7e0 24%, transparent), transparent 70%),
@@ -35,7 +36,7 @@
   right: 0;
   bottom: 0;
   height: 90px;
-  z-index: 0;
+  z-index: -1;
   pointer-events: none;
   background: linear-gradient(transparent, rgba(255, 79, 163, 0.07));
   border-top: 1px solid rgba(255, 79, 163, 0.12);
@@ -45,8 +46,8 @@
      computes empty there; re-declare it inside the board. */
   --cf-mono: "Share Tech Mono", var(--font-geist-mono), monospace;
   --mt-inset: 22px;
-  position: relative;
-  z-index: 1;
+  /* No z-index here: a stacking context would trap the card modal (z-50)
+     below the sticky app header. */
   font-family: var(--cf-mono);
   color: var(--cf-text);
 }
@@ -1614,5 +1615,14 @@
   .mt-jx:hover,
   .mt-dsp:hover {
     transform: none;
+  }
+}
+
+@media (max-width: 639px) {
+  .mt-cell.wave .legend {
+    display: none;
+  }
+  .mt-cell {
+    padding: 0 10px;
   }
 }

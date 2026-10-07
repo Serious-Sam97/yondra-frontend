@@ -543,9 +543,9 @@ export default function WhatsAppTab({ board, onSaved }: Props) {
           className="text-sm cf-mono"
           style={{ color: "var(--cf-text-muted)" }}
         >
-          After a lead goes quiet, automatically nudge them with a template every
-          few days, then drop the unresponsive ones out of the pipeline. Only
-          opted-in contacts are messaged, and degraded numbers are skipped.
+          After a lead goes quiet, automatically nudge them with a template
+          every few days, then drop the unresponsive ones out of the pipeline.
+          Only opted-in contacts are messaged, and degraded numbers are skipped.
         </p>
 
         {reengFeedback && <FeedbackBanner feedback={reengFeedback} />}

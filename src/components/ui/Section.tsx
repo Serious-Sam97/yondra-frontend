@@ -5,6 +5,7 @@ import {
 import { faGear, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import Icon from "@/components/ui/Icon";
+import { SvgArt } from "@/components/ui/SvgArt";
 import type { CardInterface } from "@/interfaces/CardInterface";
 import type { SectionInterface } from "@/interfaces/SectionInterface";
 import { coverArt, LINER_ART, railArt } from "@/lib/boardArt";
@@ -16,8 +17,9 @@ import { Card, DoneSpine } from "./Card";
 
 const DAY = 86_400_000;
 const VU_SEGMENTS = 12;
+const VU_KEYS = Array.from({ length: VU_SEGMENTS }, (_, i) => `vu-${i}`);
 // Done shelf shows this many spines before "+N more on the shelf".
-const SHELF_LIMIT = 12;
+const SHELF_LIMIT = 7;
 
 // Rack stickers per channel position (design/board-final.png). Purely decorative;
 // they sit behind the cards so a full rack covers them.
@@ -170,6 +172,8 @@ export const Section = memo(function Section({
   }, [index, id]);
   const rail = useMemo(() => railArt(color), [color]);
 
+
+
   const lit = wipLimit
     ? Math.round(Math.min(count / wipLimit, 1.25) * VU_SEGMENTS * 0.8)
     : 0;
@@ -185,33 +189,30 @@ export const Section = memo(function Section({
     return { shown, hidden: sorted.length - shown.length };
   }, [cards, isDone, shelfOpen]);
 
+  const shelfShown = shelf?.shown.length ?? 0;
+  // Stickers and liner art live in the rack's empty space; hide them once the
+  // tapes fill it (spines have gaps the art would peek through).
+  const crowded = isDone ? shelfShown > 8 : count > 3;
+
   return (
     <section
       className={`mt-rack${shaking ? " wip-shake" : ""}`}
       style={{ "--st": color } as React.CSSProperties}
       aria-label={`${name}, ${count} card${count === 1 ? "" : "s"}`}
     >
-      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: generated SVG */}
-      <span
-        className="mt-rail-art"
-        dangerouslySetInnerHTML={{ __html: rail }}
-      />
+      <SvgArt className="mt-rail-art" svg={rail} aria-hidden />
       <span className="mt-foot" aria-hidden />
       <span className="mt-scw" style={{ left: 4, top: 80 }} aria-hidden />
       <span className="mt-scw" style={{ right: 4, top: 80 }} aria-hidden />
       <span className="mt-scw" style={{ left: 4, bottom: 20 }} aria-hidden />
       <span className="mt-scw" style={{ right: 4, bottom: 20 }} aria-hidden />
-      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: generated SVG */}
-      <div
-        className="mt-liner"
-        aria-hidden
-        dangerouslySetInnerHTML={{ __html: liner }}
-      />
-      {DECALS[index % DECALS.length]}
+      <SvgArt as="div" className="mt-liner" svg={liner} aria-hidden />
+      {!crowded && DECALS[index % DECALS.length]}
 
       <div className="mt-rack-h">
         <div className="mt-rack-t">
           <span className="ch">CH{index + 1}</span>
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: double-click rename shortcut; the channel menu stays keyboard reachable */}
           <span
             className="nm"
             onDoubleClick={() => {
@@ -320,12 +321,12 @@ export const Section = memo(function Section({
               WIP {count}/{wipLimit}
             </span>
             <span className="bar" aria-hidden>
-              {Array.from({ length: VU_SEGMENTS }, (_, i) => {
-                if (i >= lit) return <i key={`v${i}`} />;
+              {VU_KEYS.map((key, i) => {
+                if (i >= lit) return <i key={key} />;
                 const f = i / VU_SEGMENTS;
                 return (
                   <i
-                    key={`v${i}`}
+                    key={key}
                     className={f < 0.55 ? "g" : f < 0.8 ? "a" : "r"}
                   />
                 );

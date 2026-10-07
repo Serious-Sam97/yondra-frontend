@@ -15,6 +15,7 @@ import { formatMoney } from "@/lib/currency";
 import { channelIcon } from "@/lib/tags";
 import { avatarColor, initials } from "@/lib/ui";
 import { Draggable } from "../shared/Draggable";
+import { SvgArt } from "./SvgArt";
 
 // How many named tags a card prints before the rest collapse into "+N".
 const CARD_TAG_LIMIT = 3;
@@ -131,8 +132,8 @@ export const Card = memo(function Card({
   );
 
   // CRM SLA aging (stage past its threshold) and plain staleness both read as aged tape.
-  const slaAged =
-    boardType === "crm" && useAged(section_entered_at, agingHours, done_at);
+  const agedBySla = useAged(section_entered_at, agingHours, done_at);
+  const slaAged = boardType === "crm" && agedBySla;
   const idleDays = done_at ? null : daysSince(updated_at);
   const idle = idleDays != null && idleDays >= IDLE_DAYS;
   const aged = slaAged || idle;
@@ -199,8 +200,7 @@ export const Card = memo(function Card({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={coverSrc} alt="" loading="lazy" />
         ) : (
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: generated SVG from numeric params + palette constants only
-          <span dangerouslySetInnerHTML={{ __html: cover ?? "" }} />
+          <SvgArt svg={cover ?? ""} />
         )}
         <span className="cat">{catLabel}</span>
         <span className="side">A</span>
@@ -261,8 +261,7 @@ export const Card = memo(function Card({
       </div>
 
       <div className="fold">
-        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: generated SVG from numeric params + palette constants only */}
-        <span className="sp" dangerouslySetInnerHTML={{ __html: spine }} />
+        <SvgArt className="sp" svg={spine} />
         {crew.length > 0 && (
           <span className="mt-avs">
             {crew.map((u) => (

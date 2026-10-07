@@ -4,10 +4,7 @@
 // model output can never inject arbitrary markup — only the tags we emit below appear.
 
 function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 // Inline: **bold**, *italic* / _italic_, `code`. Applied after escaping.
@@ -26,7 +23,9 @@ export function mdToHtml(md: string): string {
 
   const flushList = () => {
     if (!list) return;
-    out.push(`<${list.tag}>${list.items.map((i) => `<li>${i}</li>`).join("")}</${list.tag}>`);
+    out.push(
+      `<${list.tag}>${list.items.map((i) => `<li>${i}</li>`).join("")}</${list.tag}>`,
+    );
     list = null;
   };
 
@@ -43,7 +42,9 @@ export function mdToHtml(md: string): string {
     if (heading) {
       flushList();
       const level = heading[1].length;
-      out.push(`<h${level}>${inline(escapeHtml(heading[2].trim()))}</h${level}>`);
+      out.push(
+        `<h${level}>${inline(escapeHtml(heading[2].trim()))}</h${level}>`,
+      );
       continue;
     }
 
