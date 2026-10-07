@@ -81,7 +81,6 @@ export const Card = memo(function Card({
   name,
   description,
   assigned_user,
-  created_by,
   tags,
   due_date,
   priority,
@@ -159,11 +158,6 @@ export const Card = memo(function Card({
   const namedTags = cardTags.filter((t) => !channelIcon(t));
   const shownTags = namedTags.slice(0, CARD_TAG_LIMIT);
   const extraTags = namedTags.length - shownTags.length;
-
-  const crew = [assigned_user, created_by]
-    .filter((u): u is { id: number; name: string } => !!u)
-    .filter((u, i, all) => all.findIndex((x) => x.id === u.id) === i)
-    .slice(0, 3);
 
   const doneItems = (checklist_items ?? []).filter((i) => i.is_done).length;
   const totalItems = (checklist_items ?? []).length;
@@ -262,11 +256,17 @@ export const Card = memo(function Card({
 
       <div className="fold">
         <SvgArt className="sp" svg={spine} />
-        {crew.length > 0 && (
-          <span className="mt-avs">
-            {crew.map((u) => (
-              <MiniAvatar key={u.id} user={u} />
-            ))}
+        {/* Who is playing this tape: the assignee only (the creator isn't
+            shown, so an avatar always means "assigned"). */}
+        {assigned_user ? (
+          <span className="mt-who" title={`Assigned to ${assigned_user.name}`}>
+            <MiniAvatar user={assigned_user} />
+            <span className="nm">{assigned_user.name.split(" ")[0]}</span>
+          </span>
+        ) : (
+          <span className="mt-who empty" title="Unassigned">
+            <i aria-hidden />
+            <span className="nm">Open</span>
           </span>
         )}
         {progress && (

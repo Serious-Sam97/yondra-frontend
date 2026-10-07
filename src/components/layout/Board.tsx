@@ -112,15 +112,16 @@ import { TestPlansOverview } from "../ui/sentinel/TestPlansOverview";
 import { TagsManagerModal } from "../ui/TagsManagerModal";
 
 // Channel (rack) colours by position; the Done shelf is always green.
+// Warm 80s hi-fi palette: tan, orange, rust, mustard, teal-grey, plum.
 const SECTION_COLORS = [
-  "#8a8f80",
-  "#ffb000",
-  "#ff6fd8",
-  "#6fe0ff",
-  "#a78bfa",
-  "#3fae6a",
+  "#8a7356",
+  "#d9822b",
+  "#b5533c",
+  "#c8962e",
+  "#5f7d7a",
+  "#7d5a6e",
 ];
-const DONE_COLOR = "#9aa67e";
+const DONE_COLOR = "#6f8a4a";
 // Channels whose name reads as active work show the "▶ Playing" sticker.
 const IN_PROGRESS_RE =
   /(doing|progress|wip|active|building|develop|working|playing)/i;

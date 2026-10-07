@@ -1626,3 +1626,102 @@
     padding: 0 10px;
   }
 }
+
+/* Card assignee badge: dark pill so it reads on any colour spine. */
+.mt-jx .mt-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 120px;
+  padding: 2px 9px 2px 2px;
+  border-radius: 14px;
+  font-family: var(--cf-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #f4ead6;
+  background: rgba(26, 19, 13, 0.62);
+  box-shadow: inset 0 0 0 1px rgba(244, 234, 214, 0.18);
+}
+.mt-jx .mt-who .nm {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.mt-jx .mt-who .mt-av {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #efe5cc;
+}
+.mt-jx .mt-who.empty {
+  color: rgba(244, 234, 214, 0.7);
+}
+.mt-jx .mt-who.empty i {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(244, 234, 214, 0.7);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WARM 80s THEME — walnut cabinets, cream plastic, rust/orange/mustard stripes,
+   faded print. The deck (header) keeps its dark glass look.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root { --w-cream:#ebe2cc; --w-cream2:#ddd2b6; --w-ink:#2b2219; --w-rust:#b5533c; --w-orange:#d9822b; --w-mustard:#d8a53a; --w-brown:#6b4a2f; --w-olive:#6f8a4a; --w-amber:#ffb347; }
+.mt-studio { background:
+  radial-gradient(70vw 60vh at 20% 0%, rgba(255,214,150,.10), transparent 70%),
+  repeating-linear-gradient(90deg, rgba(255,255,255,.018) 0 2px, transparent 2px 46px),
+  linear-gradient(#2a211a, #1c1611 60%, #17120e); }
+.mt-studio::after { opacity: .12; }
+.mt-reflect { display: none; }
+.mt-search input { background: #f4eddc; border-color: #8c7a5c; color: var(--w-ink); box-shadow: inset 0 2px 3px rgba(0,0,0,.15); }
+.mt-search input::placeholder, .mt-search .ico, .mt-search kbd { color: #8c7a5c; border-color: #b8a888; }
+.mt-chip { color: #d9cdb0; border-color: #5c4a36; background: rgba(0,0,0,.2); }
+.mt-chip[aria-pressed="true"] { color: var(--w-ink); background: var(--w-mustard); border-color: var(--w-mustard); text-shadow: none; }
+.mt-chip i { box-shadow: none; }
+.mt-transport { border-color: #3a2a1c; box-shadow: 0 3px 0 #3a2a1c, 0 5px 8px rgba(0,0,0,.4); }
+.mt-transport button { color: #5c4a36; background: linear-gradient(#f4ecd8, #d9ceb1); border-right-color: #8c7a5c; box-shadow: inset 0 1px 0 #fff; }
+.mt-transport button[aria-selected="true"] { color: #fff; background: linear-gradient(#b5533c, #9a412c); box-shadow: inset 0 3px 5px rgba(0,0,0,.35); text-shadow: none; }
+.mt-transport button[aria-selected="true"]::before { background: #ffd9a8; box-shadow: none; }
+.mt-rack { background: linear-gradient(#3a2c20, #2c2219); backdrop-filter: none;
+  box-shadow: inset 0 0 0 1.5px #1a130d, inset 0 1px 0 rgba(255,220,170,.12), 0 14px 26px rgba(0,0,0,.5); }
+.mt-rack::before, .mt-rack::after { background: repeating-linear-gradient(0deg, rgba(0,0,0,.2) 0 1px, transparent 1px 6px), linear-gradient(90deg, #5a3a22, #7a5134); box-shadow: inset 0 0 0 1px rgba(0,0,0,.4); }
+.mt-rack .mt-rail-art { display: none; }
+.mt-rack .mt-scw { background: radial-gradient(circle at 35% 30%, #e6d2a8, #8a6a3a 70%); box-shadow: 0 0 0 1px rgba(0,0,0,.5); }
+.mt-rack-h { background: linear-gradient(#efe7d3, #ddd2b6); border-bottom: 3px solid #1a130d; box-shadow: inset 0 1px 0 #fff, 0 3px 6px rgba(0,0,0,.4); }
+.mt-rack-h::after { box-shadow: none; height: 4px; bottom: -4px; left: 0; right: 0; border-radius: 0;
+  background: linear-gradient(var(--st) 0 50%, color-mix(in srgb, var(--st) 60%, #2b2219) 50%); }
+.mt-rack-t .ch { color: #8c7a5c; }
+.mt-rack-t .nm { box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 2px 2px rgba(0,0,0,.3); background: linear-gradient(color-mix(in srgb, var(--st) 90%, #000), color-mix(in srgb, var(--st) 70%, #000)); }
+.mt-rack-t .cnt { color: var(--w-amber); background: #1a130d; text-shadow: none; }
+.mt-rack-t .add { color: #5c4a36; border-color: #b8a888; background: rgba(255,255,255,.4); }
+.mt-vu { color: #6b5a44; }
+.mt-vu .bar i { background: #c9bc9c; }
+.mt-vu .bar i.g { background: var(--w-olive); box-shadow: none; }
+.mt-vu .bar i.a { background: var(--w-orange); box-shadow: none; }
+.mt-vu .bar i.r { background: var(--w-rust); box-shadow: none; }
+.mt-vu .peak { color: var(--w-rust); }
+.mt-rack-b { background: repeating-linear-gradient(transparent 0 30px, rgba(0,0,0,.28) 30px 32px, rgba(255,220,170,.05) 32px 33px); }
+.mt-rack .mt-liner { opacity: .14; filter: sepia(1) saturate(.6); }
+.mt-rack-f button { color: #d9cdb0; background: linear-gradient(#4a3826, #35281b); border-color: #1a130d; }
+.mt-decal.round { background: radial-gradient(circle at 35% 30%, #f3d39a, var(--w-mustard) 70%); }
+.mt-decal.star { background: var(--w-mustard); }
+.mt-decal.badge { color: #e9dcc0; border-color: rgba(233,220,192,.45); }
+.mt-decal.badge b { color: var(--w-mustard); }
+.mt-jx { box-shadow: 0 0 0 1px rgba(0,0,0,.5), 0 8px 14px rgba(0,0,0,.45); }
+.mt-jx.is-playing { box-shadow: 0 0 0 2px var(--w-orange), 0 8px 14px rgba(0,0,0,.45); }
+.mt-jx.is-jammed { box-shadow: 0 0 0 2px var(--w-rust), 0 8px 14px rgba(0,0,0,.45); }
+.mt-jx .art svg, .mt-jx .fold .sp svg { filter: sepia(.55) saturate(.85) hue-rotate(-8deg); }
+.mt-jx .fold { background: color-mix(in srgb, color-mix(in srgb, var(--a) 55%, #b5533c) 80%, #2b2219); }
+.mt-stk.due { background: radial-gradient(circle at 35% 30%, #f3d39a, var(--w-mustard) 70%); }
+.mt-stk.due.late { background: radial-gradient(circle at 35% 30%, #e58a6c, var(--w-rust) 70%); }
+.mt-stk.play { background: rgba(217,130,43,.95); color: #fff; }
+.mt-dsp .sw { background: color-mix(in srgb, color-mix(in srgb, var(--a) 50%, #b5533c) 85%, #2b2219); }
+.mt-add-channel { border-color: #5c4a36; color: #8c7a5c; }
+.mt-add-channel b { color: #8c7a5c; }
+.mt-jx .tags i { filter: sepia(.5) saturate(.8); }
+.mt-rack-crm { color: #6b5a44; }
+.mt-rack-crm b { color: #a3442c; }
