@@ -1045,7 +1045,12 @@ export function Board({
 
   // --- Card management ---
 
-  const handleSubmit = async (card: CardFormData, isNew: boolean) => {
+  // Resolves true when the card was saved (and the editor closed), false when the
+  // save failed or is waiting on a loss reason — the editor stays open either way.
+  const handleSubmit = async (
+    card: CardFormData,
+    isNew: boolean,
+  ): Promise<boolean> => {
     try {
       if (isNew) {
         const saved = isDemo
@@ -1153,13 +1158,22 @@ export function Board({
           () => {},
         )
       )
-        return;
+        return false;
       // Keep the editor open so nothing the user typed is lost.
       reportSyncError("Could not save card — try again");
-      return;
+      return false;
     }
     closeCard();
+    return true;
   };
+
+  // The open editor registers a guarded close (asks to save unsaved changes);
+  // the backdrop and Escape go through it instead of closing directly.
+  const cardCloseGuardRef = useRef<(() => void) | null>(null);
+  const requestCloseCard = useCallback(() => {
+    if (cardCloseGuardRef.current) cardCloseGuardRef.current();
+    else closeCard();
+  }, [closeCard]);
 
   // --- Scrum sprint lifecycle ---
   const {
@@ -2016,7 +2030,7 @@ export function Board({
 
       {/* Card edit modal */}
       {isCardVisible && (
-        <Modal mobileFullscreen onClose={closeCard}>
+        <Modal mobileFullscreen onClose={requestCloseCard}>
           <div className="w-full sm:w-auto">
             {/* Keyed by card identity: switching cards (popstate/forward-nav) REMOUNTS
                 the editor, so its mount-only init effects seed the right card's form
@@ -2060,6 +2074,7 @@ export function Board({
                   : undefined
               }
               goBack={closeCard}
+              closeGuardRef={cardCloseGuardRef}
               submit={handleSubmit}
               onDocumentsChange={
                 liveSelectedCard

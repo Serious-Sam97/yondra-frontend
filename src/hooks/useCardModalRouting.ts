@@ -59,7 +59,12 @@ export function useCardModalRouting({
   // Close the card and drop `?card` from the URL. If we pushed the entry ourselves, pop it
   // (history.back) so Back/Forward stay clean — the popstate handler then closes the modal.
   // Otherwise (deep link) strip the param in place without touching the history stack.
+  // The modal closes immediately; we don't wait for popstate (which can be
+  // dropped or land after a re-render and leave the card open).
   const closeCard = useCallback(() => {
+    setIsCardVisible(false);
+    setSelectedCard(null);
+    setNewCardSectionId(null);
     if (
       pushedCardEntryRef.current &&
       new URLSearchParams(window.location.search).has("card")
@@ -68,9 +73,6 @@ export function useCardModalRouting({
       window.history.back();
       return;
     }
-    setIsCardVisible(false);
-    setSelectedCard(null);
-    setNewCardSectionId(null);
     if (new URLSearchParams(window.location.search).has("card")) {
       window.history.replaceState(null, "", setCardParam(null));
     }

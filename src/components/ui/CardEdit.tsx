@@ -79,7 +79,14 @@ export interface CardFormData {
 
 export interface CardEditProps {
   goBack: () => void;
-  submit: (card: CardFormData, isNew: boolean) => void;
+  // Resolves false when the save failed (the editor stays open).
+  submit: (
+    card: CardFormData,
+    isNew: boolean,
+  ) => Promise<boolean | void> | void;
+  // The editor installs its guarded close here (unsaved-changes prompt) so the
+  // board's backdrop / Escape can route through it.
+  closeGuardRef?: React.MutableRefObject<(() => void) | null>;
   onDelete?: () => void;
   // Sync document-attachment changes back to the board's card state so they
   // survive a modal close/reopen without relying on the realtime echo.
@@ -157,6 +164,7 @@ const CardEdit: React.FC<CardEditProps> = ({
   onOpenParent,
   sectionCounts,
   wipLimits,
+  closeGuardRef,
 }) => {
   const router = useRouter();
   const [id, setId] = useState<number | string>(0);
@@ -468,37 +476,87 @@ const CardEdit: React.FC<CardEditProps> = ({
     );
   };
 
-  const handleSubmit = () => {
-    if (isReadOnly) return;
-    submit(
-      {
-        id,
-        name,
-        description,
-        section_id: sectionId,
-        assigned_user_id: assignedUserId,
-        tag_ids: selectedTagIds,
-        due_date: dueDate || null,
-        priority: priority ?? null,
-        checklist_items: checklistItems,
-        value: parseMoneyInput(value),
-        story_points: storyPoints.trim() === "" ? null : Number(storyPoints),
-        sprint_id: sprintId,
-        blocked_reason: isNew ? undefined : blockedReason.trim(),
-        // Only CRM boards surface the contact fields; elsewhere leave contact untouched.
-        contact:
-          boardType === "crm"
-            ? {
-                name: contactName.trim(),
-                email: contactEmail.trim(),
-                phone: contactPhone.trim(),
-              }
-            : null,
-      },
-      isNew,
-    );
+  // Single-flight save: a second click (or Enter/⌘S) while a save is in flight
+  // is ignored, and the keys show a loading state until the board answers.
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const [confirmClose, setConfirmClose] = useState(false);
+
+  const handleSubmit = async (): Promise<boolean> => {
+    if (isReadOnly || savingRef.current) return false;
+    savingRef.current = true;
+    setSaving(true);
+    let ok: boolean | void = undefined;
+    try {
+      ok = await submit(
+        {
+          id,
+          name,
+          description,
+          section_id: sectionId,
+          assigned_user_id: assignedUserId,
+          tag_ids: selectedTagIds,
+          due_date: dueDate || null,
+          priority: priority ?? null,
+          checklist_items: checklistItems,
+          value: parseMoneyInput(value),
+          story_points: storyPoints.trim() === "" ? null : Number(storyPoints),
+          sprint_id: sprintId,
+          blocked_reason: isNew ? undefined : blockedReason.trim(),
+          // Only CRM boards surface the contact fields; elsewhere leave contact untouched.
+          contact:
+            boardType === "crm"
+              ? {
+                  name: contactName.trim(),
+                  email: contactEmail.trim(),
+                  phone: contactPhone.trim(),
+                }
+              : null,
+        },
+        isNew,
+      );
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+    if (ok === false) return false;
     setDirty(false);
+    return true;
   };
+
+  const handleSubmitRef = useRef(handleSubmit);
+  handleSubmitRef.current = handleSubmit;
+
+  // Close with a guard: unsaved changes open the "save before closing?" dialog.
+  const requestClose = () => {
+    if (savingRef.current) return;
+    if (dirty && !isReadOnly) setConfirmClose(true);
+    else goBack();
+  };
+  const requestCloseRef = useRef(requestClose);
+  requestCloseRef.current = requestClose;
+  useEffect(() => {
+    if (!closeGuardRef) return;
+    closeGuardRef.current = () => requestCloseRef.current();
+    return () => {
+      closeGuardRef.current = null;
+    };
+  }, [closeGuardRef]);
+  // Escape closes (through the guard); ⌘/Ctrl+S saves.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        if (!isNew) void handleSubmitRef.current();
+        return;
+      }
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      if (document.querySelector(".mtx-confirm, [data-lightbox]")) return;
+      requestCloseRef.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isNew]);
 
   // Subtasks are one level deep: a card that is itself a subtask shows no subtasks surface.
   const isSubtask = !!card?.parent_card_id;
@@ -819,7 +877,10 @@ const CardEdit: React.FC<CardEditProps> = ({
   const renderSave = () =>
     !isReadOnly ? (
       <button
-        onClick={handleSubmit}
+        type="button"
+        onClick={() => void handleSubmit()}
+        disabled={saving}
+        aria-busy={saving}
         style={{
           fontFamily: "monospace",
           letterSpacing: "0.1em",
@@ -827,7 +888,7 @@ const CardEdit: React.FC<CardEditProps> = ({
         }}
         className="aero-btn aero-btn--cyan w-full py-2.5 font-bold uppercase cursor-pointer flex-shrink-0"
       >
-        {isNew ? "Pin it" : "Save changes"}
+        {saving ? "Saving…" : isNew ? "Pin it" : "Save changes"}
       </button>
     ) : null;
 
@@ -1119,6 +1180,57 @@ const CardEdit: React.FC<CardEditProps> = ({
         }
       }}
     >
+      {confirmClose && (
+        <div
+          className="mtx-confirm"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="mtx-confirm-t"
+        >
+          <div className="box">
+            <span className="tape" aria-hidden />
+            <h3 id="mtx-confirm-t">Unsaved changes on this tape</h3>
+            <p>Save before closing, or discard what you changed?</p>
+            <div className="keys">
+              <button
+                type="button"
+                className="mtx-ky"
+                disabled={saving}
+                onClick={() => setConfirmClose(false)}
+              >
+                Keep editing
+              </button>
+              <button
+                type="button"
+                className="mtx-ky"
+                disabled={saving}
+                onClick={() => {
+                  setConfirmClose(false);
+                  setDirty(false);
+                  goBack();
+                }}
+              >
+                Discard
+              </button>
+              <button
+                type="button"
+                className="mtx-ky save"
+                disabled={saving}
+                // biome-ignore lint/a11y/noAutofocus: primary action of the dialog
+                autoFocus
+                onClick={async () => {
+                  const ok = await handleSubmit();
+                  if (ok) setConfirmClose(false);
+                }}
+              >
+                {saving ? <span className="spin" aria-hidden /> : null}
+                {saving ? "Saving…" : "Save & close"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Full-size image viewer */}
       {lightboxSrc && (
         <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
@@ -1255,7 +1367,7 @@ const CardEdit: React.FC<CardEditProps> = ({
               `hidden` in the cascade. */}
               {!isNew && !isReadOnly && isDesktop && (
                 <button
-                  onClick={handleSubmit}
+                  onClick={() => void handleSubmit()}
                   className="aero-btn aero-btn--cyan cf-mono text-[10px] uppercase tracking-widest font-bold px-4 py-1.5 cursor-pointer inline-flex items-center gap-2 whitespace-nowrap"
                   title={
                     dirty ? "You have unsaved changes" : "All changes saved"
@@ -1284,7 +1396,7 @@ const CardEdit: React.FC<CardEditProps> = ({
                 </button>
               )}
               <button
-                onClick={goBack}
+                onClick={requestClose}
                 className="text-sm cursor-pointer transition-colors leading-none"
                 style={{ color: "var(--cf-text-muted)" }}
               >
@@ -1565,7 +1677,8 @@ const CardEdit: React.FC<CardEditProps> = ({
                   dirty={dirty}
                   onSave={handleSubmit}
                   onArchive={onDelete}
-                  onClose={goBack}
+                  onClose={requestClose}
+                  saving={saving}
                 />
               </div>
             </div>

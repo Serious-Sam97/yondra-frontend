@@ -77,6 +77,7 @@ export interface CaseRailProps {
   history?: React.ComponentProps<typeof HistoryLog>;
   // Keys
   dirty: boolean;
+  saving?: boolean;
   onSave?: () => void;
   onArchive?: () => void;
   onClose: () => void;
@@ -110,6 +111,7 @@ export function CaseRail({
   extra,
   history,
   dirty,
+  saving = false,
   onSave,
   onArchive,
   onClose,
@@ -335,10 +337,18 @@ export function CaseRail({
             type="button"
             className="mtx-ky save"
             onClick={onSave}
-            title={dirty ? "You have unsaved changes" : "All changes saved"}
+            disabled={saving}
+            aria-busy={saving}
+            title={
+              dirty ? "You have unsaved changes (⌘S)" : "All changes saved"
+            }
           >
-            <span className={`led${dirty ? " on" : ""}`} aria-hidden />
-            Save
+            {saving ? (
+              <span className="spin" aria-hidden />
+            ) : (
+              <span className={`led${dirty ? " on" : ""}`} aria-hidden />
+            )}
+            {saving ? "Saving…" : "Save"}
           </button>
         )}
       </div>

@@ -2738,3 +2738,78 @@
   box-shadow: 0 -10px 14px #161412;
   z-index: 2;
 }
+
+/* save loading + unsaved-changes dialog */
+.mtx-ky:disabled {
+  opacity: 0.7;
+  cursor: progress;
+  transform: none;
+}
+.spin {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  animation: mtx-spin 0.7s linear infinite;
+}
+@keyframes mtx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.mtx-confirm {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(10, 8, 6, 0.62);
+  backdrop-filter: blur(3px);
+}
+.mtx-confirm .box {
+  position: relative;
+  width: min(420px, 100%);
+  overflow: hidden;
+  padding: 26px 22px 18px;
+  border-radius: 10px;
+  font-family: var(--cf-mono);
+  color: #e4dac3;
+  background: linear-gradient(#24201b, #1a1714);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 24px 50px rgba(0, 0, 0, 0.6);
+}
+.mtx-confirm .tape {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 5px;
+  background: repeating-linear-gradient(135deg, #ffcf3a 0 8px, #2b2219 8px 16px);
+}
+.mtx-confirm h3 {
+  margin: 0;
+  font-family: var(--font-geist-sans), sans-serif;
+  font-weight: 800;
+  font-size: 18px;
+  color: #f6eedb;
+}
+.mtx-confirm p {
+  margin: 6px 0 18px;
+  font-family: var(--font-geist-sans), sans-serif;
+  font-size: 13px;
+  color: #c9b48a;
+}
+.mtx-confirm .keys {
+  display: flex;
+  gap: 8px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation-duration: 2s;
+  }
+}
