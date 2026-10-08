@@ -93,7 +93,6 @@ import {
   mountVortexContext,
   quipForRoute,
   randomTip,
-  setVortexEnabled,
   subscribeVortexSay,
   unmountVortexContext,
   useVortexEnabled,
@@ -610,6 +609,50 @@ const VortexAssistant: React.FC = () => {
   } | null>(null);
   const suppressClick = useRef(false);
   const foundAt = useRef(0);
+
+  /* the × doesn't really work: he vanishes, then comes back 5s later.
+     (The real off switch lives in the profile — he admits it eventually.) */
+  const [gone, setGone] = useState(false);
+  const goneRef = useRef(false);
+  const escapes = useRef(0);
+  const fakeHide = () => {
+    if (goneRef.current) return;
+    goneRef.current = true;
+    escapes.current += 1;
+    const n = escapes.current;
+    setSpeech(null);
+    setChatOpen(false);
+    vxSound("whisper");
+    setGone(true);
+    setTimeout(() => {
+      setGone(false);
+      goneRef.current = false;
+      setMood("smug");
+      setPortal("out");
+      setTimeout(() => setPortal(null), 400);
+      vxSound("click");
+      const lines =
+        n === 1
+          ? ["nice try. I'm not going anywhere."]
+          : n === 2
+            ? ["you clicked the × again. adorable."]
+            : n === 3
+              ? ["I live here now. the × is decorative."]
+              : n === 4
+                ? [
+                    "ok, ok. if you REALLY want me gone, there's a switch in your profile. I'll sulk.",
+                  ]
+                : [
+                    "the × is a placebo. it makes you feel in control.",
+                    "you can't get rid of me. I've read your cards.",
+                    "I'll leave when the backlog is empty. so… never.",
+                    "getting rid of me takes a séance. and I run the séances.",
+                    "I was only gone for five seconds and I already missed you.",
+                  ];
+      speak({ text: lines[Math.floor(Math.random() * lines.length)] });
+      setTimeout(() => setMood(restMoodRef.current), 3000);
+    }, 5000);
+  };
   const onGrab = (e: React.PointerEvent) => {
     // hide and seek: finding him counts on press — the peeking body moves
     // under the pointer, so a full click isn't always produced
@@ -702,6 +745,7 @@ const VortexAssistant: React.FC = () => {
 
   const isBusy = useCallback((): boolean => {
     if (
+      goneRef.current ||
       draggingCard.current ||
       chatOpenRef.current ||
       actingRef.current ||
@@ -2218,7 +2262,7 @@ const VortexAssistant: React.FC = () => {
     <>
       <div
         ref={layerRef}
-        className={`vxa-layer${traveling ? " vxa-traveling" : ""}${dragging ? " vxa-dragging" : ""}${rightSide ? " vxa-right" : ""}`}
+        className={`vxa-layer${gone ? " vxa-gone" : ""}${traveling ? " vxa-traveling" : ""}${dragging ? " vxa-dragging" : ""}${rightSide ? " vxa-right" : ""}`}
         style={
           {
             transform: `translate(${off.x}px, ${off.y}px)`,
@@ -2581,7 +2625,7 @@ const VortexAssistant: React.FC = () => {
                 type="button"
                 className="vxa-hide"
                 title="Hide Vortex"
-                onClick={() => setVortexEnabled(false)}
+                onClick={fakeHide}
               >
                 ×
               </button>

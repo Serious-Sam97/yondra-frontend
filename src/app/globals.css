@@ -9066,3 +9066,24 @@ html.vxa-halloween .mt-jx {
 .vxa-face svg * {
   pointer-events: none;
 }
+
+/* the × "hides" him for five seconds (he always comes back) */
+.vxa-fxhost {
+  transition:
+    opacity 0.35s ease-out,
+    transform 0.4s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+.vxa-layer.vxa-gone .vxa-fxhost {
+  opacity: 0;
+  transform: scale(0.1) rotate(220deg);
+  pointer-events: none;
+  transition:
+    opacity 0.45s ease-in,
+    transform 0.45s ease-in;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vxa-fxhost,
+  .vxa-layer.vxa-gone .vxa-fxhost {
+    transform: none;
+  }
+}
