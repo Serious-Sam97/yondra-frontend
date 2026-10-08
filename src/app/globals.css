@@ -7648,6 +7648,10 @@ emoji-picker.cm-emoji-picker {
   position: absolute;
   left: 50%;
   top: 46px;
+  padding: 2px 12px;
+  border-radius: 4px;
+  background: rgba(14, 0, 10, 0.92);
+  box-shadow: 0 0 16px rgba(255, 45, 149, 0.35);
   z-index: 3;
   transform: translateX(-50%);
   font-family: "VT323", monospace;
@@ -7987,4 +7991,1078 @@ html:not(.vxa-rot) .mt-rot {
   .hf-tuner .in.vxa-static::before {
     animation: none;
   }
+}
+
+/* ── Vortex MK-IV: costume, props, shadow, body reactions ─────────────── */
+.vxa-face {
+  position: relative;
+}
+.vxa-costume,
+.vxa-prop,
+.vxa-shadow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.vxa-costume svg,
+.vxa-prop svg,
+.vxa-shadow svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.vxa-flip .vxa-costume svg,
+.vxa-flip .vxa-prop svg {
+  transform: scaleX(-1);
+}
+/* 5 · the shadow on the wall behind him waves on its own */
+.vxa-shadow {
+  opacity: 0;
+  transform: translate(26px, -10px) scale(1.25);
+  filter: brightness(0) blur(1.5px);
+  transition: opacity 0.4s;
+  z-index: -1;
+}
+.vxa-shadow-wave .vxa-shadow {
+  opacity: 0.35;
+}
+.vxa-morph svg {
+  animation: vxa-bob 1.6s ease-in-out infinite;
+}
+.vxa-juggle g {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: vxa-juggle 1.1s ease-in-out infinite;
+}
+.vxa-juggle g:nth-child(2) {
+  animation-delay: 0.37s;
+}
+.vxa-juggle g:nth-child(3) {
+  animation-delay: 0.74s;
+}
+@keyframes vxa-juggle {
+  0%,
+  100% {
+    transform: translateY(18px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(180deg);
+  }
+}
+.vxa-ring {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: vxa-ring 0.12s linear infinite alternate;
+}
+@keyframes vxa-ring {
+  from {
+    transform: rotate(-9deg);
+  }
+  to {
+    transform: rotate(9deg);
+  }
+}
+.vxa-fanning {
+  transform-box: fill-box;
+  transform-origin: 0% 100%;
+  animation: vxa-fan 0.35s ease-in-out infinite alternate;
+}
+@keyframes vxa-fan {
+  to {
+    transform: rotate(-25deg);
+  }
+}
+.vxa-steam {
+  animation: vxa-steam 1.6s ease-in-out infinite;
+}
+@keyframes vxa-steam {
+  50% {
+    opacity: 0.2;
+    transform: translateY(-3px);
+  }
+}
+.vxa-rewind {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: vxa-swirl-spin 0.4s linear infinite reverse;
+}
+.vxa-stress {
+  position: absolute;
+  right: -18px;
+  bottom: 6px;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  pointer-events: auto;
+  animation: vxa-bounce-in 0.3s ease;
+}
+
+/* body reactions (flashed classes on .vxa-sprite) */
+.vxa-sneeze .vxa-body {
+  animation: vxa-sneeze 0.7s ease-out;
+}
+@keyframes vxa-sneeze {
+  30% {
+    transform: scale(0.9, 1.1) translateY(-4px);
+  }
+  45% {
+    transform: scale(1.15, 0.85) translateX(6px);
+  }
+}
+.vxa-hic .vxa-body {
+  animation: vxa-hic 0.3s ease-out;
+}
+@keyframes vxa-hic {
+  40% {
+    transform: translateY(-8px) scale(1.05, 0.95);
+  }
+}
+.vxa-shiver .vxa-body {
+  animation: vxa-shiver 0.08s linear infinite alternate;
+  filter: hue-rotate(160deg) saturate(0.7);
+}
+@keyframes vxa-shiver {
+  to {
+    transform: translateX(2px);
+  }
+}
+.vxa-melt .vxa-body {
+  transform-origin: 50% 100%;
+  transform: scale(1.12, 0.62) translateY(30px);
+  filter: blur(0.4px);
+  transition: transform 9s ease-in;
+}
+.vxa-blush .vxa-face::after {
+  content: "";
+  position: absolute;
+  left: 30%;
+  right: 30%;
+  top: 50%;
+  height: 12%;
+  background:
+    radial-gradient(
+      ellipse 11px 7px at 12% 50%,
+      rgba(255, 70, 130, 0.85),
+      transparent
+    ),
+    radial-gradient(
+      ellipse 11px 7px at 88% 50%,
+      rgba(255, 70, 130, 0.85),
+      transparent
+    );
+  filter: blur(1px);
+  pointer-events: none;
+}
+.vxa-purr .vxa-body {
+  animation: vxa-purr 0.09s linear infinite alternate;
+}
+.vxa-purr .vxa-eyesg {
+  transform: scaleY(0.15);
+  animation: none;
+}
+@keyframes vxa-purr {
+  to {
+    transform: rotate(1.5deg) scale(1.02);
+  }
+}
+.vxa-shy .vxa-eyesg,
+.vxa-shut .vxa-eyesg,
+.vxa-wink .vxa-eyesg ellipse:nth-of-type(3) {
+  transform: scaleY(0.08);
+  animation: none;
+}
+.vxa-shy .vxa-body {
+  filter: saturate(1.4) hue-rotate(-15deg);
+}
+.vxa-wink .vxa-pupils circle:nth-of-type(n + 4) {
+  opacity: 0;
+}
+.vxa-salute .vxa-body {
+  animation: vxa-salute 0.6s ease-out 2;
+}
+@keyframes vxa-salute {
+  50% {
+    transform: rotate(-8deg) translateY(-4px);
+  }
+}
+.vxa-sniff .vxa-body {
+  animation: vxa-sniff 0.18s ease-in-out 6;
+}
+@keyframes vxa-sniff {
+  50% {
+    transform: translateY(-2px) scale(1.03, 0.98);
+  }
+}
+.vxa-check .vxa-body {
+  animation: vxa-check 0.4s ease-in-out 3;
+}
+@keyframes vxa-check {
+  50% {
+    transform: translate(4px, -4px) rotate(6deg);
+  }
+}
+.vxa-drumroll .vxa-body {
+  animation: vxa-shiver 0.05s linear 30 alternate;
+}
+.vxa-bow .vxa-body {
+  animation: vxa-bow 1.4s ease-in-out;
+  transform-origin: 50% 90%;
+}
+@keyframes vxa-bow {
+  40%,
+  60% {
+    transform: rotate(18deg) translateY(6px);
+  }
+}
+.vxa-foottap .vxa-body {
+  animation: vxa-hic 0.25s ease-out 4;
+}
+.vxa-zoomin .vxa-body {
+  animation: vxa-zoomin 0.9s ease;
+}
+.vxa-zoomout .vxa-body {
+  animation: vxa-zoomout 0.9s ease;
+}
+@keyframes vxa-zoomin {
+  50% {
+    transform: scale(1.35);
+  }
+}
+@keyframes vxa-zoomout {
+  50% {
+    transform: scale(0.65);
+  }
+}
+.vxa-squish .vxa-body {
+  animation: vxa-squish 1.4s ease;
+}
+@keyframes vxa-squish {
+  30%,
+  70% {
+    transform: scale(0.6, 1.25);
+  }
+}
+.vxa-highfive .vxa-body,
+.vxa-wave-back .vxa-body {
+  animation: vxa-hop 0.5s ease-out 2;
+}
+.vxa-thinking .vxa-pupils {
+  animation: vxa-dart 0.9s steps(1) infinite;
+}
+@keyframes vxa-dart {
+  0% {
+    transform: translate(-2px, -1px);
+  }
+  33% {
+    transform: translate(2px, -2px);
+  }
+  66% {
+    transform: translate(0, 2px);
+  }
+}
+.vxa-countdown-eyes .vxa-pupils {
+  filter: drop-shadow(0 0 2px #ff2d2d);
+}
+/* hide and seek: only his top half peeks over the panel edge */
+.vxa-fxhost.vxa-hiding {
+  clip-path: inset(0 0 49% 0);
+}
+.vxa-hiding .vxa-body {
+  animation: vxa-peek 2.6s ease-in-out infinite;
+}
+@keyframes vxa-peek {
+  0%,
+  100% {
+    transform: translateY(8px);
+  }
+  50% {
+    transform: translateY(0);
+  }
+}
+/* 77 · morse tooltip after a long hover */
+.vxa-fxhost[data-morse]::after {
+  content: attr(data-morse);
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%);
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-family: "Share Tech Mono", monospace;
+  font-size: 10px;
+  color: #ffd6ef;
+  background: rgba(10, 0, 18, 0.9);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s 0s;
+}
+.vxa-fxhost[data-morse]:hover::after {
+  opacity: 1;
+  transition-delay: 1.6s;
+}
+
+/* chat extras */
+.vxa-jar {
+  margin-left: auto;
+  font-size: 11px;
+  color: #8a8571;
+  white-space: nowrap;
+}
+.vxa-jar + .vxa-chat-close {
+  margin-left: 6px;
+}
+.vxa-react {
+  display: flex;
+  gap: 4px;
+  margin: -4px 0 2px;
+}
+.vxa-react button {
+  padding: 1px 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  border: 1px solid #e0d9bd;
+  border-radius: 10px;
+  background: #fffef2;
+  cursor: pointer;
+  opacity: 0.55;
+}
+.vxa-react button:hover,
+.vxa-react button[aria-pressed="true"] {
+  opacity: 1;
+  border-color: #ff2d95;
+}
+.vxa-mic {
+  padding: 3px 8px;
+}
+.vxa-mic.on {
+  background: #ffd6ef;
+  border-color: #ff2d95;
+  animation: vxa-glow-pulse 1s ease-in-out infinite;
+}
+
+/* ── MK-IV stage effects (mk4/effects.ts) ─────────────────────────────── */
+.vxa-glitter {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  transform: rotate(45deg);
+}
+.vxa-poptext {
+  position: absolute;
+  transform: translateX(-50%);
+  font-family: "Share Tech Mono", monospace;
+  font-size: 12px;
+  color: #ffd6ef;
+  text-shadow: 0 0 6px #ff2d95;
+  white-space: nowrap;
+  animation: vxa-rise 1.5s ease-out forwards;
+}
+.vxa-poptext.hic {
+  font-family: "VT323", monospace;
+  font-size: 16px;
+  color: #00e5d0;
+}
+@keyframes vxa-rise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 0);
+  }
+  20% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -46px);
+  }
+}
+.vxa-echo {
+  position: absolute;
+  transform: translate(-50%, -50%) scale(var(--s, 1));
+  font-family: var(--font-marker), cursive;
+  font-size: 28px;
+  color: #ffd6ef;
+  opacity: var(--o, 0.9);
+  text-shadow: 0 0 10px rgba(255, 45, 149, 0.6);
+  animation: vxa-dark-out 1.8s ease-in forwards;
+}
+.vxa-ribbon {
+  position: absolute;
+  height: 20px;
+  background: repeating-linear-gradient(135deg, #ffcf3a 0 12px, #111 12px 24px);
+}
+.vxa-ribbon.l {
+  transform-origin: 0 50%;
+  animation: vxa-ribbon-l 1.6s ease-in forwards;
+}
+.vxa-ribbon.r {
+  transform-origin: 100% 50%;
+  animation: vxa-ribbon-r 1.6s ease-in forwards;
+}
+@keyframes vxa-ribbon-l {
+  to {
+    transform: rotate(-70deg) translateY(30px);
+    opacity: 0;
+  }
+}
+@keyframes vxa-ribbon-r {
+  to {
+    transform: rotate(70deg) translateY(30px);
+    opacity: 0;
+  }
+}
+.vxa-snip {
+  position: absolute;
+  font-size: 22px;
+  animation: vxa-hop 0.3s ease 3;
+}
+.vxa-sweat {
+  position: absolute;
+  width: 6px;
+  height: 9px;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  background: #8fd8ff;
+  animation: vxa-drop 1.2s ease-in forwards;
+}
+@keyframes vxa-drop {
+  to {
+    transform: translateY(60px);
+    opacity: 0;
+  }
+}
+.vxa-streamer {
+  position: absolute;
+  width: 6px;
+  height: 22px;
+  border-radius: 2px;
+}
+.vxa-countdown {
+  position: absolute;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: "VT323", monospace;
+  font-size: 18px;
+  color: #ff5a5a;
+  background: rgba(10, 0, 18, 0.85);
+  box-shadow: 0 0 10px rgba(255, 45, 45, 0.5);
+  animation: vxa-dark-out 3s ease-in forwards;
+}
+.vxa-puddle {
+  position: absolute;
+  width: 68px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse,
+    rgba(106, 26, 138, 0.55),
+    rgba(255, 45, 149, 0.2) 60%,
+    transparent 72%
+  );
+  animation: vxa-dry 6s ease-in forwards;
+}
+@keyframes vxa-dry {
+  70% {
+    opacity: 0.9;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.4, 0.6);
+  }
+}
+.vxa-drip {
+  position: absolute;
+  width: 6px;
+  height: 10px;
+  border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%;
+  background: #1a0033;
+  box-shadow: 0 0 4px rgba(255, 45, 149, 0.6);
+  animation: vxa-drip 3.2s ease-in forwards;
+}
+@keyframes vxa-drip {
+  0% {
+    transform: scaleY(0.3);
+  }
+  30% {
+    transform: scaleY(1.6);
+  }
+  to {
+    transform: translateY(260px) scaleY(1);
+    opacity: 0;
+  }
+}
+.vxa-fakeload {
+  position: absolute;
+  height: 3px;
+  width: 0;
+  background: linear-gradient(90deg, #ff2d95, #00e5d0);
+  box-shadow: 0 0 8px #ff2d95;
+  animation: vxa-load 3.2s ease-out forwards;
+}
+.vxa-fakeload span {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  font-family: "Share Tech Mono", monospace;
+  font-size: 10px;
+  color: #ffd6ef;
+  white-space: nowrap;
+}
+@keyframes vxa-load {
+  80% {
+    width: 100vw;
+    opacity: 1;
+  }
+  to {
+    width: 100vw;
+    opacity: 0;
+  }
+}
+.vxa-ghostkey {
+  position: absolute;
+  font-family: "Share Tech Mono", monospace;
+  font-size: 16px;
+  color: rgba(120, 90, 160, 0.7);
+  animation: vxa-dark-out 1.6s ease-in forwards;
+}
+.vxa-wobble {
+  position: absolute;
+  width: 8px;
+  border-radius: 4px;
+  background: rgba(255, 45, 149, 0.55);
+  animation: vxa-wobble 1.4s ease-in-out forwards;
+}
+@keyframes vxa-wobble {
+  20% {
+    transform: scale(1.6, 0.85) skewY(8deg);
+  }
+  40% {
+    transform: scale(0.8, 1.1) skewY(-6deg);
+  }
+  60% {
+    transform: scale(1.2, 0.95) skewY(3deg);
+  }
+  to {
+    opacity: 0;
+  }
+}
+.vxa-zzz {
+  position: absolute;
+  font-family: "VT323", monospace;
+  font-size: 15px;
+  color: #00e5d0;
+  animation: vxa-rise 4s ease-out forwards;
+}
+.vxa-tiny {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+}
+.vxa-tiny svg {
+  width: 100%;
+  height: 100%;
+  animation: vxa-hop 0.3s ease-in-out infinite;
+}
+.vxa-plane {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 26px;
+  color: #f4ecd8;
+}
+.vxa-plane span {
+  padding: 3px 9px;
+  border-radius: 3px;
+  font-family: var(--font-marker), cursive;
+  font-size: 12px;
+  color: #2b2219;
+  background: #f4ecd8;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  transform: rotate(-3deg);
+  max-width: 260px;
+}
+.vxa-candle {
+  position: absolute;
+  width: 18px;
+  height: 30px;
+  border-radius: 3px 3px 2px 2px;
+  background: linear-gradient(#f4ecd8, #d9ceb1);
+  box-shadow: 0 0 16px rgba(255, 179, 71, 0.55);
+}
+.vxa-candle::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -14px;
+  width: 9px;
+  height: 14px;
+  margin-left: -4.5px;
+  border-radius: 50% 50% 50% 50% / 70% 70% 30% 30%;
+  background: radial-gradient(circle at 50% 70%, #fff3c4, #ffb347 55%, #ff5a3c);
+  animation: vxa-flame 0.18s ease-in-out infinite alternate;
+}
+@keyframes vxa-flame {
+  to {
+    transform: scale(0.9, 1.1) rotate(3deg);
+  }
+}
+.vxa-logwhisper {
+  position: absolute;
+  font-family: "VT323", monospace;
+  font-size: 15px;
+  color: rgba(255, 90, 140, 0.85);
+  text-shadow: 0 0 6px rgba(255, 45, 149, 0.6);
+  animation: vxa-dark-out 3.8s ease-in forwards;
+}
+.vxa-hand {
+  position: absolute;
+  font-size: 22px;
+  transform-origin: 50% 100%;
+  filter: grayscale(1) brightness(0.6) sepia(0.4) hue-rotate(260deg);
+  animation: vxa-hand 2.4s ease-in-out forwards;
+}
+@keyframes vxa-hand {
+  0% {
+    transform: translateY(0) scaleY(0);
+  }
+  25% {
+    transform: translateY(-4px) scaleY(1) rotate(-10deg);
+  }
+  45% {
+    transform: translateY(-4px) rotate(12deg);
+  }
+  65% {
+    transform: translateY(-4px) rotate(-10deg);
+  }
+  to {
+    transform: translateY(0) scaleY(0);
+  }
+}
+.vxa-crow {
+  position: absolute;
+  font-size: 16px;
+  animation: vxa-crow 3.2s ease-in-out infinite;
+}
+.vxa-crow.fly {
+  animation: vxa-crow-fly 0.9s ease-in forwards;
+}
+@keyframes vxa-crow {
+  45%,
+  55% {
+    transform: rotate(-12deg);
+  }
+}
+@keyframes vxa-crow-fly {
+  to {
+    transform: translate(60px, -80px);
+    opacity: 0;
+  }
+}
+.vxa-reflection {
+  position: absolute;
+  opacity: 0.32;
+  transform: scaleY(-1);
+  filter: blur(0.5px) saturate(1.4);
+  mix-blend-mode: screen;
+  animation: vxa-dark-in 1.5s ease both;
+}
+.vxa-ouija {
+  position: absolute;
+  left: 50%;
+  bottom: 70px;
+  width: min(640px, 90vw);
+  height: 190px;
+  transform: translateX(-50%);
+  border-radius: 80px 80px 12px 12px;
+  background: linear-gradient(#3a2416, #22150c);
+  box-shadow: 0 0 40px rgba(255, 45, 149, 0.25);
+  z-index: 1;
+}
+.vxa-ouija .abc {
+  position: absolute;
+  inset: 18px 30px auto;
+  text-align: center;
+  font-family: var(--font-marker), cursive;
+  font-size: 19px;
+  line-height: 1.9;
+  color: #e9d9b0;
+}
+.vxa-ouija .abc span {
+  display: inline-block;
+  margin: 0 0.42em;
+  transition:
+    color 0.3s,
+    text-shadow 0.3s;
+}
+.vxa-ouija .abc span.lit {
+  color: #ff8fd4;
+  text-shadow: 0 0 10px #ff2d95;
+}
+.vxa-ouija i {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  width: 34px;
+  height: 40px;
+  margin: -16px 0 0 -17px;
+  border-radius: 50% 50% 40% 40%;
+  background: radial-gradient(
+    circle at 50% 45%,
+    transparent 0 6px,
+    rgba(244, 236, 216, 0.85) 7px
+  );
+  transition:
+    left 0.6s ease,
+    top 0.6s ease;
+}
+.vxa-ouija b {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  text-align: center;
+  font-family: "VT323", monospace;
+  font-size: 26px;
+  font-weight: 400;
+  letter-spacing: 0.4em;
+  color: #ff8fd4;
+  text-shadow: 0 0 10px #ff2d95;
+}
+[data-vx-fog]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 40%;
+  pointer-events: none;
+  border-radius: 0 0 12px 12px;
+  background: linear-gradient(transparent, rgba(220, 210, 235, 0.22));
+  animation: vxa-fog 7s ease-in-out infinite alternate;
+}
+@keyframes vxa-fog {
+  to {
+    opacity: 0.5;
+    transform: translateX(6px);
+  }
+}
+html.vxa-rot .mt-jx[data-vx-weep] .mt-stk.late::after {
+  content: "";
+  position: absolute;
+  left: 45%;
+  top: 92%;
+  width: 4px;
+  height: 22px;
+  border-radius: 2px;
+  background: linear-gradient(#1a0033, transparent);
+  animation: vxa-weep 4s ease-in infinite;
+}
+@keyframes vxa-weep {
+  from {
+    transform: scaleY(0);
+    transform-origin: top;
+  }
+  60% {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 0;
+  }
+}
+.mt-jx .mt-skull {
+  position: absolute;
+  right: 8px;
+  bottom: 44px;
+  z-index: 3;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+  opacity: 0.75;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1C4 1 2 3.8 2 7c0 2 1 3.2 2 3.8V13h2v-1.5h1V13h2v-1.5h1V13h2v-2.2c1-.6 2-1.8 2-3.8 0-3.2-2-6-6-6z' fill='%23efe3c4'/%3E%3Ccircle cx='5.6' cy='7.4' r='1.6' fill='%232b2219'/%3E%3Ccircle cx='10.4' cy='7.4' r='1.6' fill='%232b2219'/%3E%3C/svg%3E")
+    no-repeat center / contain;
+}
+html:not(.vxa-rot) .mt-skull {
+  display: none;
+}
+[data-vx-award] {
+  box-shadow:
+    0 0 0 2px #ffd36a,
+    0 0 14px rgba(255, 211, 106, 0.7) !important;
+}
+[data-vx-award]::before {
+  content: "🏆";
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+}
+html.vxa-bloodmoon .hf-tuner .in {
+  background: linear-gradient(#5a0a08, #1a0302) !important;
+}
+html.vxa-bloodmoon .hf-tuner .needle {
+  background: #ff2d2d;
+  box-shadow: 0 0 14px #ff2d2d;
+}
+html.vxa-halloween .mt-jx {
+  filter: sepia(0.45) saturate(0.85);
+  animation: vxa-flicker 7s steps(1) infinite;
+}
+@keyframes vxa-flicker {
+  0%,
+  96% {
+    opacity: 1;
+  }
+  97% {
+    opacity: 0.6;
+  }
+  98% {
+    opacity: 1;
+  }
+  99% {
+    opacity: 0.75;
+  }
+}
+.vxa-visitors[data-council] {
+  gap: 0;
+}
+.vxa-visitors[data-council] .vxa-visitor {
+  opacity: 0.85;
+  animation: vxa-council 1.2s ease-in-out infinite alternate;
+}
+.vxa-visitors[data-council] .vxa-visitor:nth-child(2) {
+  animation-delay: 0.4s;
+}
+.vxa-visitors[data-council] .vxa-visitor:nth-child(3) {
+  animation-delay: 0.8s;
+}
+@keyframes vxa-council {
+  to {
+    transform: translateY(-10px) rotate(8deg) scale(1.1);
+  }
+}
+
+/* ── MK-IV games (mk4/games.ts) ────────────────────────────────────────── */
+.vxa-whack,
+.vxa-roulette,
+.vxa-tarot {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  animation: vxa-dark-in 0.3s ease both;
+}
+.vxa-whack.out,
+.vxa-roulette.out,
+.vxa-tarot.out {
+  animation: vxa-dark-out 0.4s ease both;
+}
+.vxa-whack {
+  background: rgba(8, 0, 16, 0.35);
+}
+.vxa-whack .hud {
+  position: absolute;
+  left: 50%;
+  top: 14px;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-family: "VT323", monospace;
+  font-size: 20px;
+  letter-spacing: 0.1em;
+  color: #ffd6ef;
+  background: rgba(10, 0, 18, 0.88);
+  box-shadow: 0 0 16px rgba(255, 45, 149, 0.4);
+}
+.vxa-whack .hud b {
+  color: #00e5d0;
+  font-weight: 400;
+}
+.vxa-whack .ghost {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 34px;
+  cursor: crosshair;
+  animation: vxa-ghost-pop 1.1s ease-in-out forwards;
+}
+.vxa-whack .ghost.hit {
+  animation: vxa-ghost-hit 0.3s ease-out forwards;
+}
+@keyframes vxa-ghost-pop {
+  0% {
+    transform: translateY(20px) scale(0.3);
+    opacity: 0;
+  }
+  25%,
+  70% {
+    transform: translateY(-6px) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(20px) scale(0.3);
+    opacity: 0;
+  }
+}
+@keyframes vxa-ghost-hit {
+  to {
+    transform: scale(1.6) rotate(30deg);
+    opacity: 0;
+  }
+}
+.vxa-roulette {
+  display: grid;
+  place-items: center;
+  background: rgba(8, 0, 16, 0.6);
+  cursor: pointer;
+}
+.vxa-roulette .wheel {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(#3d0c5c 0 15deg, #1a0033 15deg 30deg);
+  box-shadow:
+    0 0 0 6px #ff2d95,
+    0 0 0 10px #00e5d0,
+    0 0 40px rgba(255, 45, 149, 0.5);
+}
+.vxa-roulette .wheel span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: -10px 0 0 -40px;
+  width: 80px;
+  text-align: center;
+  font-family: "VT323", monospace;
+  font-size: 16px;
+  color: #ffd6ef;
+}
+.vxa-roulette .wheel span.win {
+  color: #ffd36a;
+  text-shadow: 0 0 10px #ffb000;
+  font-size: 20px;
+}
+.vxa-roulette .ptr {
+  position: absolute;
+  left: 50%;
+  top: calc(50% - 175px);
+  margin-left: -10px;
+  border: 10px solid transparent;
+  border-top: 18px solid #ffd36a;
+  filter: drop-shadow(0 0 6px #ffb000);
+}
+.vxa-tarot {
+  display: grid;
+  place-items: center;
+  background: rgba(8, 0, 16, 0.65);
+  cursor: pointer;
+}
+.vxa-tarot .card {
+  width: 220px;
+  padding: 26px 20px;
+  text-align: center;
+  border-radius: 14px;
+  color: #f4ecd8;
+  background: linear-gradient(160deg, #3d0c5c, #120018 70%);
+  box-shadow:
+    0 0 0 2px #ffd36a,
+    0 0 0 6px #3d0c5c,
+    0 0 50px rgba(255, 45, 149, 0.45);
+  animation: vxa-tarot-flip 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+}
+.vxa-tarot .card b {
+  display: block;
+  font-size: 54px;
+  font-weight: 400;
+}
+.vxa-tarot .card h4 {
+  margin: 10px 0 8px;
+  font-family: var(--font-marker), cursive;
+  font-size: 22px;
+  color: #ffd36a;
+}
+.vxa-tarot .card p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #e9d9f0;
+}
+@keyframes vxa-tarot-flip {
+  from {
+    transform: perspective(600px) rotateY(180deg) scale(0.6);
+    opacity: 0;
+  }
+}
+.vxa-gold {
+  position: fixed;
+  z-index: 44;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  cursor: pointer;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 230, 150, 0.75) 45%,
+    rgba(255, 255, 255, 0.9) 50%,
+    rgba(255, 230, 150, 0.75) 55%,
+    transparent 70%
+  );
+  background-size: 300% 100%;
+  box-shadow:
+    0 0 0 2px #ffd36a,
+    0 0 16px rgba(255, 211, 106, 0.8);
+  animation: vxa-shine 2.4s linear infinite;
+}
+@keyframes vxa-shine {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vxa-juggle g,
+  .vxa-ring,
+  .vxa-fanning,
+  .vxa-steam,
+  .vxa-rewind,
+  .vxa-crow,
+  [data-vx-fog]::after,
+  html.vxa-rot .mt-jx[data-vx-weep] .mt-stk.late::after,
+  html.vxa-halloween .mt-jx,
+  .vxa-gold,
+  .vxa-thinking .vxa-pupils,
+  .vxa-purr .vxa-body,
+  .vxa-shiver .vxa-body {
+    animation: none;
+  }
+  .vxa-melt .vxa-body {
+    transition: none;
+  }
+}
+
+/* the fx host fills the sprite box (flashed reaction classes live on it) */
+.vxa-fxhost {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* his drawing never takes the pointer: presses always land on the face
+   button itself, so the bobbing/peeking SVG can't split a click in two */
+.vxa-face > *,
+.vxa-face svg * {
+  pointer-events: none;
 }

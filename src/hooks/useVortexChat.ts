@@ -42,6 +42,8 @@ export type VortexAction =
 
 export interface VortexChatMessage extends CrmChatMessage {
   action?: VortexAction | null;
+  // answered on this device (slash commands, riddles…) — never sent to the AI
+  local?: boolean;
 }
 
 type UserAiPayload = {
@@ -61,12 +63,53 @@ type IncomingEvent = { type: string; payload: UserAiPayload };
 // on the shared channel — never `leave()`s it, since useNotifications rides it too.
 // Each turn carries the CURRENT mounts, so ejecting/mounting mid-conversation takes
 // effect on the very next question.
+// The transcript is kept on this device (last 20 turns) so he remembers what you
+// talked about yesterday. Cleared with clear().
+const MEMORY_KEY = (userId: number) => `yd:vortex.chat.${userId}`;
+const MEMORY_TURNS = 20;
+
 export function useVortexChat(
   userId: number | undefined,
   enabled: boolean,
   mounts: VortexMount[] = [],
+  onReply?: (text: string) => void,
 ) {
   const [messages, setMessages] = useState<VortexChatMessage[]>([]);
+  const onReplyRef = useRef(onReply);
+  onReplyRef.current = onReply;
+
+  /* load the remembered transcript once we know who this is */
+  useEffect(() => {
+    if (!userId) return;
+    try {
+      const raw = JSON.parse(localStorage.getItem(MEMORY_KEY(userId)) ?? "[]");
+      if (Array.isArray(raw))
+        setMessages(
+          raw.filter(
+            (m): m is VortexChatMessage =>
+              (m?.role === "user" || m?.role === "assistant") &&
+              typeof m.content === "string",
+          ),
+        );
+    } catch {
+      // nothing remembered
+    }
+  }, [userId]);
+  useEffect(() => {
+    if (!userId) return;
+    try {
+      localStorage.setItem(
+        MEMORY_KEY(userId),
+        JSON.stringify(
+          messages
+            .slice(-MEMORY_TURNS)
+            .map((m) => ({ role: m.role, content: m.content, local: m.local })),
+        ),
+      );
+    } catch {
+      // storage full / blocked
+    }
+  }, [messages, userId]);
   const [streamingText, setStreamingText] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +137,7 @@ export function useVortexChat(
         setStreamingText("");
         setStreaming(false);
         activeId.current = null;
+        onReplyRef.current?.(finalText);
       } else if (e.type === "ai.error") {
         setError(e.payload.message ?? "That didn't work.");
         setStreamingText("");
@@ -114,14 +158,19 @@ export function useVortexChat(
   }, [enabled, userId]);
 
   const send = useCallback(
-    async (text: string) => {
+    async (text: string, style: string[] = []) => {
       const question = text.trim();
       if (!userId || streaming || question === "") return;
 
-      const next: CrmChatMessage[] = [
+      const next: VortexChatMessage[] = [
         ...messages,
         { role: "user", content: question },
       ];
+      // the AI only sees the real conversation, not local command chatter
+      const forAi: CrmChatMessage[] = next
+        .filter((m) => !m.local)
+        .slice(-30)
+        .map((m) => ({ role: m.role, content: m.content }));
 
       const id =
         typeof crypto !== "undefined" && crypto.randomUUID
@@ -136,8 +185,9 @@ export function useVortexChat(
       try {
         await startVortexChat(
           id,
-          next,
+          forAi,
           mounts.map((m) => ({ type: m.type, id: m.id })),
+          style,
         );
       } catch (e) {
         activeId.current = null;
@@ -162,5 +212,17 @@ export function useVortexChat(
     [userId, streaming, messages, mounts],
   );
 
-  return { messages, streamingText, streaming, error, send };
+  /** Add a local-only line from him (slash commands answered without the AI). */
+  const say = useCallback((content: string, asUser?: string) => {
+    setMessages((prev) => [
+      ...prev,
+      ...(asUser
+        ? [{ role: "user" as const, content: asUser, local: true }]
+        : []),
+      { role: "assistant" as const, content, local: true },
+    ]);
+  }, []);
+  const clear = useCallback(() => setMessages([]), []);
+
+  return { messages, streamingText, streaming, error, send, say, clear };
 }

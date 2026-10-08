@@ -1808,6 +1808,8 @@ export async function startVortexChat(
   requestId: string,
   messages: CrmChatMessage[],
   mounts: Array<{ type: "project" | "board"; id: number }> = [],
+  // whitelisted tone/command keys (mood, /roast, /hype…) — see AiAssistService
+  style: string[] = [],
 ): Promise<{ request_id: string }> {
   return apiFetch(`/api/ai/vortex-chat`, {
     method: "POST",
@@ -1815,8 +1817,39 @@ export async function startVortexChat(
       request_id: requestId,
       messages,
       ...(mounts.length > 0 ? { mounts } : {}),
+      ...(style.length > 0 ? { style: style.slice(0, 3) } : {}),
     }),
   });
+}
+
+export interface VortexNoteItem {
+  id: number;
+  from: string | null;
+  body: string;
+  created_at: string;
+}
+// Notes left for a teammate "from Vortex" on a board.
+export async function sendVortexNote(
+  boardId: number,
+  toUserId: number,
+  body: string,
+): Promise<{ id: number }> {
+  return apiFetch(`/api/boards/${boardId}/vortex-notes`, {
+    method: "POST",
+    body: JSON.stringify({ to_user_id: toUserId, body }),
+  });
+}
+// Notes waiting for me on this board — the server marks them delivered.
+export async function fetchVortexNotes(
+  boardId: number,
+): Promise<VortexNoteItem[]> {
+  return apiFetch(`/api/boards/${boardId}/vortex-notes`);
+}
+// A teammate's favourite two-word phrase in this board's comments.
+export async function fetchVortexImpressions(
+  boardId: number,
+): Promise<{ user_id: number; name: string | null; phrase: string }[]> {
+  return apiFetch(`/api/boards/${boardId}/vortex-impressions`);
 }
 
 export interface PointsSuggestion {

@@ -426,7 +426,10 @@ export function listenSecrets(handlers: {
 }
 
 /* ── radio interference: the dashboard tuner catches a ghost station ──────── */
-export function radioInterference(ms = 2200): boolean {
+export function radioInterference(
+  ms = 2200,
+  station = "VORTEX FM 66.6 ◉ ON AIR",
+): boolean {
   const tuner = document.querySelector<HTMLElement>(".hf-tuner .in");
   if (!tuner || !visible(tuner)) return false;
   const label = tuner.querySelector<HTMLElement>(".lbl");
@@ -435,7 +438,7 @@ export function radioInterference(ms = 2200): boolean {
     label.firstChild.nodeValue = "VORTEX FM · 66.6";
   const ghost = document.createElement("div");
   ghost.className = "vxa-station";
-  ghost.textContent = "VORTEX FM 66.6 ◉ ON AIR";
+  ghost.textContent = station;
   tuner.appendChild(ghost);
   tuner.classList.add("vxa-static");
   setTimeout(() => {

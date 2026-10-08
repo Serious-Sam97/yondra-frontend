@@ -39,7 +39,31 @@ export type VortexEvent =
       cardId: number | string;
       days: number;
     }
-  | { type: "card.opened"; boardId: number; cardId: number | string };
+  | {
+      type: "card.opened";
+      boardId: number;
+      cardId: number | string;
+      tags?: number;
+    }
+  // saved in the editor: what changed (only the fields that did)
+  | {
+      type: "card.edited";
+      boardId: number;
+      cardId: number | string;
+      renamed?: boolean;
+      priorityUp?: boolean;
+      assigneeChanged?: boolean;
+      tagsAdded?: number;
+      checklistDone?: boolean;
+      longDescription?: boolean;
+    }
+  // archived: where it sat, so a candle can be lit in its place
+  | {
+      type: "card.archived";
+      boardId: number;
+      cardId: number | string;
+      rect: { left: number; top: number; width: number; height: number } | null;
+    };
 
 const listeners = new Set<(e: VortexEvent) => void>();
 

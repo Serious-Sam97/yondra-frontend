@@ -1,5 +1,6 @@
 "use client";
 
+import { emitVortex } from "@/lib/vortexBus";
 import { type Dispatch, type SetStateAction, useState } from "react";
 import type { CardInterface } from "@/interfaces/CardInterface";
 import { deleteCard, getArchivedCards, restoreCard } from "@/lib/api";
@@ -38,6 +39,11 @@ export function useBoardArchive({
 
   const handleArchiveCard = async () => {
     if (!cardToDelete) return;
+    // where it sat — Vortex lights a candle there (read before it unmounts)
+    const el = document.querySelector<HTMLElement>(
+      `.mt-jx[data-card-id="${CSS.escape(String(cardToDelete.id))}"]`,
+    );
+    const r = el?.getBoundingClientRect();
     try {
       if (isDemo) demoArchiveCard(demoId, cardToDelete.id as number);
       else await deleteCard(boardId, cardToDelete.id);
@@ -46,6 +52,14 @@ export function useBoardArchive({
       setCardToDelete(null);
       return;
     }
+    emitVortex({
+      type: "card.archived",
+      boardId,
+      cardId: cardToDelete.id,
+      rect: r
+        ? { left: r.left, top: r.top, width: r.width, height: r.height }
+        : null,
+    });
     setCards((prev) => prev.filter((c) => c.id !== cardToDelete.id));
     setCardToDelete(null);
     closeCard();

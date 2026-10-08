@@ -88,6 +88,7 @@ export const Card = memo(function Card({
   priority,
   checklist_items,
   updated_at,
+  created_at,
   done_at,
   ticket_key,
   value,
@@ -212,10 +213,25 @@ export const Card = memo(function Card({
       data-vx-jam={!overlay && jammed ? "1" : undefined}
       data-vx-cursed={!overlay && cursed ? "1" : undefined}
       data-vx-rot={!overlay && rot ? rot : undefined}
+      data-vx-touched={
+        overlay ? undefined : (daysSince(updated_at) ?? undefined)
+      }
+      data-vx-age={overlay ? undefined : (daysSince(created_at) ?? undefined)}
+      data-vx-due-today={!overlay && due?.label === "TODAY" ? "1" : undefined}
+      data-vx-weep={!overlay && lateDays >= 14 ? "1" : undefined}
+      data-vx-insection={
+        overlay || done_at
+          ? undefined
+          : (daysSince(section_entered_at) ?? undefined)
+      }
+      data-vx-tags={overlay ? undefined : cardTags.length}
       data-vx-idle={!overlay && cursed ? (idleDays ?? undefined) : undefined}
     >
       {/* untouched for a month: cobwebs (Vortex calls it cursed) */}
       {cursed && !overlay && <span className="mt-web" aria-hidden />}
+      {!overlay && !done_at && (daysSince(created_at) ?? 0) >= 60 && (
+        <span className="mt-skull" aria-hidden />
+      )}
       {rot >= 2 && !overlay && (
         <span className={`mt-rot l${rot}`} aria-hidden />
       )}
@@ -350,6 +366,7 @@ export const DoneSpine = memo(function DoneSpine({
   ticket_number,
   ticket_key,
   done_at,
+  created_at,
 }: CardInterface) {
   const [a] = cardInks({ id, tags });
   const latin = /^[\p{Script=Latin}\p{N}\p{P}\p{S}\s]*$/u.test(name);
@@ -362,6 +379,18 @@ export const DoneSpine = memo(function DoneSpine({
         style={{ "--a": a } as React.CSSProperties}
         data-vx-spine={id}
         data-vx-key={ticket_key ?? undefined}
+        data-vx-cycle={
+          done_at && created_at
+            ? Math.max(
+                0,
+                Math.round(
+                  (new Date(done_at).getTime() -
+                    new Date(created_at).getTime()) /
+                    86_400_000,
+                ),
+              )
+            : undefined
+        }
       >
         <span className="sw">{num}</span>
         <span className={`t${latin ? "" : " plain"}`}>{name}</span>

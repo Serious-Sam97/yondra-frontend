@@ -201,6 +201,18 @@ export function vortexSvg(
   const chroma = red
     ? `<g opacity=".5" transform="translate(-2.4 0)">${face.replaceAll(W, "#ff2d2d")}</g><g opacity=".4" transform="translate(2.4 0)">${face.replaceAll(W, "#2ad8ff")}</g>`
     : "";
+  // the rim shows his mood: red angry, grey bored, gold proud, default pink→cyan
+  const [rimA, rimB] = red
+    ? ["#ff3b2f", "#ffb000"]
+    : mood === "judging"
+      ? ["#ff5a3c", "#b5533c"]
+      : mood === "dormant" || mood === "yawn" || mood === "sleepy"
+        ? ["#8a8378", "#4a453d"]
+        : mood === "happy"
+          ? ["#ffd36a", "#ffb000"]
+          : mood === "mourning"
+            ? ["#3a3a3a", "#6a1a8a"]
+            : ["#ff2d95", "#00e5d0"];
   const [c1, c2, c3, c4] = red
     ? ["#ff6a5a", "#c0150f", "#3a0605", "#0a0101"]
     : ["#ff7ac8", "#e0157f", "#3d0c5c", "#080010"];
@@ -208,7 +220,7 @@ export function vortexSvg(
   return `<svg viewBox="-10 -6 160 150" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="overflow:visible;display:block;width:100%;height:100%">
 <defs>
 <radialGradient id="${id}b" cx="40%" cy="32%" r="72%"><stop offset="0" stop-color="${c1}"/><stop offset=".3" stop-color="${c2}"/><stop offset=".68" stop-color="${c3}"/><stop offset="1" stop-color="${c4}"/></radialGradient>
-<linearGradient id="${id}rim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${red ? "#ff3b2f" : "#ff2d95"}"/><stop offset="1" stop-color="${red ? "#ffb000" : "#00e5d0"}"/></linearGradient>
+<linearGradient id="${id}rim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${rimA}"/><stop offset="1" stop-color="${rimB}"/></linearGradient>
 <radialGradient id="${id}g" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="${red ? "#ff3b2f" : "#ff2d95"}" stop-opacity=".38"/><stop offset=".6" stop-color="${red ? "#ff3b2f" : "#7a2cff"}" stop-opacity=".12"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
 <radialGradient id="${id}es" cx="50%" cy="30%" r="80%"><stop offset=".6" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#c9b6ff" stop-opacity=".55"/></radialGradient>
 <linearGradient id="${id}lid" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${red ? "#7a0a08" : "#c0207a"}"/><stop offset="1" stop-color="${red ? "#4a0605" : "#8a1468"}"/></linearGradient>

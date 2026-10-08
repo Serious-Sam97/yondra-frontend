@@ -169,6 +169,10 @@ export interface VortexSpeech {
   action?: { label: string; run: () => void };
   // a second choice (e.g. "Archive it" / "Backlog it")
   action2?: { label: string; run: () => void };
+  // several choices (rock / paper / scissors…) — replaces Ask me / action
+  choices?: { label: string; run: () => void }[];
+  // how long it stays up (ms); default ~9s
+  ms?: number;
 }
 const sayListeners = new Set<(s: VortexSpeech) => void>();
 /** Make Vortex speak (ignored while he's disabled). */

@@ -773,7 +773,12 @@ export function Board({
   // Stable identity — handed to every memoized Section (and the other views).
   const handleClick = useCallback(
     (card: CardInterface) => {
-      emitVortex({ type: "card.opened", boardId: Number(id), cardId: card.id });
+      emitVortex({
+        type: "card.opened",
+        boardId: Number(id),
+        cardId: card.id,
+        tags: card.tags?.length ?? 0,
+      });
       openCard(card);
     },
     [openCard, id],
@@ -1128,6 +1133,31 @@ export function Board({
         // Tell Vortex what changed (jams and column moves made in the editor).
         const before = cardsProp.find((c) => c.id === card.id);
         if (before && saved) {
+          const rank = { low: 1, medium: 2, high: 3 } as Record<string, number>;
+          const beforeTags = new Set((before.tags ?? []).map((t) => t.id));
+          const items = card.checklist_items ?? [];
+          const wasAllDone =
+            (before.checklist_items ?? []).length > 0 &&
+            (before.checklist_items ?? []).every((i) => i.is_done);
+          emitVortex({
+            type: "card.edited",
+            boardId: Number(id),
+            cardId: card.id,
+            renamed: before.name !== card.name,
+            priorityUp:
+              (rank[card.priority ?? ""] ?? 0) >
+              (rank[before.priority ?? ""] ?? 0),
+            assigneeChanged:
+              (before.assigned_user_id ?? null) !==
+                (card.assigned_user_id ?? null) &&
+              before.assigned_user_id != null,
+            tagsAdded: card.tag_ids.filter((t) => !beforeTags.has(t)).length,
+            checklistDone:
+              items.length > 0 && items.every((i) => i.is_done) && !wasAllDone,
+            longDescription:
+              (card.description ?? "").length > 2000 &&
+              (before.description ?? "").length <= 2000,
+          });
           const wasJammed = !!before.blocked_reason?.trim();
           const isJammed = !!card.blocked_reason?.trim();
           if (!wasJammed && isJammed)

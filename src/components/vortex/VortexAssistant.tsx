@@ -28,6 +28,31 @@ import {
 } from "@/components/vortex/vortexMemory";
 import { vxSound } from "@/components/vortex/vortexSound";
 import {
+  isCompliment,
+  moodStyle,
+  parseSlash,
+  riddleOfTheDay,
+} from "@/components/vortex/mk4/chat";
+import {
+  type Costume,
+  currentCostume,
+  getProgress,
+  setBirthday,
+  unlock,
+  unlockCostume,
+  updateProgress,
+  useProgress,
+} from "@/components/vortex/mk4/progress";
+import {
+  costumeSvg,
+  propSvg,
+  STRESS_BALL_SVG,
+} from "@/components/vortex/mk4/props";
+import {
+  useVortexWorld,
+  type VortexProp,
+} from "@/components/vortex/mk4/useVortexWorld";
+import {
   armFleeingArchive,
   basement,
   cursorPull,
@@ -113,6 +138,33 @@ const BUSY_SELECTOR = ".modal-backdrop, .mt-cardx, [aria-modal='true']";
 
 type Pt = { x: number; y: number };
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+// the slice of the Web Speech API we use (not in every TS lib)
+interface SpeechRecognitionLike {
+  lang: string;
+  interimResults: boolean;
+  onresult: (e: {
+    results: { [i: number]: { [j: number]: { transcript: string } } };
+  }) => void;
+  onend: () => void;
+  onerror: () => void;
+  start: () => void;
+}
+// head games that may be mirrored to teammates on the same board (visual only)
+const SHAREABLE = new Set([
+  "gravity",
+  "radio",
+  "breath",
+  "crowd",
+  "flicker",
+  "drip",
+  "letters",
+  "peel",
+  "vu",
+  "plane",
+  "emoji",
+  "wobble",
+  "hand",
+]);
 
 /** The board card element for a card id, only if it's fully on screen. */
 function visibleCard(id: number | string): HTMLElement | null {
@@ -154,7 +206,11 @@ const VortexAssistant: React.FC = () => {
   const pathname = usePathname() ?? "";
   const router = useRouter();
 
-  const [user, setUser] = useState<{ id: number; name: string } | null>(null);
+  const [user, setUser] = useState<{
+    id: number;
+    name: string;
+    created_at?: string | null;
+  } | null>(null);
   // `mirror`: the bubble prints backwards until you hover it (a head game)
   const [speech, setSpeech] = useState<
     (VortexSpeech & { mirror?: boolean }) | null
@@ -186,7 +242,10 @@ const VortexAssistant: React.FC = () => {
   const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const mounts = useVortexMounts();
-  const chat = useVortexChat(user?.id, enabled && isLogged, mounts);
+  const replyRef = useRef<((t: string) => void) | null>(null);
+  const chat = useVortexChat(user?.id, enabled && isLogged, mounts, (t) =>
+    replyRef.current?.(t),
+  );
 
   const active = enabled && isLogged;
   const intensity = useVortexIntensity();
@@ -216,7 +275,7 @@ const VortexAssistant: React.FC = () => {
     setSpeech(s);
     setPopN((n) => n + 1);
     if (hideTimer.current) clearTimeout(hideTimer.current);
-    hideTimer.current = setTimeout(() => setSpeech(null), SHOW_MS);
+    hideTimer.current = setTimeout(() => setSpeech(null), s.ms ?? SHOW_MS);
   }, []);
 
   /* lip-sync: the bubble types itself out while his mouth flaps */
@@ -314,6 +373,7 @@ const VortexAssistant: React.FC = () => {
   /* ─────────── MK-II body: position (layer offset), gaze, drag ─────────── */
   const layerRef = useRef<HTMLDivElement>(null);
   const spriteRef = useRef<HTMLDivElement>(null);
+  const fxHostRef = useRef<HTMLDivElement>(null);
   const uid = useId().replace(/[^a-z0-9]/gi, "");
   const [mood, setMood] = useState<VortexMood>("smug");
   const [pose, setPose] = useState<VortexPose | undefined>(undefined);
@@ -332,6 +392,15 @@ const VortexAssistant: React.FC = () => {
     restore: () => void;
   } | null>(null);
   const [visitors, setVisitors] = useState<{ id: number; name: string }[]>([]);
+  // MK-IV: a hand prop / body morph, voice mode, chat extras
+  const [prop, setProp] = useState<VortexProp>(null);
+  const [voice, setVoice] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [reactions, setReactions] = useState<Record<number, string>>({});
+  const [copyable, setCopyable] = useState<Set<number>>(() => new Set());
+  const riddlePending = useRef(false);
+  const writeNext = useRef(false);
+  const progress = useProgress();
   const actingRef = useRef(false);
   actingRef.current = acting;
   const homeRef = useRef<Pt>({ x: 0, y: 0 });
@@ -376,8 +445,10 @@ const VortexAssistant: React.FC = () => {
   }
   /* squash on landing (CSS), deck-key click */
   function land() {
-    if (spriteRef.current) flashClass(spriteRef.current, "vxa-land", 520);
+    if (fxHostRef.current) flashClass(fxHostRef.current, "vxa-land", 520);
     vxSound("click");
+    const r = spriteRef.current?.getBoundingClientRect();
+    if (r) world.onLanded({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
   }
   async function travel(
     to: Pt,
@@ -410,8 +481,8 @@ const VortexAssistant: React.FC = () => {
     setDur(ms);
     setTraveling(ms > 0);
     setOff(to);
-    if (ms > 0 && spriteRef.current) {
-      flashClass(spriteRef.current, "vxa-launch", 260);
+    if (ms > 0 && spriteRef.current && fxHostRef.current) {
+      flashClass(fxHostRef.current, "vxa-launch", 260);
       tapeTrail(spriteRef.current, ms);
       vxSound("hiss");
     }
@@ -538,7 +609,14 @@ const VortexAssistant: React.FC = () => {
     trail: { x: number; y: number; t: number }[];
   } | null>(null);
   const suppressClick = useRef(false);
+  const foundAt = useRef(0);
   const onGrab = (e: React.PointerEvent) => {
+    // hide and seek: finding him counts on press — the peeking body moves
+    // under the pointer, so a full click isn't always produced
+    if (e.button === 0 && world.onFaceClick()) {
+      foundAt.current = Date.now();
+      return;
+    }
     if (e.button !== 0 || actingRef.current) return;
     grabRef.current = {
       x: e.clientX,
@@ -676,6 +754,89 @@ const VortexAssistant: React.FC = () => {
     return () => clearInterval(iv);
   }, [active, isBusy]);
 
+  /* ─────────── MK-IV: the hundred things (mk4/useVortexWorld) ─────────── */
+  const tinySvg = useMemo(
+    () => vortexSvg("happy", `${uid}tiny`, "none"),
+    [uid],
+  );
+  const evilSvg = useMemo(
+    () => vortexSvg("possessed", `${uid}evil`, "none"),
+    [uid],
+  );
+  const world = useVortexWorld({
+    active,
+    mischief,
+    pranksOn,
+    intensity,
+    hour,
+    pathname,
+    user,
+    visitors,
+    sprite: fxHostRef,
+    speak,
+    setMood,
+    restMood: () => restMoodRef.current,
+    setPose,
+    setFlip,
+    setProp,
+    travel: (pt) => travel(offFor(pt)),
+    goHome,
+    isBusy,
+    enqueue,
+    lookAt,
+    lastActivity,
+    openCard: (boardId, cardId) => {
+      if (pathname.startsWith(`/boards/${boardId}`))
+        emitVortex({ type: "vortex.open", boardId, cardId });
+      else router.push(`/boards/${boardId}?card=${cardId}`);
+    },
+    tinySvg,
+    evilSvg,
+    spriteSize: SPRITE,
+  });
+  // biome-ignore lint/correctness/useExhaustiveDependencies: progress is the trigger
+  const costume: Costume = useMemo(
+    () => currentCostume(user?.created_at),
+    // re-evaluated when progress (chosen/unlocked costume, birthday) changes
+    [user?.created_at, progress],
+  );
+  const costumeMarkup = useMemo(() => costumeSvg(costume), [costume]);
+  const propMarkup = useMemo(() => propSvg(prop), [prop]);
+  const morphed = prop === "morph-cassette" || prop === "morph-knob";
+  const shadowSvg = useMemo(() => vortexSvg("smug", `${uid}sh`, "wave"), [uid]);
+
+  /* share my face with teammates on the board (team mood) */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: world fns are stable
+  useEffect(() => {
+    if (mood !== "smug" && mood !== "sleepy") world.shareMood(mood);
+  }, [mood]);
+
+  /* chat replies: 57 · "show me" — fly to a ticket he mentioned; 70 · voice */
+  replyRef.current = (text: string) => {
+    const key = /\b[A-Z][A-Z0-9]*-\d+\b/.exec(text)?.[0];
+    const el = key
+      ? document.querySelector<HTMLElement>(
+          `.mt-jx[data-vx-key="${CSS.escape(key)}"]`,
+        )
+      : null;
+    if (el && onScreen(el))
+      enqueue("showme", 0, async () => {
+        const { pt, side } = beside(el.getBoundingClientRect());
+        setFlip(side === "right");
+        setPose("poke");
+        await travel(offFor(pt));
+        await wait(2500);
+        await goHome();
+      });
+    if (voice && typeof window !== "undefined" && "speechSynthesis" in window) {
+      const u = new SpeechSynthesisUtterance(text.split("ACTION:")[0]);
+      u.pitch = 0.55;
+      u.rate = 0.95;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    }
+  };
+
   /* acts */
   async function actEat(card: HTMLElement) {
     const key = card.dataset.vxKey;
@@ -687,6 +848,7 @@ const VortexAssistant: React.FC = () => {
     if (!card.isConnected) return goHome();
     const eaten = eatCard(card, mouthPoint());
     setTimeout(() => vxSound("crunch"), 900);
+    setTimeout(() => world.hiccup(key ?? "?"), 7600);
     rememberEaten(card.dataset.cardId);
     const spit = () => {
       eaten.spit();
@@ -914,12 +1076,14 @@ const VortexAssistant: React.FC = () => {
       text: line(LINES.seance, { n: late.length, key: keys[0] }),
       action: {
         label: "Exorcise",
-        run: () =>
+        run: () => {
+          world.celebrate("exorcist");
           emitVortex({
             type: "vortex.open",
             boardId,
             cardId: first.dataset.cardId ?? "",
-          }),
+          });
+        },
       },
     });
     await wait(7000);
@@ -984,7 +1148,7 @@ const VortexAssistant: React.FC = () => {
     return listenSecrets({
       konami: () => actPossessed(),
       name: () => {
-        if (spriteRef.current) flashClass(spriteRef.current, "vxa-spin", 1000);
+        if (fxHostRef.current) flashClass(fxHostRef.current, "vxa-spin", 1000);
         speak({ text: line(LINES.summoned) });
       },
     });
@@ -1049,6 +1213,12 @@ const VortexAssistant: React.FC = () => {
       possess: () => actPossessed(4000),
       notify: () => noticeBell(),
       visitors: (list: { id: number; name: string }[]) => setVisitors(list),
+      world,
+      emit: emitVortex,
+      prop: (p: VortexProp) => setProp(p),
+      reply: (t: string) => replyRef.current?.(t),
+      flash: (cls: string, ms = 2000) =>
+        fxHostRef.current && flashClass(fxHostRef.current, cls, ms),
     };
     return () => {
       delete w.__vortexDebug;
@@ -1159,9 +1329,27 @@ const VortexAssistant: React.FC = () => {
           },
         ],
       );
-      return pranks;
+      return [...pranks, ...world.extraPranks()];
     };
     registerPranks(buildPranks());
+    // 95 · a teammate's prank plays here too (purely visual ones only)
+    world.sharedPrank.current = (name: string) => {
+      // visual-only, so his own act in progress doesn't matter — only the
+      // user being in a modal, typing or dragging does
+      const a = document.activeElement as HTMLElement | null;
+      const typing =
+        !!a &&
+        !a.closest(".vxa-layer") &&
+        (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+      if (
+        SHAREABLE.has(name) &&
+        !typing &&
+        !draggingCard.current &&
+        !document.hidden &&
+        !document.querySelector(BUSY_SELECTOR)
+      )
+        prankTable.current[name]?.();
+    };
     const iv = setInterval(() => {
       const now = Date.now();
       if (isBusy() || now - lastPrank.current < (unhinged ? 2 : 6) * 60_000)
@@ -1179,6 +1367,7 @@ const VortexAssistant: React.FC = () => {
         if (run()) {
           lastAct.current[`p:${k}`] = now;
           lastPrank.current = now;
+          if (SHAREABLE.has(k)) world.sharePrank(k);
           break;
         }
       }
@@ -1325,12 +1514,18 @@ const VortexAssistant: React.FC = () => {
       setMood(restMoodRef.current);
       speak({ text: "fresh air. overrated." });
     });
+    world.onBasement(items);
   }
   const basementRef = useRef<(() => void) | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: acts read refs/setters only (stable)
   useEffect(() => {
     if (!active) return;
-    return listenWords({ below: () => void openBasement() });
+    return listenWords({
+      below: () => void openBasement(),
+      // escape room words (mk4) — no N/C/"/" (the board's hotkeys)
+      replay: () => world.onWord("replay"),
+      "0313": () => world.onWord("0313"),
+    });
   }, [active, pathname]);
 
   /* night graveyard on the Done shelf + rotting tape on idle cards */
@@ -1356,8 +1551,8 @@ const VortexAssistant: React.FC = () => {
       await wait(500);
       if (lastActivity.current > napStart) {
         setMood("curious");
-        if (spriteRef.current)
-          flashClass(spriteRef.current, "vxa-startle", 600);
+        if (fxHostRef.current)
+          flashClass(fxHostRef.current, "vxa-startle", 600);
         speak({ text: "I WASN'T SLEEPING." });
         await wait(1800);
         setMood(restMoodRef.current);
@@ -1516,7 +1711,7 @@ const VortexAssistant: React.FC = () => {
       list.filter((u) => u.id !== user.id);
     try {
       echo = getEcho();
-      echo
+      const channel = echo
         .join(name)
         .here((list: { id: number; name: string }[]) =>
           setVisitors(others(list)),
@@ -1525,6 +1720,7 @@ const VortexAssistant: React.FC = () => {
           if (u.id === user.id) return;
           setVisitors((v) => [...v.filter((x) => x.id !== u.id), u]);
           speak({ text: `${u.name.split(" ")[0]}'s vortex just floated in.` });
+          world.onVisitorJoined();
         })
         .leaving((u: { id: number; name: string }) => {
           setVisitors((v) => v.filter((x) => x.id !== u.id));
@@ -1532,11 +1728,14 @@ const VortexAssistant: React.FC = () => {
             text: `${u.name.split(" ")[0]} left. their vortex is still warm.`,
           });
         });
+      // whispers between teammates' Vortexes (high-fives, races, shared pranks)
+      world.attachPresence(channel);
     } catch {
       // no realtime: he haunts alone
     }
     return () => {
       setVisitors([]);
+      world.attachPresence(null);
       try {
         echo?.leave(name);
       } catch {
@@ -1720,11 +1919,152 @@ const VortexAssistant: React.FC = () => {
     return () => clearInterval(iv);
   }, [active, isBusy, enqueue]);
 
-  const sendDraft = () => {
-    if (draft.trim() === "" || chat.streaming) return;
-    chat.send(draft);
+  /* chat send: slash commands, the riddle, compliments, mood tone (mk4) */
+  const night = hour < 5;
+  const sendDraft = async () => {
+    const text = draft.trim();
+    if (text === "" || chat.streaming) return;
     setDraft("");
+    const local = (reply: string) =>
+      chat.say(night ? `ugh, fine. ${reply}` : reply, text);
+
+    // the riddle of the day waits for an answer
+    if (riddlePending.current && !text.startsWith("/")) {
+      riddlePending.current = false;
+      const r = riddleOfTheDay();
+      if (r.a.test(text)) {
+        updateProgress((p) => ({
+          ...p,
+          riddle: { day: new Date().toDateString(), solved: true, asked: true },
+        }));
+        const fresh = unlockCostume("monocle");
+        unlock("riddle-master");
+        local(
+          `correct. it was ${r.answer}.${fresh ? " take this monocle. you've earned it. (/costume monocle)" : ""}`,
+        );
+      } else local(`nope. it was ${r.answer}. new riddle tomorrow.`);
+      return;
+    }
+
+    if (isCompliment(text)) {
+      const n = world.compliment();
+      if (!text.startsWith("/") && text.length < 40) {
+        local(
+          `*blushes* the jar has ${n} compliment${n === 1 ? "" : "s"} now.`,
+        );
+        return;
+      }
+    }
+
+    const cmd = parseSlash(text);
+    if (cmd?.kind === "local") {
+      const extra = text.startsWith("/fortune") ? world.fortuneClue() : "";
+      local(cmd.reply + extra);
+      return;
+    }
+    if (cmd?.kind === "birthday") {
+      setBirthday(cmd.mmdd);
+      local(
+        cmd.mmdd
+          ? `noted. ${cmd.mmdd}. I'll be weird about it.`
+          : "forgotten. what birthday?",
+      );
+      return;
+    }
+    if (cmd?.kind === "note") {
+      const msg = await world.leaveNote(cmd.to, cmd.body);
+      local(msg);
+      return;
+    }
+    if (cmd?.kind === "run") {
+      if (cmd.action === "clear") {
+        chat.clear();
+        return;
+      }
+      if (cmd.action === "voice") {
+        setVoice((v) => !v);
+        local(
+          voice
+            ? "voice off. back to typing."
+            : "voice on. I'll talk out loud now. tape-warped, as nature intended.",
+        );
+        return;
+      }
+      if (cmd.action === "riddle") {
+        const r = riddleOfTheDay();
+        if (
+          getProgress().riddle.day === new Date().toDateString() &&
+          getProgress().riddle.solved
+        ) {
+          local("you already solved today's. come back tomorrow.");
+          return;
+        }
+        riddlePending.current = true;
+        local(`riddle of the day: ${r.q}`);
+        return;
+      }
+      if (cmd.action === "costume") {
+        const owned = ["none", "auto", ...getProgress().costumes];
+        const want = (cmd.arg ?? "").toLowerCase();
+        if (want && owned.includes(want)) {
+          updateProgress((p) => ({ ...p, costume: want as Costume | "auto" }));
+          local(
+            want === "auto" ? "back to seasonal outfits." : `wearing: ${want}.`,
+          );
+        } else
+          local(
+            `my wardrobe: ${owned.join(", ")}. try /costume ${owned[owned.length - 1]}`,
+          );
+        return;
+      }
+      setChatOpen(false);
+      setTimeout(() => {
+        if (cmd.action === "rps") world.play.rps();
+        else if (cmd.action === "roulette") void world.play.roulette();
+        else if (cmd.action === "whack") world.play.whack();
+        else if (cmd.action === "hide") void world.play.hide();
+      }, 300);
+      return;
+    }
+    const style = [
+      ...(cmd?.kind === "ai" ? cmd.style : []),
+      ...moodStyle(mood, hour),
+    ].slice(0, 3);
+    writeNext.current = cmd?.kind === "ai" && cmd.style.includes("write");
+    chat.send(cmd?.kind === "ai" ? cmd.question : text, style);
   };
+
+  /* 70 · push-to-talk (Web Speech) — the transcript lands in the draft */
+  const listen = () => {
+    const W = window as unknown as {
+      SpeechRecognition?: new () => SpeechRecognitionLike;
+      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+    };
+    const Rec = W.SpeechRecognition ?? W.webkitSpeechRecognition;
+    if (!Rec) {
+      chat.say("this browser can't hear me. try Chrome or Edge.");
+      return;
+    }
+    const rec = new Rec();
+    rec.lang = navigator.language || "en-US";
+    rec.interimResults = false;
+    rec.onresult = (e) => setDraft(e.results[0][0].transcript);
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    setListening(true);
+    setVoice(true);
+    rec.start();
+  };
+
+  /* remember which replies came from /write so they get a Copy button */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: on new messages
+  useEffect(() => {
+    const last = chat.messages.length - 1;
+    if (writeNext.current && chat.messages[last]?.role === "assistant") {
+      writeNext.current = false;
+      setCopyable((s) => new Set(s).add(last));
+    }
+  }, [chat.messages.length]);
 
   /* mount picker — load projects + boards once per open (cheap list calls) */
   useEffect(() => {
@@ -1902,7 +2242,20 @@ const VortexAssistant: React.FC = () => {
               </span>
             </div>
             <div className="vxa-actions">
-              {speech.action ? (
+              {speech.choices?.map((c) => (
+                <button
+                  key={c.label}
+                  type="button"
+                  className="vxa-btn"
+                  onClick={() => {
+                    setSpeech(null);
+                    c.run();
+                  }}
+                >
+                  {c.label}
+                </button>
+              ))}
+              {speech.choices ? null : speech.action ? (
                 <button
                   type="button"
                   className="vxa-btn"
@@ -1954,6 +2307,13 @@ const VortexAssistant: React.FC = () => {
                 {mounts.length === 0
                   ? "your workspace guide"
                   : `focused: ${mounts.map((m) => m.name).join(", ")}`}
+              </span>
+              <span
+                className="vxa-jar"
+                title={`compliment jar · streak ${progress.streak.count}d`}
+              >
+                🫙 {progress.compliments}
+                {voice ? " · 🔊" : ""}
               </span>
               <button
                 type="button"
@@ -2072,6 +2432,42 @@ const VortexAssistant: React.FC = () => {
                   >
                     {m.content}
                   </div>
+                  {m.role === "assistant" && (
+                    <div className="vxa-react">
+                      {copyable.has(i) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void navigator.clipboard?.writeText(m.content);
+                            chat.say(
+                              "copied. paste it into the card — I'm not allowed to.",
+                            );
+                          }}
+                        >
+                          Copy
+                        </button>
+                      )}
+                      {["👍", "😂", "👻"].map((emo) => (
+                        <button
+                          key={emo}
+                          type="button"
+                          aria-pressed={reactions[i] === emo}
+                          onClick={() => {
+                            setReactions((r) => ({ ...r, [i]: emo }));
+                            chat.say(
+                              emo === "👍"
+                                ? "*does a little bow*"
+                                : emo === "😂"
+                                  ? "I'm hilarious. noted."
+                                  : "👻 right back at you.",
+                            );
+                          }}
+                        >
+                          {emo}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {m.role === "assistant" && m.action && (
                     <div className="vxa-action">
                       <div className="vxa-action-desc">
@@ -2133,19 +2529,28 @@ const VortexAssistant: React.FC = () => {
               <input
                 className="vxa-chat-input"
                 value={draft}
-                placeholder="Ask Vortex…"
+                placeholder={night ? "ugh. what." : "Ask Vortex… (/help)"}
                 maxLength={4000}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") sendDraft();
+                  if (e.key === "Enter") void sendDraft();
                   if (e.key === "Escape") setChatOpen(false);
                 }}
               />
               <button
                 type="button"
+                className={`vxa-btn vxa-mic${listening ? " on" : ""}`}
+                aria-label="Talk to Vortex"
+                title="Talk (push to talk)"
+                onClick={listen}
+              >
+                🎙
+              </button>
+              <button
+                type="button"
                 className="vxa-btn"
                 disabled={chat.streaming || draft.trim() === ""}
-                onClick={sendDraft}
+                onClick={() => void sendDraft()}
               >
                 Send
               </button>
@@ -2167,55 +2572,97 @@ const VortexAssistant: React.FC = () => {
         >
           <div
             ref={spriteRef}
-            className={`vxa-sprite vxa-mood-${mood}${flip ? " vxa-flip" : ""}${talking ? " vxa-talking" : ""}${portal ? ` vxa-portal-${portal}` : ""}`}
+            className={`vxa-sprite vxa-mood-${mood}${flip ? " vxa-flip" : ""}${talking ? " vxa-talking" : ""}${portal ? ` vxa-portal-${portal}` : ""}${chat.streaming ? " vxa-thinking" : ""}`}
           >
-            <button
-              type="button"
-              className="vxa-hide"
-              title="Hide Vortex"
-              onClick={() => setVortexEnabled(false)}
-            >
-              ×
-            </button>
-            <button
-              type="button"
-              className="vxa-face vxa-pop"
-              key={popN}
-              aria-label={
-                spitRef.current
-                  ? "Vortex — make him spit the card back"
-                  : chatOpen
+            {/* constant className: React never rewrites it, so the one-shot
+                reaction classes flashed onto it survive mood re-renders */}
+            <div className="vxa-fxhost" ref={fxHostRef}>
+              <button
+                type="button"
+                className="vxa-hide"
+                title="Hide Vortex"
+                onClick={() => setVortexEnabled(false)}
+              >
+                ×
+              </button>
+              <button
+                type="button"
+                className="vxa-face vxa-pop"
+                key={popN}
+                aria-label={
+                  spitRef.current
+                    ? "Vortex — make him spit the card back"
+                    : chatOpen
+                      ? "Close the chat"
+                      : "Vortex — click for a tip, drag to move him"
+                }
+                title={
+                  chatOpen
                     ? "Close the chat"
                     : "Vortex — click for a tip, drag to move him"
-              }
-              title={
-                chatOpen
-                  ? "Close the chat"
-                  : "Vortex — click for a tip, drag to move him"
-              }
-              onPointerDown={onGrab}
-              onClick={() => {
-                if (suppressClick.current) {
-                  suppressClick.current = false;
-                  return;
                 }
-                // five quick clicks: he snaps (a tiny possession)
-                const now = Date.now();
-                clicks.current = [...clicks.current, now].filter(
-                  (t) => now - t < 2500,
-                );
-                if (clicks.current.length >= 5 && !possessedRef.current) {
-                  clicks.current = [];
-                  actPoked();
-                  return;
-                }
-                if (spitRef.current) spitRef.current();
-                else if (chatOpen) setChatOpen(false);
-                else speak({ text: randomTip() });
-              }}
-            >
-              <SvgArt svg={svg} className="vxa-body" />
-            </button>
+                onPointerDown={onGrab}
+                onClick={() => {
+                  if (suppressClick.current) {
+                    suppressClick.current = false;
+                    return;
+                  }
+                  // the press that found him (hide and seek) is not also a tip
+                  if (Date.now() - foundAt.current < 800) return;
+                  // five quick clicks: he snaps (a tiny possession)
+                  const now = Date.now();
+                  clicks.current = [...clicks.current, now].filter(
+                    (t) => now - t < 2500,
+                  );
+                  if (clicks.current.length >= 5 && !possessedRef.current) {
+                    clicks.current = [];
+                    actPoked();
+                    return;
+                  }
+                  if (spitRef.current) spitRef.current();
+                  else if (chatOpen) setChatOpen(false);
+                  else speak({ text: randomTip() });
+                }}
+              >
+                {/* 5 · his shadow sometimes does its own thing */}
+                <SvgArt svg={shadowSvg} className="vxa-shadow" aria-hidden />
+                {morphed ? (
+                  <SvgArt svg={propMarkup} className="vxa-body vxa-morph" />
+                ) : (
+                  <SvgArt svg={svg} className="vxa-body" />
+                )}
+                {!morphed && costumeMarkup && (
+                  <SvgArt
+                    svg={costumeMarkup}
+                    className="vxa-costume"
+                    aria-hidden
+                  />
+                )}
+                {!morphed && propMarkup && (
+                  <SvgArt svg={propMarkup} className="vxa-prop" aria-hidden />
+                )}
+              </button>
+              {prop === "stress" && (
+                <button
+                  type="button"
+                  className="vxa-stress"
+                  aria-label="Squeeze the stress ball"
+                  onClick={(e) => {
+                    e.currentTarget.animate(
+                      [
+                        { transform: "scale(1)" },
+                        { transform: "scale(1.3,.6)" },
+                        { transform: "scale(1)" },
+                      ],
+                      { duration: 300 },
+                    );
+                    vxSound("click");
+                  }}
+                >
+                  <SvgArt svg={STRESS_BALL_SVG} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
