@@ -1,0 +1,279 @@
+.vxlab {
+  min-height: 100vh;
+  padding: 24px 28px 80px;
+  background: linear-gradient(180deg, #2a211a, #17120e);
+  color: #e9e1c9;
+  font-family: "Share Tech Mono", monospace;
+}
+.vxlab h1 {
+  font-family: var(--font-marker), cursive;
+  font-size: 30px;
+  color: #ffb347;
+}
+.vxlab h2 {
+  margin: 22px 0 8px;
+  font-size: 12px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #a8916f;
+}
+.vxlab p {
+  color: #a8916f;
+  font-size: 12px;
+}
+.vxlab-stage {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 20px;
+  align-items: center;
+  margin-top: 16px;
+}
+.vxlab-rig {
+  width: 420px;
+  height: 420px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: radial-gradient(circle at 50% 40%, #3a2c20, #1b140f);
+  box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.7);
+}
+.vxlab-rig .vxa-sprite {
+  width: 340px;
+  height: 340px;
+  cursor: default;
+}
+.vxlab-rig .vxa-face {
+  width: 100%;
+  height: 100%;
+}
+.vxlab-line {
+  grid-column: 1;
+  min-height: 22px;
+  color: #ffb347;
+}
+.vxlab-sliders {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-content: start;
+}
+.vxlab-sliders label {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+}
+.vxlab button {
+  border: 1px solid rgba(233, 225, 201, 0.25);
+  background: #2c2219;
+  color: #e9e1c9;
+  font:
+    12px "Share Tech Mono",
+    monospace;
+  border-radius: 5px;
+  padding: 4px 9px;
+  cursor: pointer;
+}
+.vxlab button:hover,
+.vxlab button.is-on {
+  border-color: #ffb347;
+  color: #ffb347;
+}
+.vxlab-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 8px;
+}
+.vxlab-grid button {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 6px;
+}
+.vxlab-grid .thumb {
+  width: 72px;
+  height: 68px;
+  display: block;
+}
+.vxlab-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vxlab-soul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px 16px;
+  font-size: 12px;
+}
+.vxlab-soul p,
+.vxlab-soul .vxlab-chips {
+  grid-column: 1 / -1;
+}
+.vxlab-soul label {
+  display: grid;
+  gap: 2px;
+}
+
+/* LADO S · creator tools */
+.vxlab nav.vxlab-tools {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.vxtl-ruler {
+  position: relative;
+  height: 54px;
+  margin: 8px 12px 18px;
+  border-bottom: 2px solid #555;
+}
+.vxtl-ruler .tick {
+  position: absolute;
+  bottom: -18px;
+  transform: translateX(-50%);
+  font-size: 10px;
+  opacity: 0.6;
+}
+.vxtl-ruler .key {
+  position: absolute;
+  bottom: -9px;
+  transform: translateX(-50%);
+  border: 0;
+  background: none;
+  color: #ff2e88;
+  font-size: 16px;
+  cursor: ew-resize;
+  touch-action: none;
+}
+.vxtl-ruler .key i {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  color: #ccc;
+  white-space: nowrap;
+}
+.vxtl-rows {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.vxtl-rows td,
+.vxtl-rows th {
+  padding: 2px 4px;
+  text-align: left;
+}
+.vxtl-rows input,
+.vxtl-rows select {
+  width: 100%;
+  min-width: 60px;
+}
+.vxtl-code {
+  max-height: 320px;
+  overflow: auto;
+  padding: 10px;
+  background: #0b0b10;
+  color: #9fffd9;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+.vxce {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 12px;
+}
+.vxce-ids {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 560px;
+  overflow: auto;
+}
+.vxce-ids button {
+  text-align: left;
+  font-size: 11px;
+}
+.vxce-ids button.is-on {
+  color: #ff2e88;
+}
+.vxce-main textarea {
+  width: 100%;
+  font:
+    12px / 1.4 ui-monospace,
+    monospace;
+  background: #0b0b10;
+  color: #ddd;
+  border: 1px solid #333;
+  padding: 8px;
+}
+.vxce-status {
+  margin: 6px 0;
+  font-size: 12px;
+  color: #ff5a5a;
+}
+.vxce-status.is-ok {
+  color: #6fffa0;
+}
+.vxce-card {
+  margin-top: 10px;
+  padding: 12px;
+  background: #efe6cf;
+  color: #111;
+  font-size: 12px;
+}
+.vxce-item {
+  width: 120px;
+}
+.vxsim-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+.vxsim-chart {
+  margin: 0;
+  padding: 8px;
+  background: #0b0b10;
+  border: 1px solid #222;
+}
+.vxsim-chart svg {
+  width: 100%;
+  height: auto;
+}
+.vxsim-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+.vxscene-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+.vxscene-grid button {
+  padding: 0;
+  border: 1px solid #333;
+  background: none;
+  color: #aaa;
+  cursor: pointer;
+  text-align: left;
+}
+.vxscene-grid span,
+.vxscene-grid svg {
+  display: block;
+  width: 100%;
+}
+.vxscene-label {
+  display: block;
+  padding: 4px 6px;
+  font-size: 11px;
+}
+@media (max-width: 640px) {
+  .vxce {
+    grid-template-columns: 1fr;
+  }
+}

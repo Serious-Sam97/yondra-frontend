@@ -1,0 +1,630 @@
+/* biome-ignore-all lint/complexity/noImportantStyles: these override the legacy MK-II mood animations on the same elements */
+/* ───────────────────────────────────────────────────────────────────────────
+   Vortex MK-V · B · the body. The engine (body/engine.ts) writes CSS
+   variables onto .vxa-fxhost and a transform onto .vxr-phys; these rules let
+   the SVG parts read them. Everything degrades to the old look without the
+   engine (.vxr-on absent).
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.vxr-phys {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 66%;
+  will-change: transform;
+}
+/* the engine replaces the old CSS bob and blink */
+.vxr-on .vxa-sprite {
+  animation: none;
+}
+.vxr-on .vxa-eyesg {
+  animation: none;
+  transform: translate(var(--vx-ex, 0px), var(--vx-ey, 0px));
+}
+.vxr-on .vxa-pupils {
+  transform: translate(
+    calc(var(--vx-lx, 0px) + var(--vx-sacx, 0px)),
+    calc(var(--vx-ly, 0px) + var(--vx-sacy, 0px))
+  );
+}
+.vxr-pupil {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(var(--vx-dil, 1));
+}
+.vxr-lid {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  transform: scaleY(0);
+}
+.vxr-on .vxr-lid--l {
+  transform: scaleY(var(--vx-bl, 0));
+}
+.vxr-on .vxr-lid--r {
+  transform: scaleY(var(--vx-br, 0));
+}
+.vxr-on .vxa-swirl {
+  animation: none;
+  transform: rotate(var(--vx-swirl, 0deg));
+}
+.vxr-on .vxa-swirl.vxr-swirl-rev {
+  transform: scaleX(-1) rotate(var(--vx-swirl, 0deg));
+}
+/* the lying tell: the left eye trembles */
+.vxr-eye--l {
+  transform: translateX(var(--vx-trem, 0px));
+}
+
+/* B-05 · lip-sync visemes (set on the fx host while a bubble types out) */
+.vxa-fxhost[data-vis] .vxa-mouth {
+  animation: none !important;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 70ms ease-out;
+}
+.vxa-fxhost[data-vis="a"] .vxa-mouth {
+  transform: scale(1.12, 1.55);
+}
+.vxa-fxhost[data-vis="e"] .vxa-mouth {
+  transform: scale(1.28, 0.95);
+}
+.vxa-fxhost[data-vis="o"] .vxa-mouth {
+  transform: scale(0.82, 1.45);
+}
+.vxa-fxhost[data-vis="u"] .vxa-mouth {
+  transform: scale(0.62, 1.1);
+}
+.vxa-fxhost[data-vis="m"] .vxa-mouth {
+  transform: scale(1, 0.3);
+}
+.vxa-fxhost[data-vis="f"] .vxa-mouth {
+  transform: scale(1.05, 0.62);
+}
+.vxa-fxhost[data-vis="x"] .vxa-mouth {
+  transform: scale(1.15, 1.2) skewX(-8deg);
+}
+.vxa-fxhost[data-vis="_"] .vxa-mouth {
+  transform: scale(1, 0.85);
+}
+
+/* B-09 · smoke arms overlay */
+.vxr-arms {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  z-index: 3;
+}
+.vxr-arms.is-on {
+  opacity: 1;
+}
+.vxa-flip .vxr-arms {
+  transform: scaleX(-1);
+}
+/* while smoke arms gesture, the white-gloved pose arms step aside */
+.vxr-phys:has(.vxr-arms.is-on) .vxr-posearms {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.vxr-arms .arm {
+  filter: drop-shadow(0 0 2px rgba(230, 200, 240, 0.6));
+}
+
+/* B-08 · gestures without arms */
+.vxr-g-eyeroll .vxa-pupils {
+  animation: vxr-eyeroll 1s ease-in-out !important;
+}
+@keyframes vxr-eyeroll {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-3px, -4px);
+  }
+  50% {
+    transform: translate(0, -5.5px);
+  }
+  75% {
+    transform: translate(3px, -4px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+.vxr-g-scoff .vxa-face::after,
+.vxr-g-throwup .vxa-face::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 60%;
+  width: 34px;
+  height: 22px;
+  margin-left: -17px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(232, 224, 208, 0.75),
+    transparent 70%
+  );
+  animation: vxr-puff 0.8s ease-out forwards;
+  pointer-events: none;
+}
+.vxr-g-throwup .vxa-face::after {
+  width: 26px;
+  height: 60px;
+  margin-left: -13px;
+  border-radius: 40%;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.7) 0 1px,
+      transparent 1px 3px
+    ),
+    radial-gradient(
+      circle at 50% 10%,
+      rgba(200, 220, 200, 0.85),
+      transparent 70%
+    );
+  animation: vxr-spew 1.4s steps(6) forwards;
+}
+@keyframes vxr-puff {
+  from {
+    transform: translate(6px, 0) scale(0.3);
+    opacity: 1;
+  }
+  to {
+    transform: translate(34px, -14px) scale(1.4);
+    opacity: 0;
+  }
+}
+@keyframes vxr-spew {
+  from {
+    transform: translateY(0) scaleY(0.2);
+    opacity: 1;
+    transform-origin: top;
+  }
+  to {
+    transform: translateY(26px) scaleY(1.2);
+    opacity: 0;
+  }
+}
+.vxr-phys.vxr-g-shrug {
+  translate: 0 -6px;
+  transition: translate 0.25s ease;
+}
+.vxr-g-shiver .vxa-body {
+  animation: vxr-shiver 0.08s linear infinite !important;
+}
+@keyframes vxr-shiver {
+  50% {
+    transform: translateX(1.2px);
+  }
+}
+.vxr-g-jazz .vxr-arms .puff {
+  animation: vxr-jazz 0.09s steps(2) infinite;
+}
+@keyframes vxr-jazz {
+  50% {
+    transform: translate(1px, -1px);
+  }
+}
+.vxr-g-kiss .vxa-face::before {
+  content: "✦";
+  position: absolute;
+  right: 4px;
+  top: 18px;
+  color: #ffb347;
+  font-size: 16px;
+  animation: vxr-puff 0.9s ease-out 0.7s both;
+}
+.vxr-g-guns .vxr-arms .puff {
+  fill: #ffb347;
+}
+
+/* B-21 · squeezed */
+.vxr-squeezed .vxr-phys {
+  animation: vxr-squeeze 0.6s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+@keyframes vxr-squeeze {
+  30% {
+    scale: 1.35 0.6;
+  }
+  60% {
+    scale: 0.9 1.15;
+  }
+}
+.vxr-shake .vxr-phys {
+  animation: vxr-shake 0.08s linear 6;
+}
+@keyframes vxr-shake {
+  50% {
+    translate: 3px 0;
+  }
+}
+
+/* B-16 · tape tears */
+.vxr-tear {
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: vxr-drip 2.4s ease-in forwards;
+}
+.vxr-tear--1 {
+  animation-delay: 0.5s;
+}
+@keyframes vxr-drip {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* B-15 · the second pair of eyes opens for a moment */
+.vxr-eyes2 {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: vxr-eyes2 7s infinite;
+}
+@keyframes vxr-eyes2 {
+  0%,
+  82%,
+  100% {
+    transform: scaleY(0);
+  }
+  86%,
+  94% {
+    transform: scaleY(1);
+  }
+}
+
+/* B-17 · death: the tape is pulled out of him; reform: it winds back */
+.vxr-dying .vxa-body {
+  animation: vxr-die 2.6s ease-in forwards !important;
+}
+@keyframes vxr-die {
+  0% {
+    filter: none;
+    transform: none;
+  }
+  40% {
+    transform: scale(0.96, 1.04) rotate(-4deg);
+  }
+  100% {
+    filter: grayscale(0.8) brightness(0.7);
+    transform: translateY(14px) scale(0.86, 0.7) rotate(8deg);
+  }
+}
+.vxa-fxhost.vxr-dying::after {
+  content: "";
+  position: absolute;
+  left: 48%;
+  top: 58%;
+  width: 4px;
+  height: 0;
+  background: repeating-linear-gradient(180deg, #5a3418 0 6px, #3f2410 6px 9px);
+  transform: rotate(18deg);
+  animation: vxr-pull 2.4s ease-in forwards;
+}
+@keyframes vxr-pull {
+  to {
+    height: 120px;
+    transform: rotate(38deg) translateX(20px);
+  }
+}
+.vxr-reform .vxa-body {
+  animation: vxr-reform 2.2s cubic-bezier(0.2, 1.3, 0.4, 1) both !important;
+}
+@keyframes vxr-reform {
+  0% {
+    clip-path: circle(0% at 50% 60%);
+    filter: brightness(2) saturate(0);
+  }
+  60% {
+    clip-path: circle(60% at 50% 50%);
+    filter: brightness(1.3);
+  }
+  100% {
+    clip-path: circle(100% at 50% 50%);
+    filter: none;
+  }
+}
+
+/* B-12 · teleport: he dissolves into TV static and rebuilds bottom-up */
+.vxr-tv-out .vxa-body {
+  animation: vxr-tv-out 0.32s steps(5) forwards !important;
+}
+.vxr-tv-in .vxa-body {
+  animation: vxr-tv-in 0.42s steps(6) both !important;
+}
+@keyframes vxr-tv-out {
+  0% {
+    filter: none;
+    clip-path: inset(0 0 0 0);
+  }
+  50% {
+    filter: contrast(3) saturate(0);
+  }
+  100% {
+    filter: contrast(4) saturate(0) blur(1px);
+    clip-path: inset(48% 0 48% 0);
+    opacity: 0;
+  }
+}
+@keyframes vxr-tv-in {
+  0% {
+    clip-path: inset(100% 0 0 0);
+    filter: contrast(4) saturate(0);
+  }
+  70% {
+    filter: contrast(2) saturate(0.4);
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+    filter: none;
+  }
+}
+.vxr-tv-out .vxa-face::before,
+.vxr-tv-in .vxa-face::before {
+  content: "";
+  position: absolute;
+  inset: 18%;
+  border-radius: 50%;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.35) 0 1px,
+    rgba(0, 0, 0, 0.25) 1px 2px
+  );
+  mix-blend-mode: screen;
+  animation: vxr-noise 0.1s steps(2) infinite;
+  pointer-events: none;
+}
+@keyframes vxr-noise {
+  50% {
+    transform: translateY(1px);
+  }
+}
+
+/* B-13 · squeezing through the edge of a card */
+.vxr-squeeze-in .vxr-phys {
+  animation: vxr-squeeze-in 0.5s ease-in forwards;
+}
+@keyframes vxr-squeeze-in {
+  0% {
+    scale: 1 1;
+  }
+  40% {
+    scale: 0.55 1.25;
+  }
+  100% {
+    scale: 0.08 1.5;
+    opacity: 0;
+  }
+}
+.vxr-squeeze-out .vxr-phys {
+  animation: vxr-squeeze-out 0.55s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+@keyframes vxr-squeeze-out {
+  0% {
+    scale: 0.08 1.5;
+    opacity: 0;
+  }
+  50% {
+    scale: 1.2 0.85;
+    opacity: 1;
+  }
+  100% {
+    scale: 1 1;
+  }
+}
+
+/* B-11 · the shadow he casts on whatever is under him */
+.vxr-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  width: 64px;
+  height: 12px;
+  margin-left: -32px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(10, 4, 2, 0.45), transparent 70%);
+  transform: scale(var(--vx-shs, 1));
+  opacity: var(--vx-sho, 0.6);
+  pointer-events: none;
+  filter: blur(1px);
+}
+
+/* B-19 · costumes lean with his motion */
+.vxr-on .vxa-costume {
+  transform-origin: 50% 70%;
+  transform: rotate(var(--vx-lean, 0deg));
+}
+
+/* B-24 · seasonal accessories */
+.vxr-season {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* B-25 · reduced motion / calm mode */
+@media (prefers-reduced-motion: reduce) {
+  .vxr-tv-out .vxa-body,
+  .vxr-tv-in .vxa-body,
+  .vxr-dying .vxa-body,
+  .vxr-reform .vxa-body,
+  .vxr-squeeze-in .vxr-phys,
+  .vxr-squeeze-out .vxr-phys,
+  .vxr-eyes2,
+  .vxr-g-shiver .vxa-body {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+.vxr-calm .vxr-arms,
+.vxr-calm .vxr-eyes2 {
+  display: none;
+}
+
+/* B-10 · static sparks left behind when he moves fast */
+.vxr-spark {
+  position: fixed;
+  z-index: 44;
+  width: 5px;
+  height: 5px;
+  margin: -2px 0 0 -2px;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    90deg,
+    #f3e4bd 0 1px,
+    #ff2d95 1px 2px,
+    #00e5d0 2px 3px
+  );
+  opacity: 0.85;
+  animation: vxr-spark 0.6s steps(4) forwards;
+}
+@keyframes vxr-spark {
+  to {
+    transform: scale(0.2) translateY(6px);
+    opacity: 0;
+  }
+}
+
+/* C-16 · sick: mouldy tape spots and a cough */
+.vxr-sick .vxa-body {
+  filter: saturate(0.7) hue-rotate(-12deg);
+}
+.vxr-sick .vxr-phys::after {
+  content: "";
+  position: absolute;
+  inset: 26% 24% 22% 26%;
+  border-radius: 50%;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      circle at 30% 40%,
+      rgba(120, 140, 90, 0.75) 0 6%,
+      transparent 7%
+    ),
+    radial-gradient(
+      circle at 70% 30%,
+      rgba(110, 130, 80, 0.7) 0 5%,
+      transparent 6%
+    ),
+    radial-gradient(
+      circle at 60% 72%,
+      rgba(120, 140, 90, 0.7) 0 7%,
+      transparent 8%
+    ),
+    radial-gradient(
+      circle at 25% 70%,
+      rgba(100, 120, 75, 0.6) 0 4%,
+      transparent 5%
+    );
+  animation: vxr-cough 6s ease-in-out infinite;
+}
+@keyframes vxr-cough {
+  0%,
+  88%,
+  100% {
+    transform: none;
+  }
+  90% {
+    transform: translateY(2px) scale(1.04);
+  }
+  93% {
+    transform: translateY(-1px);
+  }
+}
+
+/* C-15 · the night ritual: lights out, card by card */
+.mt-jx.vxr-lightsout {
+  filter: brightness(0.45) saturate(0.6);
+  transition: filter 0.4s ease;
+}
+
+/* C-14 · the dream bubble */
+.vxr-dream {
+  position: absolute;
+  right: -34px;
+  top: -58px;
+  width: 78px;
+  height: 66px;
+  pointer-events: none;
+  z-index: 4;
+}
+.vxr-dream .d1,
+.vxr-dream .d2 {
+  position: absolute;
+  border-radius: 50%;
+  background: #f3e4bd;
+  opacity: 0.9;
+}
+.vxr-dream .d1 {
+  left: 6px;
+  bottom: 2px;
+  width: 7px;
+  height: 7px;
+}
+.vxr-dream .d2 {
+  left: 14px;
+  bottom: 12px;
+  width: 11px;
+  height: 11px;
+}
+.vxr-dream .cloud {
+  border: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 58px;
+  height: 46px;
+  padding: 7px 9px;
+  border-radius: 50% 46% 48% 44%;
+  background: #f3e4bd;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+  animation: vxr-dream 4.2s ease-in-out infinite;
+}
+.vxr-dream .cloud .scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 2px rgba(255, 179, 71, 0.4));
+}
+@keyframes vxr-dream {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.vxr-dream.is-nightmare .cloud {
+  background: #3b2a12;
+  box-shadow: 0 0 14px rgba(255, 90, 60, 0.4);
+}
+.vxr-dream.is-nightmare .d1,
+.vxr-dream.is-nightmare .d2 {
+  background: #3b2a12;
+}
+
+/* T-03 · the four orbiting sparkles sit inside his SVG, so a continuous spin
+   re-lays-out and repaints him every frame. 112 steps over 14 s (8 moves a
+   second) look the same at that speed and cost a fraction. */
+.vxr-on .vxa-orbit {
+  animation-timing-function: steps(112);
+}
+
+/* T-03 · his shadow double is invisible (opacity 0) except during its prank;
+   until then its swirl, orbit and blink don't need to run */
+.vxa-shadow * {
+  animation-play-state: paused;
+}
+.vxa-shadow-wave .vxa-shadow * {
+  animation-play-state: running;
+}

@@ -4,6 +4,7 @@ import { Geist, Geist_Mono, Permanent_Marker } from "next/font/google";
 import "@fortawesome/fontawesome-svg-core/styles.css";
 import "./globals.css";
 import "./board-multitrack.css";
+import "@/components/yutopia/yutopia.css";
 
 // Tell Font Awesome to skip injecting its CSS at runtime; we import it above
 // so the icons don't flash at full size during SSR.
@@ -13,11 +14,14 @@ import MenuAppBar from "@/components/layout/MenuAppBar"; // make sure this is a 
 import PrivacyNotice from "@/components/legal/PrivacyNotice";
 import ErrorReporter from "@/components/telemetry/ErrorReporter";
 import { SpringTrail } from "@/components/ui/SpringTrail";
-import VortexAssistant from "@/components/vortex/VortexAssistant";
 import { ConsoleProvider } from "@/contexts/ConsoleContext";
 import { HeaderBusProvider } from "@/contexts/HeaderBusContext";
 import { SystemProvider } from "@/contexts/SystemContext";
 import { ToastProvider } from "@/contexts/ToastContext";
+import Extras, { VortexAssistant } from "@/vortex/core/Extras";
+import { NotInEmbed } from "@/components/yutopia/NotInEmbed";
+import { YutopiaBridge } from "@/components/yutopia/YutopiaBridge";
+import { YutopiaPresence } from "@/components/yutopia/YutopiaPresence";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({
@@ -56,11 +60,18 @@ export default function RootLayout({
                   <div className="aero-bg__grid" />
                   <div className="aero-bg__scan" />
                 </div>
-                <MenuAppBar />
+                <YutopiaBridge />
+                <NotInEmbed>
+                  <MenuAppBar />
+                </NotInEmbed>
                 {children}
                 <SpringTrail />
-                <VortexAssistant />
-                <PrivacyNotice />
+                <NotInEmbed>
+                  <VortexAssistant />
+                  <Extras />
+                  <PrivacyNotice />
+                  <YutopiaPresence />
+                </NotInEmbed>
                 <ErrorReporter />
               </ToastProvider>
             </HeaderBusProvider>

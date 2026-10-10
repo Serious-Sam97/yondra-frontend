@@ -1,0 +1,49 @@
+/* Q-11 · the Vortex Edition print (vxe) */
+.vxe-btn {
+  margin: 0 0 12px auto;
+  display: block;
+  background: transparent;
+  border: 1px solid var(--cf-red, #e0434b);
+  color: var(--cf-red, #e0434b);
+  font:
+    11px ui-monospace,
+    monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.vxe-notes {
+  display: none;
+}
+@media print {
+  .vxe-btn {
+    display: none;
+  }
+  body.vx-edition .vxe-notes {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 18px;
+    padding: 12px 16px;
+    border-left: 4px solid #c2272d;
+    font:
+      italic 13px "Comic Sans MS",
+      "Marker Felt",
+      cursive;
+    color: #c2272d;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body.vx-edition .vxe-stamp {
+    align-self: flex-end;
+    border: 3px double #c2272d;
+    padding: 4px 10px;
+    font:
+      900 16px Impact,
+      "Arial Black",
+      sans-serif;
+    letter-spacing: 0.1em;
+    transform: rotate(-6deg);
+  }
+}

@@ -1,0 +1,453 @@
+/* M-01 · wow & flutter's arcade */
+.vxq {
+  min-height: 100vh;
+  padding: 24px 16px 60px;
+  background:
+    radial-gradient(
+      ellipse at 50% 0%,
+      rgba(255, 143, 212, 0.08),
+      transparent 60%
+    ), repeating-linear-gradient(90deg, #120c08 0 40px, #160f0a 40px 80px);
+  color: #f3e4bd;
+  font-family: "Share Tech Mono", ui-monospace, monospace;
+}
+.vxq-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 1200px;
+  margin: 0 auto 18px;
+}
+.vxq-head h1 {
+  margin: 0;
+  font-family: "Permanent Marker", cursive;
+  font-weight: 400;
+  font-size: clamp(22px, 4vw, 38px);
+  color: #ffd27a;
+  text-shadow:
+    0 0 10px rgba(255, 210, 122, 0.7),
+    0 0 30px rgba(255, 143, 212, 0.4);
+}
+.vxq-head h1 span:first-child {
+  color: #ff8fd4;
+}
+.vxq-head h1 span:last-of-type {
+  color: #8fe3e3;
+}
+.vxq-head .bal {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  color: #ffd27a;
+}
+.vxq-head .crown {
+  color: #ffd27a;
+  padding: 3px 10px;
+  border: 1px solid #c8962e;
+  border-radius: 12px;
+}
+.vxq-room {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 18px;
+}
+.vxq .cab {
+  position: relative;
+  display: grid;
+  grid-template-rows: 32px 120px 54px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px 10px 4px 4px;
+  background: linear-gradient(90deg, #1a1210, #2a1f17 20%, #2a1f17 80%, #1a1210);
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 2px #3a2c20;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.vxq .cab:hover,
+.vxq .cab:focus-visible {
+  transform: translateY(-4px);
+}
+.vxq .cab .mq {
+  display: grid;
+  place-items: center;
+  margin: 6px 6px 0;
+  border-radius: 4px;
+  background: var(--mq);
+  color: #1a120a;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  box-shadow: 0 0 14px var(--mq);
+  text-align: center;
+  padding: 0 4px;
+}
+.vxq .cab .crt {
+  position: relative;
+  margin: 10px 14px 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0d1414;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.9);
+  display: grid;
+  place-items: center;
+}
+.vxq .cab .attract {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(transparent 48%, var(--mq) 48% 52%, transparent 52%) 0 0 /
+    100% 22px,
+    radial-gradient(circle, var(--mq) 2px, transparent 3px) 0 0 / 18px 18px;
+  opacity: 0.35;
+  animation: vxq-attract 3s linear infinite;
+}
+@keyframes vxq-attract {
+  to {
+    background-position:
+      0 22px,
+      18px 18px;
+  }
+}
+.vxq .cab .crt b {
+  position: relative;
+  font-weight: 400;
+  font-size: 10px;
+  color: #ffd27a;
+  animation: vxq-blink 1.2s steps(1) infinite;
+}
+@keyframes vxq-blink {
+  50% {
+    opacity: 0;
+  }
+}
+.vxq .cab .panel {
+  margin: 0 8px 8px;
+  border-radius: 0 0 6px 6px;
+  background:
+    radial-gradient(circle at 30% 50%, #b5333c 6px, transparent 7px),
+    radial-gradient(circle at 50% 40%, #ffd27a 6px, transparent 7px),
+    radial-gradient(circle at 70% 50%, #8fe3e3 6px, transparent 7px), #3a2c20;
+  transform: perspective(200px) rotateX(30deg);
+}
+.vxq .cab.is-daily {
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.6),
+    0 0 0 2px #ff8fd4,
+    0 0 24px rgba(255, 143, 212, 0.4);
+}
+.vxq .cab.is-sheet {
+  cursor: default;
+  display: grid;
+  place-items: center;
+  min-height: 206px;
+  background: linear-gradient(170deg, #cfc3a8, #a89a7c);
+  border-radius: 40% 40% 6px 6px;
+}
+.vxq .cab .sheet {
+  color: #2a1f17;
+  font-size: 11px;
+  padding: 0 14px;
+  text-align: center;
+}
+.vxq-side {
+  max-width: 1200px;
+  margin: 24px auto 0;
+  display: grid;
+  gap: 12px;
+}
+.vxq-side .daily {
+  border: 1px dashed #ff8fd4;
+  background: #1a0f14;
+  color: #ff8fd4;
+  padding: 10px;
+  border-radius: 6px;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.vxq-side .fortunes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.vxq-side .fortunes button {
+  border: 1px solid #5a4a34;
+  background: #2a1f17;
+  color: #f3e4bd;
+  padding: 7px 12px;
+  border-radius: 4px;
+  font: inherit;
+  cursor: pointer;
+}
+.vxq-side .golden {
+  color: #ffd27a;
+}
+.vxq-side .escape {
+  color: #8fe3e3;
+}
+.vxq-side .fortune {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #0d0905;
+  color: #ffb547;
+  text-shadow: 0 0 6px rgba(255, 181, 71, 0.5);
+}
+.vxq-side .below {
+  color: #c8962e;
+}
+
+/* zoom into a machine */
+.vxq-zoom {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(5, 3, 2, 0.85);
+  animation: vxq-zoom 0.35s ease both;
+}
+@keyframes vxq-zoom {
+  from {
+    opacity: 0;
+    transform: scale(1.15);
+  }
+}
+.vxq-machine {
+  width: min(720px, 100%);
+  display: grid;
+  grid-template-columns: 1fr 160px;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px 16px 6px 6px;
+  background: linear-gradient(90deg, #1a1210, #2a1f17 15%, #2a1f17 85%, #1a1210);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8);
+}
+.vxq-machine > .marquee {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--mq);
+  color: #1a120a;
+  letter-spacing: 0.2em;
+  box-shadow: 0 0 22px var(--mq);
+}
+.vxq-machine .screen {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #000;
+  box-shadow:
+    inset 0 0 0 8px #0d0905,
+    inset 0 0 50px rgba(0, 0, 0, 0.9);
+}
+.vxq-machine canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  image-rendering: pixelated;
+  outline: none;
+}
+.vxq-machine .screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 18px;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.22) 0 1px,
+      transparent 1px 3px
+    ), radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.55));
+}
+.vxq-machine .over {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 16px;
+  text-align: center;
+  background: rgba(13, 9, 5, 0.86);
+}
+.vxq-machine .over p {
+  margin: 0;
+}
+.vxq-machine .help {
+  color: #ffd27a;
+}
+.vxq-machine .big {
+  font-size: 34px;
+  color: #ffd27a;
+  text-shadow: 0 0 12px rgba(255, 210, 122, 0.7);
+}
+.vxq-machine .err {
+  color: #ff8a7d;
+}
+.vxq-machine .bet,
+.vxq-machine .betrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+.vxq-machine .betrow input,
+.vxq-machine .betrow select {
+  background: #0d0905;
+  color: #f3e4bd;
+  border: 1px solid #5a4a34;
+  border-radius: 3px;
+  padding: 3px 5px;
+  font: inherit;
+  width: 70px;
+}
+.vxq-machine .betrow select {
+  width: auto;
+}
+.vxq-machine .coin {
+  border: 0;
+  background: #ffd27a;
+  color: #1a120a;
+  padding: 8px 18px;
+  border-radius: 4px;
+  letter-spacing: 0.15em;
+  font: inherit;
+  cursor: pointer;
+  animation: vxq-blink 1.2s steps(1) infinite;
+}
+.vxq-machine .cheater {
+  position: absolute;
+  z-index: 3;
+  right: 12px;
+  top: 12px;
+  border: 0;
+  background: #ff3b4d;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 3px;
+  font: inherit;
+  cursor: pointer;
+  animation: vxq-blink 0.3s steps(1) infinite;
+}
+.vxq-machine .shot {
+  display: grid;
+  gap: 2px;
+  font-size: 11px;
+}
+.vxq-machine .shot a {
+  color: #8fe3e3;
+}
+.vxq-machine .scores {
+  list-style: none;
+  margin: 0;
+  padding: 10px;
+  border-radius: 6px;
+  background: #0d0905;
+  color: #b8e08a;
+  font-size: 11px;
+  align-self: start;
+}
+.vxq-machine .scores li {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+}
+.vxq-machine .scores .is-you {
+  color: #ffd27a;
+}
+.vxq-machine .scores .none {
+  color: #8a7a5c;
+}
+.vxq-machine .leave {
+  grid-column: 1 / -1;
+  justify-self: center;
+  border: 0;
+  background: none;
+  color: #c8962e;
+  font: inherit;
+  cursor: pointer;
+}
+@media (max-width: 640px) {
+  .vxq-machine {
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vxq .cab .attract,
+  .vxq .cab .crt b,
+  .vxq-machine .coin,
+  .vxq-machine .cheater,
+  .vxq-zoom {
+    animation: none;
+  }
+}
+
+/* M-14 / M-15 · the hunts, anywhere in the app */
+.vxq-seek {
+  position: fixed;
+  z-index: 60;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: none;
+  opacity: 0.85;
+  cursor: pointer;
+}
+.vxq-seek svg {
+  width: 100%;
+  height: 100%;
+}
+.vxq-golden {
+  position: fixed;
+  z-index: 60;
+  width: 16px;
+  height: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: linear-gradient(135deg, #ffe9a0, #c8962e 60%, #ffe9a0);
+  box-shadow: 0 0 8px rgba(255, 210, 122, 0.8);
+  cursor: pointer;
+  animation: vxq-glint 3s ease-in-out infinite;
+}
+@keyframes vxq-glint {
+  50% {
+    box-shadow: 0 0 2px rgba(255, 210, 122, 0.3);
+  }
+}
+.vxq-hunt-toast {
+  position: fixed;
+  left: 50%;
+  top: 16px;
+  z-index: 9100;
+  transform: translateX(-50%);
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: #0d0905;
+  color: #ffd27a;
+  font:
+    13px "Share Tech Mono",
+    monospace;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+@media (prefers-reduced-motion: reduce) {
+  .vxq-golden {
+    animation: none;
+  }
+}

@@ -1,0 +1,118 @@
+/* F-10 · cursed gift effects (body classes, set by core/gifts.ts) */
+body.vxf-shades::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147482500;
+  pointer-events: none;
+  background: rgba(28, 14, 4, 0.16);
+  mix-blend-mode: multiply;
+}
+body.vxf-partyhat .ydc-knob {
+  position: relative;
+  overflow: visible;
+}
+body.vxf-partyhat .ydc-knob::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -17px;
+  width: 0;
+  height: 0;
+  margin-left: -8px;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 18px solid #b5533c;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
+  transform: rotate(-12deg);
+  z-index: 2;
+}
+body.vxf-partyhat .ydc-knob::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -22px;
+  width: 7px;
+  height: 7px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: #ffd36a;
+  transform: rotate(-12deg);
+  z-index: 2;
+}
+body.vxf-coin {
+  cursor:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><circle cx='12' cy='12' r='8' fill='%23ffb347' fill-opacity='.35'/><path d='M4 3 L4 19 L8.5 14.5 L11.5 21 L14 20 L11 13.5 L17 13.5 Z' fill='%23f3e4bd' stroke='%233b2a12'/></svg>")
+    4 3,
+    auto;
+}
+
+/* F-06 · lost bets wear a sticker for a week */
+.mt-jx.vxr-lostbet {
+  position: relative;
+}
+.mt-jx.vxr-lostbet::after {
+  content: "I LOST A BET";
+  position: absolute;
+  right: 8px;
+  top: 34%;
+  padding: 2px 6px;
+  border: 2px solid #b5533c;
+  border-radius: 3px;
+  color: #b5533c;
+  background: rgba(243, 228, 189, 0.9);
+  font:
+    700 10px "Share Tech Mono",
+    monospace;
+  letter-spacing: 1.5px;
+  transform: rotate(-7deg);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* F-22 · his lost eye, somewhere on the page */
+.vxr-lost-eye {
+  position: fixed;
+  z-index: 47;
+  width: 16px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 55%, #1a0033 0 28%, #fff 30% 100%);
+  box-shadow:
+    0 0 0 1px rgba(26, 0, 51, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  animation: vxr-eye-look 3s ease-in-out infinite;
+}
+@keyframes vxr-eye-look {
+  0%,
+  100% {
+    background-position: 0 0;
+  }
+  50% {
+    transform: translateX(1px) rotate(8deg);
+  }
+}
+
+/* F-18 · tally marks for the days you were gone */
+.vxr-tally {
+  position: fixed;
+  left: 74px;
+  bottom: 14px;
+  z-index: 44;
+  max-width: 220px;
+  font:
+    22px "VT323",
+    monospace;
+  letter-spacing: 3px;
+  color: rgba(243, 228, 189, 0.85);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  transform: rotate(-3deg);
+  pointer-events: none;
+  transition: opacity 1.2s ease;
+}
+.vxr-tally.is-fading {
+  opacity: 0;
+}

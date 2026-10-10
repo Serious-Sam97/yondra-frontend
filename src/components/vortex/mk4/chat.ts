@@ -23,13 +23,43 @@ export type SlashResult =
     }
   | { kind: "note"; to: string; body: string }
   | { kind: "birthday"; mmdd: string | null }
+  // MK-V · deals with him (F-05 / F-06 / F-20)
+  | { kind: "dare" }
+  | { kind: "bet"; card: string }
+  | { kind: "promise"; text: string }
+  // LADO R · the experimental modes (src/vortex/weird)
+  | { kind: "weird"; mode: WeirdMode }
   | null; // not a command
 
+export type WeirdMode =
+  | "demolish"
+  | "popcorn"
+  | "speedrun"
+  | "tour"
+  | "fork"
+  | "studio"
+  | "interrupt"
+  | "maintenance";
+const WEIRD_MODES: WeirdMode[] = [
+  "demolish",
+  "popcorn",
+  "speedrun",
+  "tour",
+  "fork",
+  "studio",
+];
+
 const HELP = [
-  "/roast · /hype · /explain <thing> · /excuse <card>",
-  "/recap · /standup · /write <card> · /card <card> <question>",
-  "/fortune · /riddle · /rps · /roulette · /whack · /hide",
-  "/note @name text · /birthday MM-DD · /costume · /voice · /forget",
+  "listen. here's what i do, since you can't read a manual:",
+  "/roast [who] · /insult · /hype · /philosophy · /therapy · /rate",
+  "/explain <thing> · /excuse <card> · /recap · /standup · /write <card>",
+  "/triage · /plan · /split <card> · /describe <card> · /find <thing> · remind me … (i propose, you sign)",
+  "/card <card> <question> · /confess · /lore · /void <scream>",
+  "/dare · /bet <card> · /promise <thing> · /fortune · /riddle",
+  "/rps · /roulette · /whack · /hide · /note @name text",
+  "/birthday MM-DD · /costume · /voice · /forget",
+  "/demolish · /popcorn · /speedrun · /tour · /fork · /studio (the weird ones)",
+  "or just turn the dial. or press v anywhere. i'm always here. unfortunately.",
 ].join("\n");
 
 export function parseSlash(input: string): SlashResult {
@@ -37,6 +67,8 @@ export function parseSlash(input: string): SlashResult {
   if (!m) return null;
   const [, cmd, rest] = m;
   const arg = rest.trim();
+  if ((WEIRD_MODES as string[]).includes(cmd.toLowerCase()))
+    return { kind: "weird", mode: cmd.toLowerCase() as WeirdMode };
   switch (cmd.toLowerCase()) {
     case "help":
       return { kind: "local", reply: `things I do:\n${HELP}` };
@@ -71,11 +103,54 @@ export function parseSlash(input: string): SlashResult {
     case "recap":
       return {
         kind: "ai",
-        style: ["recap"],
-        question: "what happened in my workspace today?",
+        style: ["recap2"],
+        question: "recap this board's week",
       };
     case "standup":
-      return { kind: "ai", style: ["standup"], question: "write my standup" };
+      return { kind: "ai", style: ["standup3"], question: "write my standup" };
+    // G · the agent: he proposes, you sign
+    case "triage":
+      return {
+        kind: "ai",
+        style: ["triage"],
+        question: arg ? `triage ${arg}` : "triage my backlog",
+      };
+    case "plan":
+      return {
+        kind: "ai",
+        style: ["plan"],
+        question: arg ? `plan the next sprint: ${arg}` : "plan my next sprint",
+      };
+    case "split":
+      return arg
+        ? {
+            kind: "ai",
+            style: ["split"],
+            question: `split ${arg} into smaller cards`,
+          }
+        : {
+            kind: "local",
+            reply: "split what? try /split YON-153. mount the board first.",
+          };
+    case "describe":
+      return arg
+        ? {
+            kind: "ai",
+            style: ["describe"],
+            question: `write the description for ${arg}`,
+          }
+        : { kind: "local", reply: "describe which card? /describe YON-153" };
+    case "find":
+      return arg
+        ? {
+            kind: "ai",
+            style: ["find"],
+            question: `where is the card about: ${arg}`,
+          }
+        : {
+            kind: "local",
+            reply: "find what? /find that thing about payments",
+          };
     case "write":
       return arg
         ? {
@@ -98,8 +173,61 @@ export function parseSlash(input: string): SlashResult {
               "which card should I channel? try /card YON-153 why are you late?",
           };
     }
+    case "insult":
+      return {
+        kind: "ai",
+        style: ["insult"],
+        question: arg || "insult me. be specific.",
+      };
+    case "philosophy":
+      return {
+        kind: "ai",
+        style: ["philosophy"],
+        question: arg
+          ? `philosophize about: ${arg}`
+          : "philosophize about my board",
+      };
+    case "confess":
+      return { kind: "ai", style: ["confess"], question: "confess something." };
+    case "lore":
+      return {
+        kind: "ai",
+        style: ["lore"],
+        question: arg || "tell me something about the tape. about you.",
+      };
+    case "rate":
+      return { kind: "ai", style: ["rate"], question: "rate my day" };
+    case "therapy":
+      return {
+        kind: "ai",
+        style: ["therapy"],
+        question: arg || "doctor, i think i have a problem with my work.",
+      };
+    case "void":
+      return arg
+        ? { kind: "ai", style: ["void"], question: arg }
+        : {
+            kind: "local",
+            reply: "scream something into the void. /void like this.",
+          };
+    case "dare":
+      return { kind: "dare" };
+    case "bet":
+      return arg
+        ? { kind: "bet", card: arg.split(/\s+/)[0] }
+        : {
+            kind: "local",
+            reply: "bet on what? /bet YON-153 (you bet you finish it today).",
+          };
+    case "promise":
+      return arg
+        ? { kind: "promise", text: arg }
+        : {
+            kind: "local",
+            reply: "promise what? /promise i'll finish the invoice thing today",
+          };
     case "fortune":
-      return { kind: "local", reply: `🥠 *crack* — "${fortune()}"` };
+      return { kind: "local", reply: `*crack* — "${fortune()}"` };
     case "riddle":
       return { kind: "run", action: "riddle" };
     case "rps":

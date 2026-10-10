@@ -17,6 +17,7 @@ import {
   isHtmlEmpty,
   type ThreadState,
 } from "@/hooks/useCardComments";
+import ReplyHelper from "@/vortex/agent/ReplyHelper";
 
 interface CommentsSectionProps {
   isDemo: boolean;
@@ -529,7 +530,8 @@ export function CommentsSection({
               setNewComment,
               "Write a comment… (type @ to mention, paste or drop an image)",
             )}
-            <div className="flex items-center gap-2 self-end">
+            <div className="flex items-center gap-2 self-end flex-wrap">
+              <ReplyHelper draft={newComment} onPick={setNewComment} />
               <button
                 onClick={() => setComposerOpen(false)}
                 style={{ fontSize: "11px" }}

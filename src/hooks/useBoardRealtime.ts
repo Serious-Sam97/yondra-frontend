@@ -187,6 +187,8 @@ export function useBoardRealtime({
     chatChannelRef.current = channel;
 
     channel.listen(".board.event", (e: BoardEventPayload) => {
+      // E-18 · Vortex gossips about what teammates just did (visual only)
+      window.dispatchEvent(new CustomEvent("vortex:remote", { detail: e }));
       // Never mutate the board while dragging — queue and replay on drop/cancel.
       if (isDraggingRef.current) {
         pendingBoardEventsRef.current.push(e);

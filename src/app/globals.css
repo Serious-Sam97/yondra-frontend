@@ -6767,7 +6767,7 @@ emoji-picker.cm-emoji-picker {
   font-size: 11px;
   letter-spacing: 0.4px;
   margin-bottom: 3px;
-  background: linear-gradient(90deg, #d6177f, #0aa89a);
+  background: linear-gradient(90deg, #b0105f, #06776a); /* T-02 · WCAG AA on the cream bubble */
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -9086,4 +9086,35 @@ html.vxa-halloween .mt-jx {
   .vxa-layer.vxa-gone .vxa-fxhost {
     transform: none;
   }
+}
+
+/* G-12 · help me reply */
+.vxg-reply {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+.vxg-reply .opts {
+  display: grid;
+  gap: 4px;
+  max-width: 420px;
+}
+.vxg-reply .opts button {
+  text-align: left;
+  font-size: 11px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--cf-edge);
+  background: rgba(0, 0, 0, 0.2);
+  color: inherit;
+  cursor: pointer;
+}
+.vxg-reply .opts b {
+  color: #c8962e;
+  font-weight: 400;
+  margin-right: 4px;
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.15em;
 }

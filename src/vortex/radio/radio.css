@@ -1,0 +1,291 @@
+/* LADO O · the walkman (and the dial's DEAD AIR state) */
+.vxo-walkman {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 70;
+  width: min(300px, calc(100vw - 32px));
+  padding: 10px 12px 12px;
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 40%), #2b1d12;
+  border: 1px solid #4a3220;
+  box-shadow:
+    0 14px 40px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 3px #1c130b;
+  color: #f3e4bd;
+  font:
+    11px "Share Tech Mono",
+    ui-monospace,
+    monospace;
+  display: grid;
+  gap: 8px;
+}
+.vxo-walkman header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.vxo-walkman header b {
+  letter-spacing: 0.2em;
+  font-weight: 400;
+  color: #c8962e;
+  flex: 1;
+}
+.vxo-walkman .onair {
+  color: #ff4d5e;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  padding: 1px 5px;
+  border: 1px solid #6b2a35;
+  border-radius: 2px;
+  text-shadow: 0 0 8px rgba(255, 77, 94, 0.8);
+  animation: vxo-blink 2.4s steps(1) infinite;
+}
+@keyframes vxo-blink {
+  85% {
+    opacity: 0.35;
+  }
+}
+.vxo-walkman .x {
+  border: 0;
+  background: #1c130b;
+  color: #b9a37c;
+  width: 22px;
+  height: 20px;
+  border-radius: 3px;
+  cursor: pointer;
+  font: inherit;
+}
+.vxo-walkman .vfd {
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: #0d0905;
+  color: #ffb547;
+  text-shadow: 0 0 6px rgba(255, 181, 71, 0.6);
+  min-height: 58px;
+  overflow: hidden;
+}
+.vxo-walkman .prog {
+  font-size: 9px;
+  letter-spacing: 0.25em;
+  opacity: 0.7;
+}
+.vxo-walkman .song {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vxo-walkman .rare {
+  font-style: normal;
+  color: #8fe3e3;
+}
+.vxo-walkman .got {
+  font-style: normal;
+  color: #b8e08a;
+}
+.vxo-walkman .host {
+  color: #e8d3a8;
+  font-size: 11px;
+  line-height: 1.35;
+  text-shadow: none;
+  animation: vxo-host 0.4s ease both;
+}
+@keyframes vxo-host {
+  from {
+    opacity: 0;
+  }
+}
+.vxo-walkman .deck {
+  display: flex;
+  justify-content: center;
+  gap: 48px;
+  padding: 8px 0;
+  border-radius: 6px;
+  background: #1c130b;
+}
+.vxo-walkman .reel,
+.vxo-mini .reel {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(#f3e4bd 0 12deg, #3a2a14 12deg 60deg);
+  box-shadow:
+    inset 0 0 0 8px #2b1d12,
+    inset 0 0 0 10px #c8962e;
+  animation: vxo-reel 2.2s linear infinite;
+}
+.vxo-walkman .reel.is-back,
+.vxo-mini .reel.is-back {
+  animation-direction: reverse;
+  animation-duration: 0.9s;
+}
+@keyframes vxo-reel {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.vxo-walkman .keys {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+}
+.vxo-walkman .keys button,
+.vxo-walkman .menu button,
+.vxo-walkman .menu select,
+.vxo-walkman .menu input {
+  border: 1px solid #4a3220;
+  background: linear-gradient(#efe3c4, #d8c8a2);
+  color: #2a1f17;
+  border-radius: 3px;
+  padding: 5px 0;
+  font:
+    10px "Share Tech Mono",
+    monospace;
+  cursor: pointer;
+  box-shadow: 0 2px 0 #1c130b;
+}
+.vxo-walkman .keys button:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+.vxo-walkman .keys .recb {
+  color: #b5333c;
+}
+.vxo-walkman .keys .recb.is-hot {
+  background: linear-gradient(#ffb0a0, #e88070);
+  animation: vxo-blink 1s steps(1) infinite;
+}
+.vxo-walkman .keys .is-on {
+  background: linear-gradient(#ffd27a, #e8a83c);
+}
+.vxo-walkman .vol {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #b9a37c;
+}
+.vxo-walkman .vol input {
+  flex: 1;
+  accent-color: #c8962e;
+}
+.vxo-walkman .tapes {
+  color: #8fe3e3;
+}
+.vxo-walkman .menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding-top: 4px;
+  border-top: 1px dashed #4a3220;
+}
+.vxo-walkman .menu button {
+  padding: 4px 8px;
+}
+.vxo-walkman .menu .board,
+.vxo-walkman .menu .void {
+  flex: 1 1 100%;
+  text-align: left;
+  padding-left: 10px;
+}
+.vxo-walkman .menu .void {
+  background: linear-gradient(#3a2a14, #2b1d12);
+  color: #ffb547;
+}
+.vxo-walkman .ded select,
+.vxo-walkman .ded input {
+  flex: 1 1 100%;
+  padding: 5px 8px;
+  cursor: text;
+}
+.vxo-walkman .ded .msg,
+.vxo-walkman .ded .empty {
+  color: #e8d3a8;
+  flex: 1 1 100%;
+}
+.vxo-mini {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 6px;
+  border-radius: 24px;
+  border: 1px solid #4a3220;
+  background: #2b1d12;
+  color: #ffb547;
+  font:
+    11px "Share Tech Mono",
+    monospace;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.vxo-mini .reel {
+  width: 22px;
+  height: 22px;
+}
+
+/* E-11 · the dial past 108: DEAD AIR */
+.hf-tuner .vxo-tune {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  border: 0;
+  background: none;
+  color: rgba(255, 181, 71, 0.35);
+  font:
+    9px "Share Tech Mono",
+    monospace;
+  letter-spacing: 0.2em;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.hf-tuner .vxo-tune:hover,
+.hf-tuner .vxo-tune:focus-visible {
+  color: #ffb547;
+}
+.hf-tuner.is-deadair .needle {
+  background: #ff4d5e;
+  box-shadow: 0 0 10px #ff4d5e;
+  transition: left 1.2s cubic-bezier(0.5, 0, 0.2, 1.3);
+}
+.hf-tuner.is-deadair .stn {
+  opacity: 0.25;
+  filter: blur(0.6px);
+}
+.hf-tuner .vxo-deadair {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  color: #ff6a7d;
+  font:
+    18px "Share Tech Mono",
+    monospace;
+  letter-spacing: 0.4em;
+  text-shadow: 0 0 12px rgba(255, 77, 94, 0.8);
+  pointer-events: none;
+  animation: vxo-blink 2.4s steps(1) infinite;
+}
+
+@media (max-width: 640px) {
+  .vxo-walkman {
+    right: 16px;
+    bottom: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vxo-walkman .reel,
+  .vxo-mini .reel,
+  .vxo-walkman .onair,
+  .vxo-walkman .keys .recb.is-hot,
+  .hf-tuner .vxo-deadair {
+    animation: none;
+  }
+}

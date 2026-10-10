@@ -1,0 +1,1062 @@
+/* biome-ignore-all lint/complexity/noImportantStyles: panel buttons override shared panel button styles */
+/* biome-ignore-all lint/style/noDescendingSpecificity: grouped by component, not by specificity */
+/* ───────────────────────────────────────────────────────────────────────────
+   I · the universe below, inside a CRT television (walnut cabinet, amber VFD)
+   ─────────────────────────────────────────────────────────────────────────── */
+.vxb {
+  min-height: calc(100vh - 80px);
+  display: grid;
+  place-items: center;
+  padding: 18px 14px 40px;
+  background: radial-gradient(ellipse at 50% 30%, #2a211a, #0d0a08 70%);
+  font-family: "Share Tech Mono", monospace;
+  color: #e9e1c9;
+}
+.vxb.is-leaving .vxb-screen {
+  animation: vxb-spin 0.38s ease-in forwards;
+}
+@keyframes vxb-spin {
+  to {
+    transform: rotate(200deg) scale(0.05);
+    filter: blur(6px);
+  }
+}
+.vxb-tv {
+  width: min(1100px, 100%);
+  padding: 18px 18px 14px;
+  border-radius: 26px;
+  background:
+    repeating-linear-gradient(
+      97deg,
+      transparent 0 7px,
+      rgba(0, 0, 0, 0.07) 7px 8px
+    ), linear-gradient(180deg, #4a3726, #2c2219);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 180, 0.22),
+    0 24px 50px rgba(0, 0, 0, 0.6);
+}
+.vxb-screen {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 22px / 18px;
+  background: #0d0a08;
+  box-shadow:
+    inset 0 0 0 6px #120c08,
+    inset 0 0 60px rgba(0, 0, 0, 0.85);
+  animation: vxb-on 0.6s ease-out;
+}
+@keyframes vxb-on {
+  0% {
+    clip-path: inset(49% 0 49% 0);
+    filter: brightness(3);
+  }
+  60% {
+    clip-path: inset(0 0 0 0);
+  }
+}
+.vxb-art,
+.vxb-art svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.vxb-scan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.18) 0 1px,
+      transparent 1px 3px
+    ),
+    radial-gradient(
+      ellipse at center,
+      transparent 60%,
+      rgba(0, 0, 0, 0.55) 100%
+    );
+  mix-blend-mode: multiply;
+}
+.vxb-screen.is-dark::after {
+  /* I-23 · his light: a circle that follows the cursor */
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at var(--lx) var(--ly),
+    transparent 0 9%,
+    rgba(0, 0, 0, 0.94) 18%
+  );
+}
+.vxb.is-leader .vxb-screen {
+  background: #f4f1ea;
+}
+
+.vxb-spot {
+  position: absolute;
+  z-index: 2;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+.vxb-spot .lbl {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 4px);
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: 3px;
+  background: rgba(18, 12, 8, 0.92);
+  color: #ffb347;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+}
+.vxb-spot:hover,
+.vxb-spot:focus-visible {
+  box-shadow: inset 0 0 0 2px rgba(255, 179, 71, 0.55);
+  background: rgba(255, 179, 71, 0.06);
+  outline: none;
+}
+.vxb-spot:hover .lbl,
+.vxb-spot:focus-visible .lbl {
+  opacity: 1;
+}
+.vxb-spot.is-exit:hover {
+  box-shadow: inset 0 0 0 2px rgba(207, 227, 226, 0.5);
+}
+.vxb-spot.is-target {
+  box-shadow: inset 0 0 0 1px rgba(255, 179, 71, 0.3);
+}
+.vxb-spot.is-hidden-thing {
+  box-shadow: 0 0 22px rgba(207, 227, 226, 0.6);
+}
+
+.vxb-verbs {
+  position: absolute;
+  z-index: 5;
+  display: grid;
+  gap: 3px;
+  min-width: 150px;
+  padding: 8px;
+  border-radius: 6px;
+  background: #f3e4bd;
+  color: #3b2a12;
+  transform: translate(-50%, 6px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+}
+.vxb-verbs b {
+  font:
+    15px "VT323",
+    monospace;
+  margin-bottom: 2px;
+}
+.vxb-verbs button {
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 3px;
+  background: #2c2219;
+  color: #f3e4bd;
+  font:
+    12px "Share Tech Mono",
+    monospace;
+  text-align: left;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.vxb-verbs button:hover {
+  background: #b5533c;
+}
+.vxb-verbs .x {
+  justify-self: end;
+  background: none;
+  color: #3b2a12;
+}
+
+.vxb-guide {
+  position: absolute;
+  left: 2%;
+  bottom: 3%;
+  z-index: 3;
+  width: 9%;
+  aspect-ratio: 1;
+  pointer-events: none;
+  animation: vxb-float 3.4s ease-in-out infinite;
+}
+.vxb-guide .face,
+.vxb-guide .face svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+@keyframes vxb-float {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.vxb-child {
+  position: absolute;
+  z-index: 4;
+  width: 5%;
+  height: 16%;
+  border: 0;
+  border-radius: 40% 40% 12% 12%;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.6) 0 1px,
+    rgba(0, 0, 0, 0.5) 1px 2px
+  );
+  opacity: 0.7;
+  cursor: pointer;
+  animation: vxb-static 0.08s steps(2) infinite;
+}
+@keyframes vxb-static {
+  50% {
+    transform: translateX(1px);
+    opacity: 0.5;
+  }
+}
+.vxb-tea {
+  position: absolute;
+  right: 2%;
+  top: 3%;
+  z-index: 4;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: rgba(181, 83, 60, 0.92);
+  color: #fff3e6;
+  font-size: 12px;
+}
+
+.vxb-vfd {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  min-height: 46px;
+  margin-top: 12px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #120c08, #1b120c);
+  box-shadow: inset 0 1px 5px rgba(0, 0, 0, 0.9);
+  font:
+    18px / 1.25 "VT323",
+    monospace;
+}
+.vxb-vfd .room {
+  flex-shrink: 0;
+  color: rgba(255, 179, 71, 0.5);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-size: 14px;
+}
+.vxb-vfd .txt {
+  color: #ffb347;
+  text-shadow: 0 0 6px rgba(255, 179, 71, 0.55);
+}
+.vxb-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.vxb-bag {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-height: 28px;
+  padding: 4px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.vxb-bag .empty {
+  padding: 4px 8px;
+  font-size: 11px;
+  color: #a8916f;
+}
+.vxb-bag button {
+  padding: 3px 9px;
+  border: 0;
+  border-radius: 3px;
+  background: #f3e4bd;
+  color: #3b2a12;
+  font:
+    11px "Share Tech Mono",
+    monospace;
+  cursor: pointer;
+}
+.vxb-bag button.is-on {
+  background: #ffb347;
+  box-shadow: 0 0 0 2px #b5533c;
+}
+.vxb-keys {
+  display: flex;
+  gap: 6px;
+}
+.vxb-keys button,
+.vxb-keys .eject {
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #f6efdc, #d6c8a6);
+  color: #4a3a2a;
+  font:
+    700 11px "Share Tech Mono",
+    monospace;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  box-shadow: 0 3px 0 #85745a;
+  cursor: pointer;
+}
+.vxb-keys .eject {
+  background: linear-gradient(180deg, #c76148, #9c4330);
+  color: #fff3e6;
+  box-shadow: 0 3px 0 #5e2618;
+}
+
+/* the map: a circuit diagram */
+.vxb-map {
+  position: fixed;
+  inset: 8vh 8vw;
+  z-index: 60;
+  border-radius: 14px;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(111, 138, 74, 0.08) 0 1px,
+      transparent 1px 24px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(111, 138, 74, 0.08) 0 1px,
+      transparent 1px 24px
+    ), #1a1f14;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.7);
+}
+.vxb-map svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.vxb-map line {
+  stroke: #c8962e;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 6 3;
+  animation: vxb-current 1.6s linear infinite;
+}
+@keyframes vxb-current {
+  to {
+    stroke-dashoffset: -18;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vxb-map line {
+    animation: none;
+  }
+}
+.vxb-map .node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 4px 9px;
+  border: 1px solid #c8962e;
+  border-radius: 3px;
+  background: #241c10;
+  color: #f3e4bd;
+  font:
+    11px "Share Tech Mono",
+    monospace;
+  cursor: pointer;
+}
+.vxb-map .node.is-here {
+  background: #b5533c;
+}
+.vxb-map .node.is-dark {
+  color: #6a5f4a;
+  cursor: default;
+}
+.vxb-map .sidec {
+  position: absolute;
+  right: 3%;
+  bottom: 4%;
+  color: rgba(120, 200, 200, 0.45);
+  font-size: 11px;
+  border: 1px dashed rgba(120, 200, 200, 0.35);
+  padding: 3px 7px;
+}
+.vxb-map .close {
+  position: absolute;
+  left: 50%;
+  bottom: 3%;
+  transform: translateX(-50%);
+  border: 0;
+  background: none;
+  color: #a8916f;
+  text-decoration: underline dotted;
+  cursor: pointer;
+}
+
+.vxb-childsaid {
+  position: fixed;
+  left: 50%;
+  top: 30%;
+  z-index: 61;
+  display: grid;
+  gap: 8px;
+  width: min(440px, 92vw);
+  padding: 18px;
+  border-radius: 8px;
+  transform: translateX(-50%);
+  background: #0d1516;
+  color: #cfe3e2;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+}
+.vxb-childsaid b {
+  font:
+    26px "VT323",
+    monospace;
+  letter-spacing: 3px;
+}
+.vxb-childsaid .hint {
+  font-size: 11px;
+  color: #7aa;
+}
+.vxb-childsaid button {
+  justify-self: end;
+  border: 0;
+  background: #cfe3e2;
+  color: #0d1516;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+/* panels */
+.vxb-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 62;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(10, 6, 4, 0.6);
+}
+.vxb-panel-in {
+  position: relative;
+  width: min(720px, 100%);
+  max-height: 86vh;
+  overflow: auto;
+  padding: 18px 20px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #2c2219, #1b140f);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.7);
+}
+.vxb-panel-x {
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  border: 0;
+  background: none;
+  color: #e9e1c9;
+  font-size: 16px;
+  cursor: pointer;
+}
+.vxb-panel h3 {
+  margin-bottom: 10px;
+  font:
+    22px var(--font-marker),
+    cursive;
+  color: #f3e4bd;
+}
+.vxb-panel .hint {
+  font-size: 12px;
+  color: #a8916f;
+}
+.vxb-talk .log {
+  display: grid;
+  gap: 6px;
+  max-height: 40vh;
+  overflow: auto;
+  margin-bottom: 10px;
+}
+.vxb-talk .log p {
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.vxb-talk .log .you {
+  justify-self: end;
+  background: #f6efdc;
+  color: #2a1f17;
+}
+.vxb-talk .log .them {
+  justify-self: start;
+  background: #120c08;
+  color: #ffb347;
+  font:
+    17px / 1.2 "VT323",
+    monospace;
+}
+.vxb-talk input,
+.vxb-shortwave input[type="range"] {
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: #f6efdc;
+  color: #2a1f17;
+  font:
+    13px "Share Tech Mono",
+    monospace;
+}
+.vxb-graves .stones {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+}
+.vxb-graves .stone {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 40% 40% 6px 6px / 22% 22% 6px 6px;
+  background: linear-gradient(180deg, #4a4038, #2e2722);
+  text-align: center;
+}
+.vxb-graves .stone b {
+  font:
+    16px "VT323",
+    monospace;
+  color: #f3e4bd;
+}
+.vxb-graves .dates {
+  font-size: 10px;
+  color: #a8916f;
+}
+.vxb-graves .stone i {
+  font:
+    13px var(--font-marker),
+    cursive;
+  color: #cfc4a8;
+}
+.vxb-graves .row,
+.vxb-contract .row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 6px;
+}
+.vxb-panel button {
+  font-family: "Share Tech Mono", monospace;
+}
+.vxb-graves .row button,
+.vxb-tower li button,
+.vxb-gate .locks button,
+.vxb-shortwave > button,
+.vxb-gate .through,
+.vxb-tower .pull,
+.vxb-contract .row button {
+  padding: 4px 9px;
+  border: 0;
+  border-radius: 3px;
+  background: #f3e4bd;
+  color: #3b2a12;
+  font-size: 11px;
+  cursor: pointer;
+}
+.vxb-contract {
+  margin-top: 12px;
+  padding: 14px;
+  background: #f7f0de;
+  color: #2a2016;
+  font-size: 12px;
+  transform: rotate(-0.6deg);
+}
+.vxb-contract b {
+  display: block;
+  margin: 4px 0;
+  font-size: 15px;
+}
+.vxb-contract .fine {
+  font-size: 10px;
+  color: #8a7457;
+}
+.vxb-contract .sign {
+  background: #1d2f56 !important;
+  color: #f7f0de !important;
+}
+.vxb-tower ul {
+  display: grid;
+  gap: 4px;
+}
+.vxb-tower li button {
+  width: 100%;
+  text-align: left;
+}
+.vxb-tower em {
+  color: #b5533c;
+}
+.vxb-tower .swing {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+.vxb-tower .pendulum {
+  width: 4px;
+  height: 140px;
+  background: #c8962e;
+  transform-origin: 50% 0;
+  border-radius: 2px;
+  position: relative;
+}
+.vxb-tower .pendulum::after {
+  content: "";
+  position: absolute;
+  left: -10px;
+  bottom: -10px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #b5533c;
+}
+.vxb-gate .locks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px;
+}
+.vxb-gate .locks button {
+  display: flex;
+  gap: 8px;
+  text-align: left;
+}
+.vxb-gate .locks button.is-open {
+  background: #cfe3e2;
+}
+.vxb-gate .msg {
+  margin: 12px 0;
+  font:
+    18px "VT323",
+    monospace;
+  color: #cfe3e2;
+}
+.vxb-gate .sidec {
+  display: inline-block;
+  margin-left: 10px;
+  color: #78c8c8;
+  font:
+    20px "VT323",
+    monospace;
+  letter-spacing: 3px;
+}
+.vxb-shortwave .freq {
+  margin: 6px 0;
+  font:
+    28px "VT323",
+    monospace;
+  color: #ffb347;
+}
+.vxb-shortwave .log p {
+  margin-top: 6px;
+  font:
+    16px "VT323",
+    monospace;
+  color: #cfe3e2;
+}
+.vxb-bside .mirror {
+  transform: scaleX(-1);
+  font-size: 13px;
+  color: #b8e68a;
+  margin-bottom: 4px;
+}
+.vxb-arcadedoor .go {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 6px 14px;
+  background: #b5533c;
+  color: #fff3e6;
+  border-radius: 4px;
+}
+.vxb-quests ol {
+  display: grid;
+  gap: 8px;
+}
+.vxb-quests li {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-left: 3px solid #ffb347;
+  background: rgba(0, 0, 0, 0.25);
+}
+.vxb-quests li.is-done {
+  border-color: #6f8a4a;
+  opacity: 0.65;
+}
+.vxb-quests b {
+  font:
+    16px "VT323",
+    monospace;
+  color: #f3e4bd;
+}
+.vxb-quests span {
+  font-size: 12px;
+  color: #a8916f;
+}
+
+/* I-29 · on a phone the screen goes portrait-friendly */
+@media (max-width: 700px) {
+  .vxb-tv {
+    padding: 10px;
+    border-radius: 16px;
+  }
+  .vxb-spot .lbl {
+    opacity: 0.85;
+    font-size: 9px;
+  }
+  .vxb-vfd {
+    flex-direction: column;
+    gap: 2px;
+    font-size: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vxb-screen,
+  .vxb-guide,
+  .vxb-child,
+  .vxb.is-leaving .vxb-screen {
+    animation: none;
+  }
+}
+
+/* H-29 · the purification */
+.vxb-purify .items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+.vxb-purify .items button,
+.vxb-purify .go,
+.vxb-purify .shaky {
+  border: 1px solid #c8962e;
+  background: #241c10;
+  color: #f3e4bd;
+  font:
+    12px "Share Tech Mono",
+    monospace;
+  padding: 5px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.vxb-purify .items button.is-on {
+  background: #c8962e;
+  color: #1a120a;
+}
+.vxb-purify .go:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.vxb-purify .shaky {
+  margin-top: 8px;
+  border-style: dashed;
+  opacity: 0.75;
+}
+.vxb-purify .none {
+  color: #8a7a5c;
+  font-size: 12px;
+}
+.vxb-purify .board {
+  width: 100%;
+  height: auto;
+  background: #0f0b08;
+  border-radius: 6px;
+  cursor: none;
+  touch-action: none;
+}
+.vxb-purify .mem {
+  fill: #8a7a5c;
+  font:
+    13px "Share Tech Mono",
+    monospace;
+  transition: fill 0.2s;
+}
+.vxb-purify .mem.is-hit {
+  fill: #ff2e4d;
+  animation: vxb-mem 0.6s steps(3);
+}
+@keyframes vxb-mem {
+  50% {
+    opacity: 0.1;
+  }
+}
+.vxb-purify .start {
+  fill: none;
+  stroke: #6f8a4a;
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+}
+.vxb-purify .end {
+  fill: none;
+  stroke: #c8962e;
+  stroke-width: 2;
+}
+.vxb-purify .magnet {
+  pointer-events: none;
+}
+
+/* I-28 · a door that only exists today */
+.vxb-spot.is-temp {
+  border: 2px solid rgba(255, 179, 71, 0.7);
+  border-radius: 40% 40% 4px 4px;
+  background: linear-gradient(
+    to top,
+    rgba(255, 179, 71, 0.35),
+    rgba(255, 179, 71, 0) 22%
+  );
+  box-shadow: 0 0 24px rgba(255, 179, 71, 0.25);
+  animation: vxb-door 2.4s ease-in-out infinite;
+}
+@keyframes vxb-door {
+  50% {
+    box-shadow: 0 0 40px rgba(255, 179, 71, 0.45);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vxb-spot.is-temp {
+    animation: none;
+  }
+}
+.vxb-art .spin-back {
+  transform-origin: 300px 230px;
+  animation: vxb-spin-back 40s linear infinite;
+}
+@keyframes vxb-spin-back {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+/* I-28 · at his own wake he is barely there */
+.vxb-guide.is-ghost {
+  opacity: 0.28;
+  filter: grayscale(1) blur(0.5px);
+}
+
+/* I-26 · a teammate down here, with their vortex */
+.vxb-visitor {
+  position: absolute;
+  bottom: 6%;
+  width: 9%;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  z-index: 3;
+  animation: vxb-visitor 6s ease-in-out infinite;
+}
+.vxb-visitor .vv {
+  width: 70%;
+  aspect-ratio: 1;
+  opacity: 0.5;
+  filter: grayscale(1) brightness(0.6) sepia(0.4);
+}
+.vxb-visitor .vv svg {
+  width: 100%;
+  height: 100%;
+}
+.vxb-visitor span {
+  color: #cfc3a8;
+  font:
+    11px "Share Tech Mono",
+    monospace;
+  opacity: 0.8;
+}
+.vxb-visitor button {
+  border: 1px solid #6f8a4a;
+  background: #1b140f;
+  color: #cfe3a0;
+  font:
+    10px "Share Tech Mono",
+    monospace;
+  padding: 2px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+@keyframes vxb-visitor {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vxb-visitor {
+    animation: none;
+  }
+}
+
+/* O-13 · below tv */
+.vxb-tvset .screen {
+  position: relative;
+  aspect-ratio: 5 / 3;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #0d1414;
+  box-shadow:
+    inset 0 0 0 10px #3a2c20,
+    inset 0 0 40px rgba(0, 0, 0, 0.8);
+}
+.vxb-tvset .art,
+.vxb-tvset .art svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.vxb-tvset .screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.25) 0 1px,
+    transparent 1px 3px
+  );
+  pointer-events: none;
+}
+.vxb-tvset .chan {
+  position: absolute;
+  top: 16px;
+  left: 18px;
+  color: #b8e08a;
+  font:
+    11px "Share Tech Mono",
+    monospace;
+  text-shadow: 0 0 6px rgba(184, 224, 138, 0.8);
+}
+.vxb-tvset .cap {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 16px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #f3e4bd;
+  font:
+    12px "Share Tech Mono",
+    monospace;
+  min-height: 1.4em;
+}
+.vxb-tvset .knobs {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+.vxb-tvset .knobs button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #c8962e;
+  background: #241c10;
+  color: #f3e4bd;
+  font:
+    11px "Share Tech Mono",
+    monospace;
+  cursor: pointer;
+}
+.vxb-tvset .knobs .is-on {
+  background: #c8962e;
+  color: #1a120a;
+}
+.vxb-tvset .flicker {
+  animation: vxb-flick 1.3s steps(2) infinite;
+}
+@keyframes vxb-flick {
+  50% {
+    opacity: 0.3;
+  }
+}
+.vxb-tvset .rain {
+  animation: vxb-rain 0.6s linear infinite;
+}
+@keyframes vxb-rain {
+  to {
+    transform: translateY(6px);
+  }
+}
+.vxb-tvset .ch13 .art {
+  animation: vxb-snow 0.15s steps(2) infinite;
+}
+@keyframes vxb-snow {
+  50% {
+    transform: translate(-2px, 1px) scale(1.02);
+  }
+}
+.vxb-tvset .ghost {
+  animation: vxb-flick 4s steps(1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vxb-tvset .flicker,
+  .vxb-tvset .rain,
+  .vxb-tvset .ch13 .art,
+  .vxb-tvset .ghost {
+    animation: none;
+  }
+}
+
+.vxb-keys .vxb-paper {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: 3px;
+  background: #e9dcbc;
+  color: #231a10;
+  font:
+    11px "Share Tech Mono",
+    monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+/* P-09 · the team's weather down here */
+.vxb-screen.is-rain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    105deg,
+    rgba(200, 220, 255, 0.12) 0 1px,
+    transparent 1px 10px
+  );
+  animation: vxb-rain 0.35s linear infinite;
+}
+@keyframes vxb-rain {
+  to {
+    background-position: -12px 40px;
+  }
+}
+.vxb-screen.is-sun::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at 70% 10%,
+    rgba(255, 210, 122, 0.25),
+    transparent 60%
+  );
+}
+@media (prefers-reduced-motion: reduce) {
+  .vxb-screen.is-rain::before {
+    animation: none;
+  }
+}

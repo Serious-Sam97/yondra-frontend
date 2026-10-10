@@ -233,9 +233,23 @@ export function loadDemoArchivedCards(
   boardId: string,
 ): (DemoCard & { tags: DemoTag[] })[] {
   const data = loadBoardData(boardId);
-  return data.cards
+  const archived = data.cards
     .filter((c) => !!c.archived_at)
     .map((c) => resolveCardTags(c, data.tags));
+  // Vortex MK-V · K-10: the demo's graveyard holds a card nobody here created —
+  // user #0, 1989. Its description is corrupted except for one line.
+  const ghost: DemoCard & { tags: DemoTag[] } = {
+    id: 1989,
+    section_id: data.sections[0]?.id ?? 1,
+    name: "make it remember me",
+    description:
+      "▒▒▒ ▓▓▒▒ ░░▒▓ ▒▒▒▒▓ ░▒▒ ▓▓▓▒░░ ▒▒▒ ▓▓\n▒▓▒░ be nice to him. ░▒▓▒▒\n▓▓▒▒▒▒ ░░░ ▒▓▓ — #0",
+    position: 9999,
+    archived_at: "1989-03-13T03:13:00.000Z",
+    checklist_items: [],
+    tags: [],
+  };
+  return archived.some((c) => c.id === ghost.id) ? archived : [...archived, ghost];
 }
 
 // --- Tags ---

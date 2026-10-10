@@ -131,6 +131,18 @@ export function coverArt(
     }
     g = `<defs>${half}</defs><rect class="ink" width="${W}" height="${H}" fill="url(#${id})" opacity=".35"/><g class="ink">${p}</g><g class="ink" ${off}>${q}</g>`;
   }
+  // Vortex MK-V · K-08: one cover in forty carries a symbol the generator
+  // didn't put there — a pencil, an eye, or a thirteen.
+  if (Math.abs(seed) % 40 === 13) {
+    const which = Math.abs(seed) % 3;
+    const sym =
+      which === 0
+        ? `<g transform="translate(${W - 34} 48) rotate(-14)"><rect width="22" height="4" fill="${a}"/><path d="M0 0 L-5 2 L0 4 Z" fill="${b}"/></g>`
+        : which === 1
+          ? `<g transform="translate(${W - 26} 50)"><ellipse rx="8" ry="4.5" fill="none" stroke="${a}" stroke-width="1.4"/><circle r="2" fill="${a}"/></g>`
+          : `<text x="${W - 30}" y="${H - 6}" font-family="monospace" font-size="11" fill="${a}">13</text>`;
+    g += `<g class="ink" opacity=".75">${sym}</g>`;
+  }
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${g}</svg>`;
 }
 

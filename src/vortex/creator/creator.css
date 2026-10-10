@@ -1,0 +1,209 @@
+/* LADO S · creator panel (vxcr) and the genome visitor */
+.vxcr {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.vxcr h4 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--cf-text);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.vxcr-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #a9a08a; /* T-02 · AA */
+}
+.vxcr-row input,
+.vxcr-row select,
+.vxcr-col select {
+  min-width: 0;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--cf-edge);
+  color: var(--cf-text);
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 6px;
+}
+.vxcr-row input {
+  flex: 1 1 160px;
+}
+.vxcr button {
+  background: transparent;
+  border: 1px solid var(--cf-edge);
+  color: var(--cf-text);
+  font: inherit;
+  font-size: 11px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.vxcr button:hover:not(:disabled) {
+  border-color: var(--cf-phosphor);
+  color: var(--cf-phosphor);
+}
+.vxcr button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.vxcr-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  color: #a9a08a; /* T-02 · AA */
+}
+.vxcr-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px dotted var(--cf-edge);
+  padding: 2px 0;
+}
+.vxcr-list li button {
+  border: 0;
+  padding: 0 4px;
+}
+.vxcr-list i {
+  color: #c9bfa6; /* the verdict reads as an aside, still AA */
+}
+.vxcr-taste {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11px;
+}
+.vxcr-taste span {
+  padding: 2px 8px;
+  border: 1px solid var(--cf-edge);
+  background: linear-gradient(90deg, var(--fill) var(--w), transparent 0);
+}
+.vxcr-taste .up {
+  --fill: rgba(111, 255, 210, 0.2);
+}
+.vxcr-taste .down {
+  --fill: rgba(255, 46, 91, 0.2);
+}
+.vxcr-costume {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.vxcr-prev {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.06),
+    transparent 70%
+  );
+}
+.vxcr-prev-face,
+.vxcr-prev-hat {
+  position: absolute;
+  inset: 0;
+}
+.vxcr-prev svg {
+  width: 100%;
+  height: 100%;
+}
+.vxcr-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  font-size: 11px;
+  color: #a9a08a; /* T-02 · AA */
+}
+.vxcr-col label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.vxcr-col input[type="color"] {
+  width: 100%;
+  height: 26px;
+  border: 1px solid var(--cf-edge);
+  background: none;
+  padding: 0;
+}
+.vxcr-col button {
+  grid-column: 1 / -1;
+}
+
+/* S-09 · a visitor from another tape */
+.vxcr-visitor {
+  position: fixed;
+  right: 140px;
+  bottom: 120px;
+  z-index: 2147482700;
+  pointer-events: none;
+  animation: vxcr-arrive 1.4s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+.vxcr-visitor.is-leaving {
+  animation: vxcr-leave 1.6s ease-in forwards;
+}
+.vxcr-visitor-body {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  filter: drop-shadow(0 0 10px var(--tint, #8fe3e3)) hue-rotate(140deg)
+    saturate(0.8);
+  animation: vxcr-bob 2.4s ease-in-out infinite;
+}
+.vxcr-visitor-body .face,
+.vxcr-visitor-body .hat {
+  position: absolute;
+  inset: 0;
+}
+.vxcr-visitor-body svg {
+  width: 100%;
+  height: 100%;
+}
+.vxcr-visitor-line {
+  position: absolute;
+  bottom: 104px;
+  right: -20px;
+  width: max-content;
+  max-width: 240px;
+  padding: 8px 10px;
+  background: #e9f7f7;
+  color: #111;
+  font:
+    12px / 1.35 ui-monospace,
+    monospace;
+  border: 2px solid #111;
+  box-shadow: 3px 3px 0 #111;
+}
+@keyframes vxcr-arrive {
+  from {
+    transform: translate(260px, 40px) scale(0.6);
+    opacity: 0;
+  }
+}
+@keyframes vxcr-leave {
+  to {
+    transform: translate(320px, -200px) scale(0.4) rotate(40deg);
+    opacity: 0;
+  }
+}
+@keyframes vxcr-bob {
+  50% {
+    transform: translateY(-8px);
+  }
+}
+@media (max-width: 640px) {
+  .vxcr-visitor {
+    right: 20px;
+    bottom: 180px;
+  }
+}

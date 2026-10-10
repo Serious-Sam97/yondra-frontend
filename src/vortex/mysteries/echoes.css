@@ -1,0 +1,57 @@
+/* K-04/05/07 · echoes: near-invisible until selected or waited for */
+.vxk-echo {
+  max-width: 760px;
+  margin: 8px auto 40px;
+  padding: 0 16px;
+  font:
+    12px "Share Tech Mono",
+    monospace;
+  color: transparent;
+  letter-spacing: 0.5px;
+}
+.vxk-echo::selection,
+.vxk-hidden::selection {
+  color: #b5533c;
+  background: #f3e4bd;
+}
+.vxk-footnote {
+  max-width: 760px;
+  margin: 0 auto 60px;
+  padding: 0 16px;
+  font:
+    12px "Share Tech Mono",
+    monospace;
+}
+.vxk-footnote a {
+  color: rgba(168, 145, 111, 0.4);
+  text-decoration: none;
+}
+.vxk-footnote p {
+  margin-top: 70vh;
+  color: transparent;
+  transition: color 4s ease;
+}
+.vxk-footnote p.is-shown {
+  color: #7a6447;
+}
+.vxk-hidden {
+  /* out of the flow: never a grid cell, never a layout shift */
+  position: absolute;
+  right: 6px;
+  bottom: 2px;
+  pointer-events: none;
+  white-space: nowrap;
+  display: inline-block;
+  font:
+    11px "Share Tech Mono",
+    monospace;
+  color: rgba(255, 179, 71, 0.04);
+  user-select: text;
+}
+.ydc-ear .vxk-hidden {
+  right: auto;
+  bottom: auto;
+  left: 0;
+  top: 0;
+  font-size: 7px;
+}

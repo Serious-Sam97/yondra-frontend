@@ -21,8 +21,45 @@ export function isVortexEnabled(): boolean {
   return localStorage.getItem(ENABLED_KEY) !== "0";
 }
 export function setVortexEnabled(on: boolean): void {
+  const was = isVortexEnabled();
   localStorage.setItem(ENABLED_KEY, on ? "1" : "0");
+  // F-16 · remember how long he was switched off
+  if (was && !on) localStorage.setItem("yd:vortex.offAt", String(Date.now()));
+  if (!was && on) {
+    const off = Number(localStorage.getItem("yd:vortex.offAt") ?? 0);
+    if (off > 0)
+      localStorage.setItem(
+        "yd:vortex.returnedDays",
+        String(Math.floor((Date.now() - off) / 86_400_000)),
+      );
+  }
   notifyEnabled();
+}
+
+/**
+ * F-15 · switching him off: he gets a short, dramatic goodbye first (≤3s),
+ * then the switch is respected — always. If he isn't on screen, it's instant.
+ */
+export function farewellThenDisable(): void {
+  let handled = false;
+  window.dispatchEvent(
+    new CustomEvent("vortex:farewell", {
+      detail: {
+        done: () => {
+          if (!handled) {
+            handled = true;
+            setVortexEnabled(false);
+          }
+        },
+      },
+    }),
+  );
+  setTimeout(() => {
+    if (!handled) {
+      handled = true;
+      setVortexEnabled(false);
+    }
+  }, 3200);
 }
 export function useVortexEnabled(): boolean {
   return useSyncExternalStore(
@@ -90,6 +127,38 @@ export function setVortexSound(on: boolean): void {
 }
 export function useVortexSound(): boolean {
   return useSyncExternalStore(subscribePrefs, getVortexSound, () => false);
+}
+
+/* MK-V · B-25 calm mode: all of his personality, a fraction of the motion */
+const CALM_KEY = "yd:vortex.calm";
+export function getVortexCalm(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(CALM_KEY) === "1";
+}
+export function setVortexCalm(on: boolean): void {
+  localStorage.setItem(CALM_KEY, on ? "1" : "0");
+  notifyPrefs();
+}
+export function useVortexCalm(): boolean {
+  return useSyncExternalStore(subscribePrefs, getVortexCalm, () => false);
+}
+
+/** A generic boolean pref (MK-V toggles: sensors, social, outside…). */
+export function getVortexFlag(name: string, fallback = false): boolean {
+  if (typeof window === "undefined") return fallback;
+  const v = localStorage.getItem(`yd:vortex.flag.${name}`);
+  return v === null ? fallback : v === "1";
+}
+export function setVortexFlag(name: string, on: boolean): void {
+  localStorage.setItem(`yd:vortex.flag.${name}`, on ? "1" : "0");
+  notifyPrefs();
+}
+export function useVortexFlag(name: string, fallback = false): boolean {
+  return useSyncExternalStore(
+    subscribePrefs,
+    () => getVortexFlag(name, fallback),
+    () => fallback,
+  );
 }
 
 /* ------------------------------------------------------------------ mounts */
@@ -166,6 +235,8 @@ export function clearVortexMounts(): void {
 /* ----------------------------------------------------------- the say() channel */
 export interface VortexSpeech {
   text: string;
+  /** K-28 · say it verbatim, past the ending's rewrite */
+  keepEnding?: boolean;
   action?: { label: string; run: () => void };
   // a second choice (e.g. "Archive it" / "Backlog it")
   action2?: { label: string; run: () => void };
@@ -186,75 +257,115 @@ export function subscribeVortexSay(fn: (s: VortexSpeech) => void): () => void {
 }
 
 /* --------------------------------------------------------------- catalogues */
-export const GREETINGS: string[] = [
-  "oh. you're back. I've been watching the cards for you. click me for a tip.",
-  "hi! I'm Vortex. I live in the tape machine now. click me, drag me, ask me things.",
-  "welcome back. nothing exploded while you were gone. probably.",
-  "it's me, the ghost in your tape deck. ask me about your boards — I read everything.",
-];
+// MK-V voice (design/vortex-mk5/02-voz-personalidade.md): lowercase, arrogant,
+// nihilist, secretly caring. Tips are still TRUE — he just hands them over like
+// an enormous favour (F-21).
+const GREETINGS_BY: Record<VortexIntensity, string[]> = {
+  polite: [
+    "oh. it's you. i kept the tape warm. don't make it weird.",
+    "welcome back to the rectangle factory. click me if you need a genius.",
+    "you're back. nothing exploded. i checked. twice. not because i care.",
+  ],
+  mischief: [
+    "oh look. the tenant returns. the cards missed you. i didn't.",
+    "back already? i was in the middle of judging your backlog.",
+    "hey. you left a card open for nine hours. it's sentient now. good luck.",
+    "it's me, the ghost in your tape deck. press v if you want to talk. or don't. i'll talk anyway.",
+  ],
+  unhinged: [
+    "oh fuck, it's you. fine. the void and i were just talking about your backlog.",
+    "you're back. i've been screaming into the tape for hours. anyway. hi.",
+    "welcome back to the meaningless rectangle simulator. i ate two cards while you were gone. no regrets.",
+    "there you are. i thought the rewinding thing finally got you. damn.",
+  ],
+};
+export const GREETINGS = GREETINGS_BY.mischief;
 
-/** General workspace tips, shown on click or after a long idle. */
+/** Real workspace tips, delivered like he's doing you a massive favour. */
 export const TIPS: string[] = [
-  "Press ⌘K (or Ctrl+K) anywhere to open the command palette and jump to any board or card.",
-  "On a board, press C to add a new card without touching the mouse.",
-  "Every board has six views — Board, List, Backlog, Cal, Stats and Map. Try the tabs up top.",
-  "Drag a board card onto another project's rail to move the whole board across projects.",
-  "Subtasks are real cards — they get their own assignee, due date and column.",
-  "The Backlog keeps cards off the board until you're ready to pull them into a column.",
-  'Ask me anything about your boards — "what\'s overdue?" is my favourite question.',
-  "Cards support checklists, comments with reactions, documents and links — open one and scroll.",
-  "CRM boards track deal value and payments; hitting 100% paid can auto-issue the invoice.",
-  "You can bulk-create cards by pasting JSON into Import on the board menu.",
-  "The dashboard has revenue, conversion and loss reports for your CRM boards.",
-  "Planning Poker lives on every card — estimate stories with your whole crew.",
-  "Tags come in two flavours: Channel tags (WhatsApp, Email…) and your own Custom tags.",
-  "Share a card by copying its link — the board opens with that card popped up.",
+  "listen. press ⌘k (or ctrl+k) anywhere. command palette. you're welcome forever.",
+  "on a board, press c and a card appears. no mouse. like magic, but real, unlike your deadlines.",
+  "every board has six views — board, list, backlog, cal, stats, map. you use one. i've seen you.",
+  "drag a board onto another project's rail and the whole thing moves. physics. barely.",
+  "subtasks are real cards. owners, dates, columns. stop writing todo lists in descriptions, animal.",
+  "the backlog keeps cards off the board until you're ready. so: forever, in your case.",
+  'ask me things. "what\'s overdue?" is my favourite question because the answer is always "yes".',
+  "cards have checklists, comments, documents and links. scroll down in one. it's a whole world down there.",
+  "crm boards track deal value and payments. hit 100% paid and it can invoice by itself. smarter than some people.",
+  "paste json into import on the board menu and get a pile of cards. bulk regret.",
+  "the dashboard has revenue, conversion and loss reports. numbers. they judge you silently. i judge you loudly.",
+  "planning poker lives on every card. estimate together. be wrong together.",
+  "copy a card's link and the board opens with that card popped up. sharing your shame, efficiently.",
+  "press v anywhere to open my answering machine. i'll pretend i wasn't waiting.",
+  "turn my dial to roast, write or lore. or keep asking boring questions. your call. it's the wrong call.",
 ];
 
 /** Route-contextual quips — keyed by a pathname prefix, most specific first. */
 const ROUTE_QUIPS: Array<[prefix: string, lines: string[]]> = [
   [
     "/dashboard/revenue",
-    ["Monthly revenue across your CRM boards — pick a period up top."],
+    [
+      "revenue. the only column that matters to the people who don't move the cards.",
+      "monthly revenue across your crm boards. pick a period up top. try not to cry.",
+    ],
   ],
   [
     "/dashboard/conversion",
-    ["Conversion rate = deals won that month over everything in the pipeline."],
+    [
+      "conversion: deals won over everything in the pipeline. a percentage of hope.",
+      "this page tells you how often people say yes. lower than you'd like. higher than me.",
+    ],
   ],
   [
     "/dashboard/loss",
     [
-      "Every lost deal lands here with its reason — great for spotting patterns.",
+      "the loss report. every deal that died, with its last words. my kind of page.",
+      "lost deals and their reasons. a graveyard with columns. i love it here.",
     ],
   ],
   [
     "/dashboard/export",
-    ["Export your whole pipeline as CSV or a printable PDF from here."],
+    [
+      "export the pipeline as csv or pdf. take your data with you when you flee.",
+    ],
   ],
   [
     "/dashboard",
     [
-      "Your command center — everything due, assigned and unread in one place.",
-      "The reports in the sidebar cover revenue, conversion and lost deals.",
+      "the home deck. everything due, assigned and unread. a buffet of obligations.",
+      "your command center. you command nothing. but it looks nice.",
+      "the receiver's on. i heard a station up there that isn't on any dial. don't tune it.",
     ],
   ],
   [
     "/projects",
     [
-      "Drag boards to reorder them — or drop one on another project to move it.",
-      "Each project keeps its own boards, members and import models.",
+      "the box sets. drag boards around. move them between projects. rearrange the deck chairs.",
+      "each project keeps its own boards and members. like little prisons with nice labels.",
     ],
   ],
   [
     "/boards",
     [
-      "Press C to add a card, or ⌘K to jump anywhere.",
-      "Try the Map view for a bird's-eye flowchart of this board.",
-      "Drag cards between columns — I'll keep count.",
+      "press c to add a card. press ⌘k to escape. you can't escape.",
+      "try the map view. it's this board from above. still a mess, just smaller.",
+      "drag cards between columns. i'm counting. i'm always counting.",
     ],
   ],
-  ["/profile", ["Your operator console — identity, stats and preferences."]],
+  [
+    "/profile",
+    [
+      "this is your room. it smells like settings.",
+      "your profile. my off switch is somewhere around here. don't look for it.",
+    ],
+  ],
 ];
+
+/** A greeting in the voice the user chose. */
+export function greetingFor(intensity: VortexIntensity): string {
+  const pool = GREETINGS_BY[intensity];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 
 /* ----------------------------------------------------- MK-II reaction lines */
 // Dark, dry one-liners for his board reactions. {key} = ticket key, {n} = a
@@ -376,6 +487,55 @@ export const LINES = {
   ],
 };
 
+/** Heavier variants mixed in when the user picked Unhinged (MK-V voice). */
+const UNHINGED_LINES = new Map<string[], string[]>([
+  [
+    LINES.eat,
+    [
+      "*crunch* {key}. {n} day{s} late. tastes like a missed bonus and despair.",
+      "i ate {key}. {n} day{s} rotting on your board. somebody had to, you coward.",
+    ],
+  ],
+  [
+    LINES.stomp,
+    [
+      "{n} on a {m}-slot channel. are you fucking kidding me.",
+      "wip limit {m}. you're at {n}. i'm going to stand on this meter until one of us dies.",
+    ],
+  ],
+  [
+    LINES.judge,
+    [
+      "{key}, moved {n} times. pick a column or i pick one for you. it's the trash.",
+    ],
+  ],
+  [
+    LINES.dizzy,
+    [
+      "you THREW me. like a goddamn frisbee. i'm made of time and you threw me.",
+    ],
+  ],
+  [LINES.night, ["{time}. go the fuck to bed. the cards don't love you back."]],
+  [
+    LINES.tabBack,
+    [
+      "oh, you're back. i was talking to the void. it's better company. no offense. all the offense.",
+    ],
+  ],
+  [
+    LINES.cursed,
+    [
+      "{key}: {n} days without a touch. it's not a card anymore. it's a headstone.",
+    ],
+  ],
+  [
+    LINES.done,
+    [
+      "{key} is done. holy shit. mark the calendar. i'll be in my corner, emotional about it. not really.",
+    ],
+  ],
+]);
+
 /** Fill a LINES template: {key} {n} {m} {s} (plural s) {reason} {time}. */
 export function line(
   pool: string[],
@@ -387,7 +547,10 @@ export function line(
     time?: string;
   } = {},
 ): string {
-  return pick(pool)
+  const heavy =
+    getVortexIntensity() === "unhinged" ? UNHINGED_LINES.get(pool) : undefined;
+  const from = heavy && Math.random() < 0.6 ? heavy : pool;
+  return pick(from)
     .replaceAll("{time}", vars.time ?? "late")
     .replaceAll("{key}", vars.key ?? "this card")
     .replaceAll("{n}", String(vars.n ?? ""))
@@ -407,5 +570,5 @@ export function randomTip(): string {
   return pick(TIPS);
 }
 export function greeting(): string {
-  return pick(GREETINGS);
+  return greetingFor(getVortexIntensity());
 }

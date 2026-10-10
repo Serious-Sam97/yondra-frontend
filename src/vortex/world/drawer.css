@@ -1,0 +1,486 @@
+/* The drawer in the profile: walnut, cream, amber VFD */
+.vxd {
+  margin-top: 18px;
+  padding: 16px 16px 18px;
+  border-radius: 14px;
+  background:
+    repeating-linear-gradient(
+      97deg,
+      transparent 0 7px,
+      rgba(0, 0, 0, 0.07) 7px 8px
+    ), linear-gradient(180deg, #3a2c20, #2c2219);
+  color: #e9e1c9;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 180, 0.18),
+    0 8px 18px rgba(0, 0, 0, 0.35);
+}
+.vxd-h {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.vxd-h h3 {
+  font-family: var(--font-marker), cursive;
+  font-size: 22px;
+  color: #f3e4bd;
+}
+.vxd-h span {
+  font:
+    11px "Share Tech Mono",
+    monospace;
+  color: #a8916f;
+  letter-spacing: 0.5px;
+}
+.vxd-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 12px 0 10px;
+  flex-wrap: wrap;
+}
+.vxd-tabs button {
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #f6efdc, #d6c8a6);
+  color: #4a3a2a;
+  font:
+    700 11px "Share Tech Mono",
+    monospace;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  box-shadow: 0 3px 0 #85745a;
+  cursor: pointer;
+}
+.vxd-tabs button[aria-selected="true"] {
+  transform: translateY(2px);
+  box-shadow:
+    0 1px 0 #85745a,
+    inset 0 1px 2px rgba(0, 0, 0, 0.25);
+  color: #8f3520; /* T-02 · AA on the cream tab */
+}
+.vxd-body {
+  padding: 12px;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #1c1510, #140f0b);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.85);
+}
+.vxd-empty {
+  font:
+    12px "Share Tech Mono",
+    monospace;
+  color: #a8916f;
+}
+.vxd-vfd {
+  position: relative;
+  overflow: hidden;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #120c08;
+  font:
+    18px "VT323",
+    monospace;
+  letter-spacing: 1.2px;
+  white-space: nowrap;
+}
+.vxd-vfd .ghost {
+  position: absolute;
+  left: 10px;
+  color: rgba(255, 179, 71, 0.12);
+}
+.vxd-vfd .txt {
+  position: relative;
+  color: #ffb347;
+  text-shadow: 0 0 6px rgba(255, 179, 71, 0.6);
+}
+.vxd-meters {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+.vxd-meter {
+  display: grid;
+  grid-template-columns: 70px 1fr 34px;
+  align-items: center;
+  gap: 8px;
+  font:
+    11px "Share Tech Mono",
+    monospace;
+  letter-spacing: 1px;
+}
+.vxd-meter .lbl {
+  color: #a8916f;
+}
+.vxd-meter .bar {
+  display: grid;
+  grid-template-columns: repeat(20, 1fr);
+  gap: 2px;
+}
+.vxd-meter .bar i {
+  height: 10px;
+  border-radius: 1px;
+  background: rgba(233, 225, 201, 0.08);
+}
+.vxd-meter .bar i.on {
+  background: #6f8a4a;
+}
+.vxd-meter .bar i.warm {
+  background: #c8962e;
+}
+.vxd-meter .bar i.hot {
+  background: #b5533c;
+}
+.vxd-meter .num {
+  font-family: "VT323", monospace;
+  font-size: 17px;
+  color: #ffb347;
+}
+.vxd-rel {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  font:
+    10px "Share Tech Mono",
+    monospace;
+  letter-spacing: 1.5px;
+  color: #a8916f;
+}
+.vxd-rel .track {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #b5533c, #5f7d7a 50%, #6f8a4a);
+}
+.vxd-rel .track i {
+  position: absolute;
+  top: -4px;
+  width: 4px;
+  height: 16px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: #f3e4bd;
+  box-shadow: 0 0 6px rgba(243, 228, 189, 0.8);
+}
+.vxd-rel .nick {
+  grid-column: 1 / -1;
+  font-family: var(--font-marker), cursive;
+  font-size: 15px;
+  letter-spacing: 0;
+  color: #f3e4bd;
+}
+.vxd-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+.vxd-facts div {
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: rgba(233, 225, 201, 0.05);
+}
+.vxd-facts dt {
+  font:
+    9.5px "Share Tech Mono",
+    monospace;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #a8916f;
+}
+.vxd-facts dd {
+  font:
+    15px "VT323",
+    monospace;
+  color: #e9e1c9;
+}
+.vxd-facts .is-red dd {
+  color: #ff8a6a;
+}
+.vxd-locked {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 20px 10px;
+  text-align: center;
+  font:
+    13px "Share Tech Mono",
+    monospace;
+  color: #e9e1c9;
+}
+.vxd-locked .lock {
+  font-size: 28px;
+  filter: sepia(1) saturate(2) hue-rotate(-10deg);
+}
+.vxd-locked .hint {
+  font-size: 11px;
+  color: #a8916f;
+}
+.vxd-diary {
+  display: grid;
+  gap: 14px;
+  max-height: 420px;
+  overflow: auto;
+  padding: 4px;
+}
+.vxd-diary article {
+  padding: 12px 14px;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 21px,
+      rgba(90, 120, 160, 0.18) 21px 22px
+    ), #f6efdc;
+  color: #2a1f17;
+  border-radius: 3px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+.vxd-diary h4 {
+  font:
+    10px "Share Tech Mono",
+    monospace;
+  letter-spacing: 2px;
+  color: #65512f;
+  margin-bottom: 4px;
+}
+.vxd-diary p {
+  font:
+    15px / 22px "Share Tech Mono",
+    monospace;
+}
+.vxd-diary p.other {
+  font-family: var(--font-marker), cursive;
+  font-size: 16px;
+  color: #1d2f56;
+  transform: rotate(-1deg);
+}
+
+/* F-02 · the dossier */
+.vxd-dossier {
+  display: grid;
+  gap: 10px;
+}
+.vxd-file {
+  position: relative;
+  padding: 14px 16px;
+  border-radius: 3px;
+  background: #e9dcb6;
+  color: #2a1f17;
+  font:
+    13px / 1.5 "Share Tech Mono",
+    monospace;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45);
+}
+.vxd-file .stamp {
+  position: absolute;
+  right: 14px;
+  top: 10px;
+  padding: 1px 6px;
+  border: 2px solid #8f3520;
+  color: #8f3520;
+  font-weight: 700;
+  letter-spacing: 3px;
+  transform: rotate(6deg);
+}
+.vxd-file h4 {
+  font-size: 11px;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+.vxd-file ul {
+  display: grid;
+  gap: 4px;
+}
+.vxd-file li {
+  display: grid;
+  grid-template-columns: 70px 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+  padding-bottom: 3px;
+  border-bottom: 1px dashed rgba(42, 31, 23, 0.25);
+}
+.vxd-file .cat {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #7a6447;
+}
+.vxd-file li button {
+  border: 0;
+  background: #2a1f17;
+  color: #e9dcb6;
+  font:
+    10px "Share Tech Mono",
+    monospace;
+  letter-spacing: 1px;
+  padding: 1px 6px;
+  cursor: pointer;
+}
+.vxd-file .none {
+  color: #5c4a32;
+}
+.vxd-burn {
+  justify-self: start;
+  border: 0;
+  background: none;
+  color: #ff8a6a;
+  font:
+    11px "Share Tech Mono",
+    monospace;
+  text-decoration: underline dotted;
+  cursor: pointer;
+}
+.vxd-quip {
+  font:
+    13px "VT323",
+    monospace;
+  font-size: 16px;
+  color: #ffb347;
+}
+
+/* F-14 · letters */
+.vxd-letters {
+  display: grid;
+  gap: 14px;
+  max-height: 460px;
+  overflow: auto;
+  padding: 4px;
+}
+.vxd-letters article {
+  position: relative;
+  padding: 16px 18px;
+  background: #f7f0de;
+  color: #2a2016;
+  font:
+    14px / 1.6 "Share Tech Mono",
+    monospace;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);
+}
+.vxd-letters article.is-new::before {
+  content: "NEW";
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  color: #b5533c;
+  font-weight: 700;
+  letter-spacing: 2px;
+  font-size: 10px;
+}
+.vxd-letters h4 {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #65512f;
+  margin-bottom: 6px;
+}
+.vxd-letters .ps,
+.vxd-letters .sig {
+  font-family: var(--font-marker), cursive;
+  font-size: 15px;
+  color: #1d2f56;
+  margin-top: 6px;
+}
+
+/* the case button */
+.vxd-case {
+  margin-left: auto;
+  border: 1px solid #c8962e;
+  background: #2a2118;
+  color: #ffd27a;
+  padding: 4px 10px;
+  border-radius: 3px;
+  font:
+    11px "Share Tech Mono",
+    monospace;
+  cursor: pointer;
+}
+/* N-19 · the shelf */
+.vxs-shelf {
+  display: grid;
+  gap: 10px;
+  font:
+    12px "Share Tech Mono",
+    monospace;
+}
+.vxs-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: baseline;
+}
+.vxs-top b {
+  font-size: 20px;
+  color: #c8962e;
+}
+.vxs-top .pub {
+  margin-left: auto;
+}
+.vxs-sides {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.vxs-sides button,
+.vxs-team button {
+  border: 1px solid #8a7a5c;
+  background: transparent;
+  color: inherit;
+  padding: 4px 9px;
+  border-radius: 3px;
+  font: inherit;
+  cursor: pointer;
+}
+.vxs-sides .is-on {
+  background: #c8962e;
+  color: #1a120a;
+  border-color: #c8962e;
+}
+.vxs-labels {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 6px;
+}
+.vxs-labels li {
+  position: relative;
+  overflow: hidden;
+  padding: 6px 8px;
+  border-radius: 2px;
+  /* locked labels: faded paper, not faded text (T-02 · AA) */
+  background: #ddd1b2;
+  color: #554a38;
+  border-left: 4px solid #b0a283;
+}
+.vxs-labels li.is-got {
+  opacity: 1;
+  color: #231a10;
+  border-left-color: #b5533c;
+}
+.vxs-labels li.is-secret {
+  background: #2a2118;
+  color: #b8a682;
+}
+.vxs-labels .bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  background: #c8962e;
+}
+.vxs-sets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: #b8a682;
+}
+.vxs-sets .is-done {
+  color: #c8962e;
+}
+.vxs-team {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}

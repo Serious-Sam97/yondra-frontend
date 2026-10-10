@@ -4,6 +4,7 @@
 // whisper when possessed. OFF by default — the user opts in on the profile.
 
 import { getVortexSound } from "@/lib/vortex";
+import { duck } from "@/vortex/core/mix";
 
 export type VortexSoundName =
   | "hiss"
@@ -51,12 +52,37 @@ function envelope(
   return g;
 }
 
+/* T-01 · TAPE NOISES volume (0–1), per device */
+export function vortexVolume(): number {
+  try {
+    const v = Number(localStorage.getItem("yd:vortex.volume") ?? 1);
+    return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 1;
+  } catch {
+    return 1;
+  }
+}
+export function setVortexVolume(v: number) {
+  try {
+    localStorage.setItem(
+      "yd:vortex.volume",
+      String(Math.max(0, Math.min(1, v))),
+    );
+  } catch {}
+  if (master) master.gain.value = vortexVolume();
+}
+let master: GainNode | null = null;
+
 /** Play one of his sounds — a no-op unless the user turned sound on. */
 export function vxSound(name: VortexSoundName): void {
   if (!getVortexSound()) return;
   const ac = audio();
   if (!ac) return;
-  const out = ac.destination;
+  if (!master) {
+    master = ac.createGain();
+    master.connect(ac.destination);
+  }
+  master.gain.value = vortexVolume() * duck();
+  const out = master;
   const t = ac.currentTime;
   try {
     if (name === "hiss") {

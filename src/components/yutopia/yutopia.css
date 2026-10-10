@@ -1,0 +1,183 @@
+/* Yutopia presence chip — warm hi-fi, matches the redesign (walnut / cream / amber VFD). */
+.yd-yutopia {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  z-index: 60;
+  font-family: "Share Tech Mono", var(--font-geist-mono), monospace;
+}
+.yd-yutopia__chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 8px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #3b281b, #2a1c13);
+  border: 1px solid #5a412f;
+  color: #efe4cc;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
+.yd-yutopia__stripes {
+  width: 5px;
+  height: 20px;
+  border-radius: 2px;
+  background: linear-gradient(
+    180deg,
+    #b5562f 0 25%,
+    #e8a33d 25% 50%,
+    #6e7b3a 50% 75%,
+    #efe4cc 75%
+  );
+}
+.yd-yutopia__vfd {
+  font-family: "VT323", monospace;
+  font-size: 18px;
+  color: #ffb35c;
+  text-shadow: 0 0 6px rgba(255, 166, 48, 0.45);
+  letter-spacing: 0.05em;
+}
+.yd-yutopia__count {
+  font-size: 11px;
+  color: #d9cba9;
+}
+.yd-yutopia__panel {
+  margin-top: 8px;
+  width: 280px;
+  padding: 10px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #3b281b, #2a1c13);
+  border: 1px solid #5a412f;
+  color: #efe4cc;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+  position: absolute;
+  bottom: 44px;
+  left: 0;
+}
+.yd-yutopia__panel ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.yd-yutopia__panel li {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  grid-template-areas: "dot name btn" ". where btn";
+  column-gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+.yd-yutopia__dot {
+  grid-area: dot;
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+  background: #8aa04a;
+}
+.yd-yutopia__dot--away {
+  background: #a39d8c;
+}
+.yd-yutopia__dot--dnd {
+  background: #b5562f;
+}
+.yd-yutopia__name {
+  grid-area: name;
+}
+.yd-yutopia__where {
+  grid-area: where;
+  color: #ffb35c;
+  font-size: 11px;
+}
+.yd-yutopia__panel li button,
+.yd-yutopia__open {
+  grid-area: btn;
+  border-radius: 8px;
+  padding: 4px 8px;
+  background: linear-gradient(180deg, #e9dec4, #cdbf9f);
+  color: #2a2420;
+  font-size: 11px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 0 #8f8166;
+  cursor: pointer;
+}
+.yd-yutopia__open {
+  width: 100%;
+  margin-top: 10px;
+  padding: 7px;
+}
+.yd-yutopia__panel li.yd-yutopia__empty {
+  display: block;
+  color: #a39d8c;
+}
+html.yutopia-embed .yd-yutopia {
+  display: none;
+}
+
+/* Dashboard key — a chunky hi-fi button in the greeting card. */
+.yd-yutopia-key {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 14px 0 10px;
+  border-radius: 7px;
+  background: linear-gradient(180deg, #3b281b, #2a1c13);
+  color: #ffb35c;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 220, 170, 0.12),
+    0 3px 0 #1a110b,
+    0 5px 10px rgba(0, 0, 0, 0.35);
+  transition:
+    transform 80ms ease,
+    box-shadow 80ms ease,
+    filter 120ms ease;
+}
+.yd-yutopia-key:hover {
+  filter: brightness(1.15);
+}
+.yd-yutopia-key:active,
+.yd-yutopia-key[aria-busy="true"] {
+  transform: translateY(2px);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.5),
+    0 1px 0 #1a110b;
+}
+.yd-yutopia-key:focus-visible {
+  outline: 2px solid #ffb35c;
+  outline-offset: 2px;
+}
+.yd-yutopia-key__led {
+  width: 7px;
+  height: 7px;
+  border-radius: 99px;
+  background: #ff7a3a;
+  box-shadow: 0 0 6px #ff7a3a;
+}
+.yd-yutopia-key__stripes {
+  width: 5px;
+  height: 22px;
+  border-radius: 2px;
+  background: linear-gradient(
+    180deg,
+    #b5562f 0 25%,
+    #e8a33d 25% 50%,
+    #6e7b3a 50% 75%,
+    #efe4cc 75%
+  );
+}
+.yd-yutopia-key__label {
+  font-family: "VT323", monospace;
+  font-size: 21px;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 6px rgba(255, 166, 48, 0.45);
+}
+@media (prefers-reduced-motion: reduce) {
+  .yd-yutopia-key {
+    transition: none;
+  }
+}

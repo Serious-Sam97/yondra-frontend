@@ -1,6 +1,7 @@
 "use client";
 
 import LegalShell, { type LegalContent } from "@/components/legal/LegalShell";
+import { TermsEcho } from "@/vortex/mysteries/PageEchoes";
 
 // Draft terms of service for Yondra — a project-management + CRM workspace.
 // Bracketed values ([...]) are placeholders the company/attorney must fill in.
@@ -228,5 +229,10 @@ const CONTENT: LegalContent = {
 };
 
 export default function TermsPage() {
-  return <LegalShell content={CONTENT} />;
+  return (
+    <>
+      <LegalShell content={CONTENT} />
+      <TermsEcho />
+    </>
+  );
 }

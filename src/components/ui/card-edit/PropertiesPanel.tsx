@@ -1390,6 +1390,23 @@ export function PropertiesPanel({
           >
             {triaging ? "Triaging…" : "AI triage"}
           </button>
+          <button
+            type="button"
+            className="ai-btn self-start"
+            onClick={() =>
+              window.dispatchEvent(
+                new CustomEvent("vortex:ask", {
+                  detail: {
+                    question: `write the description for card id ${cardId}`,
+                    style: ["describe"],
+                  },
+                }),
+              )
+            }
+            title="Vortex drafts a description; you sign the contract before it lands"
+          >
+            ask vortex
+          </button>
           {triageMsg && (
             <span
               className="cf-mono"

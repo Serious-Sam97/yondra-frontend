@@ -1,0 +1,87 @@
+/* E-20 · the Leader (the 404): white, silent, endless */
+.vxleader {
+  position: relative;
+  min-height: 90vh;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 18px;
+  overflow: hidden;
+  color: #8a8378;
+  font-family: "Share Tech Mono", monospace;
+}
+.vxleader-plain {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(ellipse at 50% 60%, #ffffff, #f4f1ea 55%, #e9e4d8);
+  animation: vxleader-breathe 9s ease-in-out infinite;
+}
+@keyframes vxleader-breathe {
+  50% {
+    filter: brightness(1.02);
+  }
+}
+.vxleader-him {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+.vxleader-body {
+  display: block;
+  width: 70px;
+  height: 66px;
+  animation: vxleader-shiver 0.12s steps(2) infinite;
+}
+@keyframes vxleader-shiver {
+  50% {
+    transform: translateX(0.8px);
+  }
+}
+.vxleader-say {
+  font-size: 13px;
+  color: #6a645a;
+  letter-spacing: 0.5px;
+}
+.vxleader-404 {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #b0a99c;
+}
+.vxleader-back {
+  padding: 6px 12px;
+  border: 1px solid #c9c2b4;
+  border-radius: 4px;
+  color: #6a645a;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+.vxleader-back:hover {
+  color: #b5533c;
+  border-color: #b5533c;
+}
+.vxleader-word {
+  position: fixed;
+  left: 50%;
+  bottom: 12vh;
+  transform: translateX(-50%);
+  font:
+    22px var(--font-marker),
+    cursive;
+  color: rgba(120, 112, 100, 0.22);
+  letter-spacing: 6px;
+  animation: vxleader-surface 8s ease forwards;
+}
+@keyframes vxleader-surface {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vxleader-body,
+  .vxleader-plain {
+    animation: none;
+  }
+}

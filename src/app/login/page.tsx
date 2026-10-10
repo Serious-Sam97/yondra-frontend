@@ -7,6 +7,8 @@ import YondraIcon from "@/components/icons/yondra.png";
 import { useSystem } from "@/contexts/SystemContext";
 import { login, postAuthRedirectPath } from "@/lib/auth";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
+import GlassVortex from "@/vortex/dark/GlassVortex";
+import { SourceComments } from "@/vortex/mysteries/PageEchoes";
 
 export default function LoginPage() {
   useDocumentTitle("Yondra - Login");
@@ -38,6 +40,8 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-[90vh] flex items-center justify-center px-4">
+      <SourceComments />
+      <GlassVortex />
       <div className="relative z-10 w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
           <Image

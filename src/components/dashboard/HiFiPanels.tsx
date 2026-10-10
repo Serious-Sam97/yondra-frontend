@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import OmniSearch from "@/components/dashboard/OmniSearch";
 import { SvgArt } from "@/components/ui/SvgArt";
+import { YutopiaButton } from "@/components/yutopia/YutopiaButton";
 import type {
   DashActivity,
   DashCard,
@@ -22,6 +23,7 @@ import type {
   ProjectInterface,
 } from "@/interfaces/ProjectInterface";
 import { type ArtKind, barcode, coverArt } from "@/lib/boardArt";
+import { tuneIn, tuneOut, useStation } from "@/vortex/radio/station";
 
 const DAY = 86_400_000;
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -232,10 +234,18 @@ function Tuner({
     const b = meta.get(shown[tuned].id)?.last_activity ?? "";
     if (a > b) tuned = i;
   });
+  // E-11 · past 108 there's a station that doesn't exist: 03.13, DEAD AIR
+  const station = useStation();
+  const deadAir = station.on;
+  useEffect(() => {
+    if (window.location.hash === "#radio") void tuneIn();
+  }, []);
   return (
-    <div className="hf-tuner">
+    <div className={`hf-tuner${deadAir ? " is-deadair" : ""}`} id="radio">
       <div className="in">
-        <span className="lbl">FM · Project band</span>
+        <span className="lbl">
+          {deadAir ? "?? · 03.13" : "FM · Project band"}
+        </span>
         <span className="lbr">Stereo ●</span>
         <div className="band" aria-hidden>
           {FREQS.map((f) => (
@@ -255,13 +265,26 @@ function Tuner({
             <em>{pct(meta.get(p.id))}%</em>
           </Link>
         ))}
-        {n > 0 && (
+        {(n > 0 || deadAir) && (
           <span
             className="needle"
             aria-hidden
-            style={{ left: `calc(${pos(tuned)}% + 3px)` }}
+            style={{
+              left: deadAir
+                ? "calc(100% - 10px)"
+                : `calc(${pos(tuned)}% + 3px)`,
+            }}
           />
         )}
+        {deadAir && <span className="vxo-deadair">DEAD AIR</span>}
+        <button
+          type="button"
+          className="vxo-tune"
+          onClick={() => (deadAir ? tuneOut() : void tuneIn())}
+          title={deadAir ? "back to the project band" : "keep turning the dial"}
+        >
+          {deadAir ? "◂◂ FM" : "▸▸"}
+        </button>
       </div>
     </div>
   );
@@ -316,6 +339,7 @@ export function Receiver({
                 : "warming up…"}
             </div>
           </div>
+          <YutopiaButton />
         </div>
         <Tuner projects={projects} meta={meta} />
         <VfdClock />

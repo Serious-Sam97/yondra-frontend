@@ -1,0 +1,14 @@
+{
+  "name": "yondra-vortex",
+  "version": "0.1.0",
+  "description": "Vortex, in your terminal. He comments on your cards. You asked for this.",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "yondra-vortex": "bin/yondra-vortex.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED"
+}

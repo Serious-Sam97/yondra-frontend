@@ -7,6 +7,7 @@ import type { BoardInterface } from "@/interfaces/BoardInterface";
 import type { SprintInterface } from "@/interfaces/SprintInterface";
 import { ApiError, fetchBoard } from "@/lib/api";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
+import VortexEdition from "@/vortex/outside/VortexEdition";
 
 type Params = { id: string; sprintId: string };
 
@@ -95,6 +96,10 @@ export default function SprintReportPage({
 
   return (
     <div className="min-h-screen px-4 py-6 md:px-8 md:py-10 max-w-6xl mx-auto">
+      <VortexEdition
+        sprint={sprint.name}
+        cards={(board.cards ?? []).filter((c) => c.sprint_id === sprint.id)}
+      />
       <SprintReport
         variant="page"
         boardId={board.id}

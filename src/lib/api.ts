@@ -127,7 +127,23 @@ export async function apiFetch<T = unknown>(
   const token = localStorage.getItem("token");
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(url, { ...options, headers, signal: options.signal });
+  let res: Response;
+  try {
+    res = await fetch(url, { ...options, headers, signal: options.signal });
+  } catch (e) {
+    // the network itself failed — Vortex's worst fear is silence (E-16)
+    if (!(e instanceof DOMException && e.name === "AbortError"))
+      window.dispatchEvent(
+        new CustomEvent("vortex:api-error", { detail: { status: 0, path } }),
+      );
+    throw e;
+  }
+  if (!res.ok && !path.startsWith("/api/mascot"))
+    window.dispatchEvent(
+      new CustomEvent("vortex:api-error", {
+        detail: { status: res.status, path },
+      }),
+    );
 
   // 204 has no body. The cast is the one loose spot of the whole boundary — it is
   // only sound because void-ish endpoints are declared Promise<void> (or `| null`
@@ -1793,16 +1809,24 @@ export async function startCrmChat(
   });
 }
 
-// Sends one turn of the Vortex workspace chat (the mascot assistant). Same contract as
-// the CRM chat — post the whole transcript, get a 202, and the reply streams back — but
-// user-scoped: frames arrive on the caller's own private channel as scope:'vortex-chat'.
-// Optional mounts focus the grounding on specific boards (deep) / projects (wide);
 // Vortex's daily tape horoscope (one cached line per user per day). Throws on
 // 503 (no AI configured) / 502 — the mascot falls back to a local line.
 export async function fetchVortexRemark(): Promise<{ text: string }> {
   return apiFetch(`/api/ai/vortex-remark`, { method: "POST" });
 }
 
+/** His state, sent with every chat turn (fixed whitelists on the server). */
+export interface VortexPersonaState {
+  intensity?: "polite" | "mischief" | "unhinged";
+  tone?: "stressed" | "chill" | "rude" | "sweet" | null;
+  mood?: string | null;
+  relation?: number;
+}
+
+// Sends one turn of the Vortex workspace chat (the mascot assistant). Same contract as
+// the CRM chat — post the whole transcript, get a 202, and the reply streams back — but
+// user-scoped: frames arrive on the caller's own private channel as scope:'vortex-chat'.
+// Optional mounts focus the grounding on specific boards (deep) / projects (wide);
 // a mount the caller lost access to gets a 422 with an eject-it message.
 export async function startVortexChat(
   requestId: string,
@@ -1810,6 +1834,7 @@ export async function startVortexChat(
   mounts: Array<{ type: "project" | "board"; id: number }> = [],
   // whitelisted tone/command keys (mood, /roast, /hype…) — see AiAssistService
   style: string[] = [],
+  persona?: VortexPersonaState,
 ): Promise<{ request_id: string }> {
   return apiFetch(`/api/ai/vortex-chat`, {
     method: "POST",
@@ -1818,8 +1843,27 @@ export async function startVortexChat(
       messages,
       ...(mounts.length > 0 ? { mounts } : {}),
       ...(style.length > 0 ? { style: style.slice(0, 3) } : {}),
+      ...(persona ? { persona } : {}),
     }),
   });
+}
+
+export type MascotRefType = "card" | "board" | "project";
+export interface MascotRef {
+  name: string;
+  board_id?: number;
+  project_id?: number;
+  key?: string | null;
+}
+/** Resolve chat chips ({{card:12}}…) the caller can see; unknown ones map to null. */
+export async function resolveMascotRefs(
+  refs: Array<{ type: MascotRefType; id: number }>,
+): Promise<Record<string, MascotRef | null>> {
+  const res = await apiFetch<{ refs: Record<string, MascotRef | null> }>(
+    `/api/mascot/resolve`,
+    { method: "POST", body: JSON.stringify({ refs }) },
+  );
+  return res.refs;
 }
 
 export interface VortexNoteItem {

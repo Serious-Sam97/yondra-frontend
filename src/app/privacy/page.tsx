@@ -1,6 +1,7 @@
 "use client";
 
 import LegalShell, { type LegalContent } from "@/components/legal/LegalShell";
+import { PrivacyEcho } from "@/vortex/mysteries/PageEchoes";
 
 // Draft privacy policy for Yondra — a project-management + CRM workspace.
 // Bracketed values ([...]) are placeholders the company/attorney must fill in.
@@ -85,6 +86,14 @@ const CONTENT: LegalContent = {
         heading: "Cookies e tecnologias semelhantes",
         blocks: [
           "Utilizamos cookies e armazenamento local estritamente necessários para manter sua sessão autenticada e para o funcionamento básico do Serviço. Não utilizamos cookies de publicidade de terceiros.",
+        ],
+      },
+      {
+        heading: "O assistente Vortex",
+        blocks: [
+          "O Vortex é um assistente opcional; você pode desligá-lo no perfil a qualquer momento. Ligado, ele guarda no servidor um estado próprio (humor, preferências, conquistas, itens, fatos curtos que você contou sobre seu jeito de trabalhar, o diário e as cartas dele) e usa os dados dos seus quadros apenas para comentar e sugerir. Ele nunca altera nada sem a sua confirmação.",
+          "As conversas e alguns textos são processados pelo provedor de IA configurado no Serviço, apenas para gerar a resposta. Microfone, câmera, movimento, localização, e-mail semanal, calendário, Slack, notificações e o compartilhamento de contagens anônimas de uso ficam desligados até você ligar cada um. Microfone e câmera são processados só no seu aparelho; da localização, só uma posição arredondada (cerca de 10 km) é enviada ao serviço de clima open-meteo.com.",
+          "No perfil, \u201cesquecer tudo\u201d apaga de forma definitiva tudo o que o Vortex guarda sobre você (opcionalmente mantendo só as conquistas).",
         ],
       },
       {
@@ -223,6 +232,14 @@ const CONTENT: LegalContent = {
         ],
       },
       {
+        heading: "The Vortex assistant",
+        blocks: [
+          "Vortex is an optional assistant; you can turn it off in your profile at any time. When on, it keeps its own state on the server (mood, preferences, achievements, items, short facts you told it about how you work, its diary and letters) and uses your boards' data only to comment and suggest. It never changes anything without your confirmation.",
+          "Conversations and some texts are processed by the Service's configured AI provider, only to produce the reply. Microphone, camera, motion, location, the weekly email, calendar, Slack, notifications and sharing anonymous usage counts are all off until you turn each one on. Microphone and camera are processed only on your device; for location, only a rounded position (about 10 km) is sent to the open-meteo.com weather service.",
+          "In your profile, \u201cforget everything\u201d permanently deletes everything Vortex keeps about you (optionally keeping only your achievements).",
+        ],
+      },
+      {
         heading: "Data retention",
         blocks: [
           "We retain data for as long as necessary for the purposes described in this Policy or as required by law. When you close your account, we delete or anonymize data within a reasonable period, except where mandatory retention applies.",
@@ -280,5 +297,10 @@ const CONTENT: LegalContent = {
 };
 
 export default function PrivacyPage() {
-  return <LegalShell content={CONTENT} />;
+  return (
+    <>
+      <LegalShell content={CONTENT} />
+      <PrivacyEcho />
+    </>
+  );
 }

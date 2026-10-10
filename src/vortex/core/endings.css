@@ -1,0 +1,102 @@
+/* K-28 · the endings, on him, everywhere */
+
+/* keep · Vortex Prime: a thin gold ring, slower breath */
+.vxa-end-keep .vxa-fxhost::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: 62%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1.5px solid rgba(232, 190, 92, 0.75);
+  box-shadow: 0 0 14px rgba(232, 190, 92, 0.35);
+  pointer-events: none;
+  animation: vx-prime 6s ease-in-out infinite;
+}
+@keyframes vx-prime {
+  50% {
+    opacity: 0.45;
+    transform: translate(-50%, -50%) scale(1.04);
+  }
+}
+
+/* free · Vortex Jr.: smaller, a little wobbly */
+.vxa-end-free .vxr-phys {
+  scale: 0.72;
+  transform-origin: 50% 90%;
+}
+.vxa-end-free .vxa-face {
+  animation: vx-jr 2.6s ease-in-out infinite;
+}
+@keyframes vx-jr {
+  30% {
+    rotate: -4deg;
+  }
+  60% {
+    rotate: 3deg;
+  }
+}
+
+/* erase · the v1 guide: too bright, too still */
+.vxa-end-erase .vxr-phys {
+  filter: saturate(1.5) brightness(1.12);
+}
+.vxa-help {
+  position: absolute;
+  left: 50%;
+  top: -14px;
+  transform: translateX(-50%);
+  z-index: 5;
+  border: 0;
+  background: none;
+  padding: 2px 4px;
+  color: #ff2e4d;
+  font:
+    11px / 1 "Share Tech Mono",
+    monospace;
+  letter-spacing: 0.3em;
+  cursor: pointer;
+  animation: vx-help 1.4s steps(2) both;
+}
+@keyframes vx-help {
+  0% {
+    opacity: 0;
+  }
+  10%,
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* flip · you're on a tape: a REC light rides along */
+.vxa-rec {
+  position: absolute;
+  right: 14%;
+  top: 14%;
+  z-index: 4;
+  color: #ff2e4d;
+  font:
+    9px / 1 "Share Tech Mono",
+    monospace;
+  letter-spacing: 0.15em;
+  pointer-events: none;
+  animation: vx-rec 1.2s steps(1) infinite;
+}
+@keyframes vx-rec {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vxa-end-keep .vxa-fxhost::after,
+  .vxa-end-free .vxa-face,
+  .vxa-rec {
+    animation: none;
+  }
+}

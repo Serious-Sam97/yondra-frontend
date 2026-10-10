@@ -1,0 +1,141 @@
+/* K-02 · "FRAGMENT RECORDED" — a VFD strip that files itself into the drawer */
+.vxk-toast {
+  position: fixed;
+  left: 50%;
+  top: 92px;
+  z-index: 2147482700;
+  display: grid;
+  gap: 4px;
+  width: min(520px, calc(100vw - 32px));
+  padding: 10px 14px 12px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #120c08, #1b120c);
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(207, 227, 226, 0.35);
+  color: #cfe3e2;
+  transform: translateX(-50%);
+  animation: vxk-in 0.5s cubic-bezier(0.2, 1.4, 0.4, 1);
+  pointer-events: none;
+}
+.vxk-toast b {
+  font:
+    16px "VT323",
+    monospace;
+  letter-spacing: 3px;
+  color: #ffb347;
+  text-shadow: 0 0 6px rgba(255, 179, 71, 0.6);
+}
+.vxk-toast span {
+  font:
+    13px / 1.45 "Share Tech Mono",
+    monospace;
+}
+.vxk-toast.is-filing {
+  animation: vxk-file 0.9s cubic-bezier(0.6, 0, 0.8, 0.4) forwards;
+}
+@keyframes vxk-in {
+  from {
+    transform: translate(-50%, -12px);
+    opacity: 0;
+    filter: blur(3px);
+  }
+}
+@keyframes vxk-file {
+  to {
+    transform: translate(-50%, 60vh) scale(0.1) rotate(-20deg);
+    opacity: 0;
+  }
+}
+
+/* K-01 · the fragment file in the drawer */
+.vxk-file {
+  display: grid;
+  gap: 10px;
+}
+.vxk-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font:
+    11px "Share Tech Mono",
+    monospace;
+  letter-spacing: 1.5px;
+  color: #a8916f;
+}
+.vxk-head b {
+  font:
+    22px "VT323",
+    monospace;
+  color: #ffb347;
+}
+.vxk-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+}
+.vxk-card {
+  position: relative;
+  padding: 10px 12px 12px;
+  background: #e9dcb6;
+  color: #2a1f17;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45);
+  transform: rotate(var(--r, 0deg));
+}
+.vxk-card::before {
+  /* the paper clip */
+  content: "";
+  position: absolute;
+  left: 14px;
+  top: -8px;
+  width: 9px;
+  height: 22px;
+  border: 2px solid #8a8378;
+  border-radius: 5px;
+}
+.vxk-card h5 {
+  display: flex;
+  justify-content: space-between;
+  font:
+    10px "Share Tech Mono",
+    monospace;
+  letter-spacing: 2px;
+  color: #7a6447;
+}
+.vxk-card p {
+  margin-top: 6px;
+  font:
+    13px / 1.45 "Share Tech Mono",
+    monospace;
+}
+.vxk-card .where {
+  margin-top: 6px;
+  font:
+    11px var(--font-marker),
+    cursive;
+  color: #b5533c;
+}
+.vxk-card.l5 {
+  background: #cfe3e2;
+}
+.vxk-hint {
+  padding: 8px 10px;
+  border: 1px dashed rgba(255, 179, 71, 0.4);
+  border-radius: 6px;
+  font:
+    12px "Share Tech Mono",
+    monospace;
+  color: #ffb347;
+}
+
+.vxk-share {
+  margin-top: 8px;
+  border: 0;
+  background: none;
+  color: #7a6447;
+  font:
+    10.5px "Share Tech Mono",
+    monospace;
+  text-decoration: underline dotted;
+  cursor: pointer;
+}

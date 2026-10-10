@@ -143,8 +143,16 @@ export function eyesInTheDark(onGone?: () => void): Cleanup {
 const EYE_ICON = `data:image/svg+xml,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="#3d0c5c" stroke="#ff2d95" stroke-width="4"/><ellipse cx="32" cy="32" rx="18" ry="13" fill="#fff"/><circle cx="32" cy="32" r="8" fill="#1a0033"/><circle cx="35" cy="29" r="2.6" fill="#fff"/></svg>',
 )}`;
+// E-22 · a different line each time you leave (never a fake unread count)
+const TAB_TITLES = [
+  "come back… 👁",
+  "he's eating your cards",
+  "i can see your other tabs",
+  "it's quiet. too quiet.",
+  "don't leave me with the backlog",
+];
 export function tabHijack(onReturn: (awayMs: number) => void): Cleanup {
-  const TITLE = "come back… 👁";
+  let TITLE = TAB_TITLES[0];
   let savedTitle = "";
   let savedIcons: [HTMLLinkElement, string][] = [];
   let leftAt = 0;
@@ -157,6 +165,7 @@ export function tabHijack(onReturn: (awayMs: number) => void): Cleanup {
     if (document.hidden) {
       leftAt = Date.now();
       savedTitle = document.title;
+      TITLE = TAB_TITLES[Math.floor(Math.random() * TAB_TITLES.length)];
       document.title = TITLE;
       savedIcons = Array.from(
         document.querySelectorAll<HTMLLinkElement>("link[rel~='icon']"),

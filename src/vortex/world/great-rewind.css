@@ -1,0 +1,72 @@
+/* L-09 · the rewound dimension: the whole app, for one hour */
+html.vxl-rewound body {
+  filter: hue-rotate(-28deg) saturate(0.75) contrast(1.08);
+}
+html.vxl-rewound body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 8000;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.035) 0 1px,
+    transparent 1px 4px
+  );
+  animation: vxl-gr-roll 0.9s linear infinite reverse;
+}
+@keyframes vxl-gr-roll {
+  to {
+    background-position: 0 40px;
+  }
+}
+
+.vxl-gr {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9002;
+  width: min(460px, calc(100vw - 32px));
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: #0d0905;
+  border: 1px solid #6b2a35;
+  color: #ff6a7d;
+  font:
+    12px "Share Tech Mono",
+    ui-monospace,
+    monospace;
+  text-shadow: 0 0 8px rgba(255, 46, 77, 0.6);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+.vxl-gr b {
+  font-weight: 400;
+  letter-spacing: 0.25em;
+}
+.vxl-gr em {
+  font-style: normal;
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  align-self: center;
+  font-size: 18px;
+  color: #ffb547;
+}
+.vxl-gr i {
+  grid-column: 1 / -1;
+  height: 6px;
+  border-radius: 3px;
+  background:
+    linear-gradient(#ff2e4d, #ff2e4d) 0 0 / var(--p, 0%) 100% no-repeat,
+    #2a0f14;
+  transition: background-size 1s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.vxl-rewound body::after {
+    animation: none;
+  }
+}

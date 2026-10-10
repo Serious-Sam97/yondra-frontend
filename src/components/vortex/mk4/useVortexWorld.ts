@@ -8,9 +8,7 @@
 // or sit in a modal (isBusy), everything undoes itself, reduced motion honoured.
 
 import { useCallback, useEffect, useRef } from "react";
-import { tapeConfetti } from "@/components/vortex/vortexEffects";
-import { vxSound } from "@/components/vortex/vortexSound";
-import { radioInterference } from "@/components/vortex/vortexPranks";
+import { drawTarot, fortune, toMorse } from "@/components/vortex/mk4/chat";
 import {
   candle,
   countdownTag,
@@ -28,10 +26,10 @@ import {
   logWhisper,
   onScreen,
   ouija,
+  type Pt,
   pageBreath,
   paperPlane,
   popText,
-  type Pt,
   puddle,
   reflection,
   ribbonCut,
@@ -65,7 +63,9 @@ import {
   unlockCostume,
   updateProgress,
 } from "@/components/vortex/mk4/progress";
-import { drawTarot, fortune, toMorse } from "@/components/vortex/mk4/chat";
+import { tapeConfetti } from "@/components/vortex/vortexEffects";
+import { radioInterference } from "@/components/vortex/vortexPranks";
+import { vxSound } from "@/components/vortex/vortexSound";
 import {
   fetchBoard,
   fetchDashboard,

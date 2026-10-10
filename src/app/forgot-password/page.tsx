@@ -6,8 +6,11 @@ import { useState } from "react";
 import YondraIcon from "@/components/icons/yondra.png";
 import { forgotPassword } from "@/lib/auth";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
+import { useGhostPlaceholder } from "@/vortex/mysteries/PageEchoes";
 
 export default function ForgotPasswordPage() {
+  // K-05 · the placeholder remembers someone (click it three times)
+  const ghost = useGhostPlaceholder("you@example.com");
   useDocumentTitle("Yondra - Forgot password");
   const [email, setEmail] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -102,7 +105,8 @@ export default function ForgotPasswordPage() {
                 <input
                   className="glass-input"
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder={ghost.placeholder}
+                  onClick={ghost.onClick}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   onKeyDown={handleKeyDown}

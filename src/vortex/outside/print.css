@@ -1,0 +1,351 @@
+/* LADO Q · printables: the zine (vxz) and the J-card (vxk) */
+.vxz-wrap,
+.vxk-wrap {
+  min-height: 100vh;
+  padding: 128px 16px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.vxz-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  font:
+    12px ui-monospace,
+    monospace;
+  color: var(--cf-text-dim);
+}
+.vxz-bar button {
+  background: #c2272d;
+  color: #f4efe0;
+  border: 0;
+  font:
+    bold 12px ui-monospace,
+    monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+/* ── the zine: one landscape sheet, 4 × 2 panels ── */
+.vxz-sheet {
+  width: min(100%, 1100px);
+  aspect-ratio: 297 / 210;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  background: #f1ecdc;
+  color: #141414;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  font-family: "Courier New", ui-monospace, monospace;
+  overflow: hidden;
+}
+.vxz-panel {
+  position: relative;
+  padding: 4%;
+  border: 1px dashed rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  font-size: clamp(6px, 0.95vw, 11px);
+  line-height: 1.35;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6em;
+}
+.vxz-panel.is-flip {
+  transform: rotate(180deg);
+}
+.vxz-panel h1 {
+  font:
+    900 3.4em / 0.9 Impact,
+    "Arial Black",
+    sans-serif;
+  letter-spacing: -0.02em;
+  transform: rotate(-3deg);
+}
+.vxz-panel h2 {
+  font:
+    900 1.6em / 1 Impact,
+    "Arial Black",
+    sans-serif;
+  text-transform: uppercase;
+  border-bottom: 3px solid #141414;
+  transform: rotate(-1deg);
+}
+.vxz-panel h3 {
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.vxz-panel ul {
+  padding-left: 1.2em;
+  list-style: "✕ ";
+}
+.vxz-panel[data-page="1"] {
+  background: #141414;
+  color: #f1ecdc;
+  align-items: flex-start;
+}
+.vxz-panel[data-page="1"] h1 {
+  color: #e0434b;
+}
+.vxz-panel[data-page="6"] {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 11px,
+    rgba(0, 0, 0, 0.06) 11px 12px
+  );
+}
+.vxz-kicker {
+  font-size: 0.85em;
+  letter-spacing: 0.2em;
+}
+.vxz-face {
+  width: 70%;
+  align-self: center;
+  filter: contrast(1.4) grayscale(0.4);
+}
+.vxz-face svg {
+  width: 100%;
+  height: auto;
+}
+.vxz-sub {
+  font-style: italic;
+}
+.vxz-date,
+.vxz-small {
+  font-size: 0.8em;
+  opacity: 0.75;
+}
+.vxz-redact {
+  background: #141414;
+  color: #f1ecdc;
+  padding: 0.4em;
+  transform: rotate(1deg);
+}
+.vxz-ad {
+  border: 1px solid #141414;
+  padding: 0.3em;
+  font-size: 0.9em;
+}
+.vxz-coupon {
+  border: 2px dashed #141414;
+  padding: 0.6em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+  transform: rotate(-2deg);
+}
+.vxz-barcode {
+  height: 3em;
+  margin-top: auto;
+  background: repeating-linear-gradient(
+    90deg,
+    #141414 0 2px,
+    transparent 2px 4px,
+    #141414 4px 5px,
+    transparent 5px 8px
+  );
+}
+.vxz-folio {
+  position: absolute;
+  bottom: 3%;
+  right: 5%;
+  font-size: 0.8em;
+}
+
+/* ── the J-card: flap · spine · front, unfolded ── */
+.vxk-card {
+  display: grid;
+  grid-template-columns: 15fr 13fr 65fr;
+  width: min(100%, 720px);
+  aspect-ratio: 93 / 102;
+  background: #efe6cf;
+  color: #1a1a1a;
+  font-family: "Courier New", ui-monospace, monospace;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  outline: 1px solid #1a1a1a;
+}
+.vxk-flap,
+.vxk-spine {
+  border-right: 1px dashed #777;
+  padding: 6px;
+  font-size: 10px;
+}
+.vxk-flap {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+.vxk-spine {
+  background: #c2272d;
+  color: #efe6cf;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font:
+    900 15px Impact,
+    "Arial Black",
+    sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  overflow: hidden;
+}
+.vxk-sig {
+  font:
+    italic 400 13px "Brush Script MT",
+    "Snell Roundhand",
+    cursive;
+  text-transform: none;
+  opacity: 0.85;
+}
+.vxk-front {
+  padding: 4%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.vxk-front header {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 4px solid #1a1a1a;
+  font-size: 11px;
+}
+.vxk-brand {
+  font:
+    900 18px Impact,
+    "Arial Black",
+    sans-serif;
+  letter-spacing: 0.1em;
+}
+.vxk-front h1 {
+  font:
+    900 clamp(18px, 4vw, 32px) / 1 Impact,
+    "Arial Black",
+    sans-serif;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, #e0434b, #f0a830, #2ba7a0);
+  color: #fff;
+  padding: 4px 8px;
+}
+.vxk-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  flex: 1;
+  font-size: clamp(8px, 1.4vw, 11px);
+}
+.vxk-sides ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.vxk-sides li {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px dotted #aaa;
+}
+.vxk-sides li span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vxk-sides li.vxk-side {
+  font-weight: 900;
+  border-bottom: 2px solid #1a1a1a;
+}
+.vxk-front footer {
+  font-size: 9px;
+  opacity: 0.7;
+}
+.vxk-msg {
+  padding: 120px 16px;
+  text-align: center;
+  font:
+    13px ui-monospace,
+    monospace;
+  color: var(--cf-text-dim);
+}
+
+@media (max-width: 640px) {
+  .vxz-sheet {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: none;
+    aspect-ratio: auto;
+  }
+  .vxz-panel {
+    aspect-ratio: 74 / 105;
+    font-size: 10px;
+  }
+  .vxz-panel.is-flip {
+    transform: none;
+  }
+}
+
+/* ── print: only the sheet, edge to edge ── */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 0;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .vxz-sheet,
+  .vxz-sheet *,
+  .vxk-card,
+  .vxk-card * {
+    visibility: visible;
+  }
+  .vxz-sheet {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    aspect-ratio: auto;
+    box-shadow: none;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+  }
+  .vxz-panel {
+    font-size: 10px;
+    aspect-ratio: auto;
+  }
+  .vxz-panel.is-flip {
+    transform: rotate(180deg);
+  }
+  .vxk-card {
+    position: fixed;
+    top: 10mm;
+    left: 10mm;
+    width: 93mm;
+    height: 102mm;
+    box-shadow: none;
+  }
+  .vxk-sides {
+    font-size: 7px;
+  }
+  .vxk-front h1 {
+    font-size: 16px;
+  }
+  .vxz-sheet,
+  .vxz-panel,
+  .vxk-card,
+  .vxk-spine,
+  .vxk-front h1 {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

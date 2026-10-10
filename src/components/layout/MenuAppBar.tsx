@@ -18,6 +18,7 @@ import type { ProjectBoard } from "@/interfaces/ProjectInterface";
 import { fetchDashboard, fetchProject, searchWorkspace } from "@/lib/api";
 import { fetchBoards, fetchUser, logout } from "@/lib/auth";
 import { pollWhileVisible } from "@/lib/poll";
+import { HiddenLine } from "@/vortex/mysteries/PageEchoes";
 import YondraIcon from "../icons/yondra.png";
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -658,7 +659,10 @@ export default function MenuAppBar() {
       style={{ background: "#16150f" }}
     >
       <div className="ydc-rack">
-        <span className="ydc-ear l" aria-hidden />
+        <span className="ydc-ear l" aria-hidden>
+          {/* K-07 · carved where nobody looks */}
+          <HiddenLine text="come back to the station. i kept your chair." />
+        </span>
         <span className="ydc-ear r">
           <button
             type="button"

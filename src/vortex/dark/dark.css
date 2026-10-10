@@ -1,0 +1,576 @@
+/* biome-ignore-all lint/complexity/noImportantStyles: dark overlays must win over the app for their few seconds */
+/* ───────────────────────────────────────────────────────────────────────────
+   H · the dark side. Atmosphere, never strobes (≤3 flashes/s), reduced
+   motion respected. Rust for danger, cold cyan only for side C.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* H-03 · the pencil in the layout */
+.vxh-pencil {
+  position: fixed;
+  z-index: 46;
+  width: 74px;
+  height: 10px;
+  transform: rotate(-8deg);
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.45));
+  transition: opacity 0.1s;
+}
+.vxh-pencil svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.vxh-pencil.is-gone {
+  opacity: 0;
+}
+
+/* H-03 · the shadow of a hand made of tape */
+.vxh-handshadow {
+  position: fixed;
+  left: -40vw;
+  bottom: -6vh;
+  z-index: 2;
+  width: 40vw;
+  height: 40vh;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at 30% 60%,
+    rgba(10, 4, 2, 0.35),
+    transparent 60%
+  );
+  filter: blur(14px);
+  animation: vxh-shadowpass 4.2s ease-in-out forwards;
+}
+@keyframes vxh-shadowpass {
+  to {
+    transform: translateX(170vw) rotate(-6deg);
+  }
+}
+
+/* H-03 · a card title rewinding (overlay copy) */
+.vxh-rewinding {
+  position: fixed;
+  z-index: 46;
+  pointer-events: none;
+  text-shadow:
+    -1px 0 rgba(181, 83, 60, 0.6),
+    1px 0 rgba(207, 227, 226, 0.6);
+}
+
+/* H-04 · THE HAND */
+.vxh-hand {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 2147482800;
+  width: 260px;
+  height: 140px;
+  pointer-events: none;
+  filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.6));
+  transition: opacity 0.6s ease;
+}
+.vxh-hand svg {
+  width: 100%;
+  height: 100%;
+}
+.vxh-hand.is-leaving {
+  opacity: 0;
+}
+.vxh-hand.is-grabbing svg {
+  animation: vxh-grab 0.8s ease-in forwards;
+}
+@keyframes vxh-grab {
+  30% {
+    transform: scale(1.1, 0.8);
+  }
+  100% {
+    transform: translateX(-120%) scale(0.9);
+    opacity: 0;
+  }
+}
+
+/* H-06 · the melt */
+html.vxh-melting body {
+  filter: url(#vxh-melt) sepia(0.45) saturate(0.8);
+}
+html.vxh-sepia body {
+  filter: sepia(0.6);
+  transition: filter 0.5s ease;
+}
+
+/* H-07 · the fake crash */
+.vxh-crash {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: grid;
+  place-items: center;
+  background: #0a0605;
+  cursor: pointer;
+  animation: vxh-crash-in 0.15s steps(2);
+}
+.vxh-crash.is-out {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+@keyframes vxh-crash-in {
+  from {
+    opacity: 0;
+  }
+}
+.vxh-crash .box {
+  display: grid;
+  gap: 8px;
+  padding: 26px 34px;
+  border-radius: 8px;
+  background: #120c08;
+  box-shadow: inset 0 0 0 2px rgba(255, 179, 71, 0.25);
+  font:
+    26px "VT323",
+    monospace;
+  letter-spacing: 2px;
+  color: #ffb347;
+  text-shadow: 0 0 8px rgba(255, 179, 71, 0.6);
+}
+.vxh-crash .t {
+  font-size: 32px;
+}
+.vxh-crash .k {
+  font:
+    12px "Share Tech Mono",
+    monospace;
+  color: #a8916f;
+  text-shadow: none;
+}
+.vxh-crash .bar {
+  display: inline-block;
+  width: 180px;
+  height: 14px;
+  vertical-align: -1px;
+  border: 1px solid #ffb347;
+}
+.vxh-crash .bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: #ffb347;
+  animation: vxh-fill 3.6s steps(12) forwards;
+}
+@keyframes vxh-fill {
+  to {
+    width: 100%;
+  }
+}
+
+/* H-08 · a whisper surfacing on a card */
+.vxh-whisper {
+  position: fixed;
+  z-index: 46;
+  pointer-events: none;
+  font:
+    15px var(--font-marker),
+    cursive;
+  color: rgba(181, 83, 60, 0.75);
+  animation: vxh-whisper 2.6s ease forwards;
+}
+@keyframes vxh-whisper {
+  0% {
+    opacity: 0;
+    filter: blur(3px);
+  }
+  30% {
+    opacity: 1;
+    filter: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* H-09 · the dead hour */
+html.vxh-deadhour body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147482400;
+  pointer-events: none;
+  background:
+    repeating-radial-gradient(
+      circle at 30% 40%,
+      rgba(255, 255, 255, 0.025) 0 1px,
+      transparent 1px 3px
+    ), rgba(6, 3, 10, 0.32);
+  mix-blend-mode: multiply;
+  animation: vxh-grain 0.5s steps(2) infinite;
+}
+@keyframes vxh-grain {
+  50% {
+    background-position:
+      2px 1px,
+      0 0;
+  }
+}
+
+/* H-18 · while you weren't looking */
+.mt-jx.vxh-wrongcolor {
+  filter: hue-rotate(160deg) saturate(1.4);
+}
+.vxh-mirrored {
+  display: inline-block;
+  transform: scaleX(-1);
+}
+.vxh-extra {
+  z-index: 45;
+  opacity: 0.55;
+  pointer-events: none;
+  filter: grayscale(0.6);
+}
+
+/* H-19 · eyes in the walls */
+.vxh-walleye {
+  position: fixed;
+  z-index: 46;
+  width: 12px;
+  height: 8px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 50%,
+    #120000 0 26%,
+    #f3e4bd 30% 100%
+  );
+  animation: vxh-open 0.6s ease-out;
+  transition: transform 0.18s ease;
+}
+.vxh-walleye.is-shut {
+  transform: scaleY(0.05);
+}
+@keyframes vxh-open {
+  from {
+    transform: scaleY(0.05);
+  }
+}
+
+/* H-20 · the app breathes (vignette only) */
+#vxh-breath {
+  position: fixed;
+  inset: 0;
+  z-index: 2147482300;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 55%,
+    rgba(8, 2, 4, calc(0.35 * var(--k, 0.5))) 100%
+  );
+  animation: vxh-breathe 6s ease-in-out infinite;
+}
+@keyframes vxh-breathe {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* H-21 · print-through from side c (cold cyan, the only cyan) */
+.vxh-printthrough {
+  position: fixed;
+  z-index: 46;
+  pointer-events: none;
+  font:
+    13px "VT323",
+    monospace;
+  letter-spacing: 1px;
+  color: rgba(120, 200, 200, 0.55);
+  filter: blur(0.4px);
+  animation: vxh-whisper 6s ease forwards;
+}
+
+/* H-23 · the night of the rewind */
+html.vxh-halloween [data-vx-rack] .mt-rack-t::after {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 12px;
+  margin-left: 6px;
+  vertical-align: -1px;
+  border-radius: 45%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    #3f2410 0 22%,
+    #d9822b 26% 100%
+  );
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25);
+}
+
+/* H-24 · the overwritten */
+.vxh-overwritten {
+  position: fixed;
+  z-index: 46;
+  width: 80px;
+  height: 60px;
+  pointer-events: none;
+  opacity: 0.45;
+  filter: grayscale(1) blur(0.3px);
+  animation: vxh-loop 1.6s ease-in-out infinite;
+}
+.vxh-overwritten .who {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #8a8378;
+}
+.vxh-overwritten .card {
+  position: absolute;
+  left: 18px;
+  top: 14px;
+  width: 54px;
+  height: 34px;
+  border-radius: 3px;
+  background: #cfc8b8;
+}
+@keyframes vxh-loop {
+  0%,
+  100% {
+    transform: translateX(-30px);
+  }
+  50% {
+    transform: translateX(30px);
+  }
+}
+
+/* H-15 · the vigil in his corner while he's dead */
+.vxh-vigil {
+  position: fixed;
+  left: 40px;
+  bottom: 60px;
+  z-index: 45;
+  width: 16px;
+  height: 40px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #f6efdc, #d6c8a6);
+  pointer-events: none;
+}
+.vxh-vigil::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: -16px;
+  width: 10px;
+  height: 15px;
+  border-radius: 50% 50% 45% 45%;
+  background: radial-gradient(circle at 50% 70%, #fff3c4, #ffb347 55%, #b5533c);
+  box-shadow: 0 0 22px rgba(255, 179, 71, 0.8);
+  animation: vxh-flame 0.2s ease-in-out infinite alternate;
+}
+.vxh-vigil::after {
+  content: "the tape was pulled. back tomorrow.";
+  position: absolute;
+  left: 24px;
+  top: 6px;
+  width: 210px;
+  font:
+    11px "Share Tech Mono",
+    monospace;
+  color: #a8916f;
+}
+@keyframes vxh-flame {
+  to {
+    transform: scale(0.92, 1.08) skewX(4deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vxh-handshadow,
+  .vxh-overwritten,
+  #vxh-breath,
+  html.vxh-deadhour body::before {
+    animation: none !important;
+  }
+  .vxh-hand.is-reduced {
+    transition: none;
+  }
+}
+
+/* H-17 · the metronome, summoned */
+.vxh-metronome {
+  position: fixed;
+  left: 50%;
+  top: 14vh;
+  z-index: 2147482600;
+  width: 120px;
+  height: 260px;
+  margin-left: -60px;
+  pointer-events: none;
+  background: linear-gradient(180deg, #3a2c20, #1b140f);
+  clip-path: polygon(30% 0, 70% 0, 100% 100%, 0 100%);
+  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.6));
+  animation: vxh-rise 0.6s cubic-bezier(0.2, 1.3, 0.4, 1);
+}
+.vxh-metronome .arm {
+  position: absolute;
+  left: 50%;
+  bottom: 30px;
+  width: 4px;
+  height: 190px;
+  margin-left: -2px;
+  background: #c8962e;
+  transform-origin: 50% 100%;
+  animation: vxh-tick 1.04s ease-in-out infinite alternate;
+}
+.vxh-metronome .face {
+  position: absolute;
+  left: 50%;
+  top: 40px;
+  width: 30px;
+  height: 30px;
+  margin-left: -15px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    #f3e4bd 0 50%,
+    #b5533c 52% 58%,
+    #f3e4bd 60%
+  );
+}
+@keyframes vxh-tick {
+  from {
+    transform: rotate(-24deg);
+  }
+  to {
+    transform: rotate(24deg);
+  }
+}
+@keyframes vxh-rise {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+}
+
+/* H-17 · the archivist lands on your screen */
+.vxh-moth {
+  position: fixed;
+  left: 50%;
+  top: 30vh;
+  z-index: 2147482600;
+  width: 220px;
+  height: 120px;
+  margin-left: -110px;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 50%, #3b2a12 0 7%, transparent 8%),
+    radial-gradient(ellipse at 28% 45%, #cfc4a8 0 30%, transparent 31%),
+    radial-gradient(ellipse at 72% 45%, #cfc4a8 0 30%, transparent 31%),
+    radial-gradient(ellipse at 34% 70%, #b9ab8e 0 20%, transparent 21%),
+    radial-gradient(ellipse at 66% 70%, #b9ab8e 0 20%, transparent 21%);
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.5));
+  animation:
+    vxh-flutter 0.12s steps(2) infinite,
+    vxh-rise 0.5s ease-out;
+}
+@keyframes vxh-flutter {
+  50% {
+    transform: scaleX(0.92);
+  }
+}
+
+/* H-25 · nightmare: he trembles in his sleep */
+.vxr-nightmare .vxa-body {
+  animation: vxr-shiver 0.09s linear infinite !important;
+}
+
+/* H-28 · behind glass on the login page */
+.vxh-glass {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 5;
+  width: 110px;
+  height: 120px;
+  border-radius: 10px;
+  background:
+    linear-gradient(
+      115deg,
+      transparent 30%,
+      rgba(255, 255, 255, 0.12) 42%,
+      transparent 52%
+    ),
+    radial-gradient(
+      circle at 50% 40%,
+      rgba(58, 44, 32, 0.6),
+      rgba(23, 18, 14, 0.85)
+    );
+  box-shadow:
+    inset 0 0 0 2px rgba(233, 225, 201, 0.25),
+    0 10px 24px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+.vxh-glass-him {
+  display: block;
+  width: 86px;
+  height: 80px;
+  margin: 8px auto 0;
+}
+.vxh-glass-tag {
+  display: block;
+  text-align: center;
+  font:
+    8.5px "Share Tech Mono",
+    monospace;
+  letter-spacing: 1px;
+  color: #a8916f;
+}
+.vxh-glass.is-knocking .vxh-glass-him {
+  animation: vxh-knock 0.12s steps(2) 4;
+}
+@keyframes vxh-knock {
+  50% {
+    transform: translateY(-2px) scale(1.04);
+  }
+}
+.vxh-glass.is-cracked {
+  background:
+    linear-gradient(
+      35deg,
+      transparent 48%,
+      rgba(255, 255, 255, 0.5) 49%,
+      transparent 50%
+    ),
+    linear-gradient(
+      -20deg,
+      transparent 58%,
+      rgba(255, 255, 255, 0.4) 59%,
+      transparent 60%
+    ),
+    linear-gradient(
+      80deg,
+      transparent 38%,
+      rgba(255, 255, 255, 0.35) 39%,
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 50% 40%,
+      rgba(58, 44, 32, 0.6),
+      rgba(23, 18, 14, 0.9)
+    );
+}
+.vxh-glass.is-cracked .vxh-glass-tag {
+  color: #ff6a4a;
+}
+.vxh-glass-behind {
+  position: absolute;
+  left: 30%;
+  top: 4px;
+  width: 40%;
+  height: 90%;
+  border-radius: 40% 40% 10% 10%;
+  background: rgba(207, 227, 226, 0.25);
+  filter: blur(1px);
+}
+@media (max-width: 639px) {
+  .vxh-glass {
+    display: none;
+  }
+}

@@ -1,0 +1,1291 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   Vortex MK-V · A · the answering machine (a walnut microcassette deck).
+   Palette: walnut #3a2c20→#2c2219, cream #e9e1c9/#f4eddc, amber VFD #ffb347,
+   rust #b5533c, olive #6f8a4a. No neon, no LCD green.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.vxm {
+  --wal-1: #4a3726;
+  --wal-2: #2c2219;
+  --cream: #efe6cc;
+  --cream-2: #f6efdc;
+  --ink: #2a1f17;
+  --amber: #ffb347;
+  --amber-dim: rgba(255, 179, 71, 0.13);
+  --rust: #b5533c;
+  --olive: #6f8a4a;
+  --thermal: #f3e4bd;
+  --thermal-ink: #3b2a12;
+  position: fixed;
+  z-index: 2147482000;
+  left: var(--vxm-left, 16px);
+  bottom: 16px;
+  width: 384px;
+  max-height: min(640px, calc(100vh - 32px));
+  display: flex;
+  pointer-events: auto;
+  transform-origin: var(--vxm-ox, 0) var(--vxm-oy, 100%);
+  animation: vxm-spit 0.42s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  filter: drop-shadow(0 18px 30px rgba(10, 6, 3, 0.55))
+    drop-shadow(0 2px 3px rgba(10, 6, 3, 0.5));
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+.vxm.is-closing {
+  animation: vxm-swallow 0.24s cubic-bezier(0.6, 0, 0.9, 0.4) both;
+}
+@keyframes vxm-spit {
+  0% {
+    transform: scale(0.04) rotate(-24deg);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.05) rotate(2deg);
+    opacity: 1;
+  }
+  78% {
+    transform: scale(0.98) rotate(-0.6deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+@keyframes vxm-swallow {
+  to {
+    transform: scale(0.04) rotate(18deg);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vxm,
+  .vxm.is-closing {
+    animation-duration: 0.01ms;
+  }
+}
+
+/* ── the walnut case ── */
+.vxm-case {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 12px 10px;
+  border-radius: 16px;
+  background:
+    repeating-linear-gradient(
+      97deg,
+      rgba(0, 0, 0, 0) 0 7px,
+      rgba(0, 0, 0, 0.07) 7px 8px,
+      rgba(255, 255, 255, 0.025) 8px 11px
+    ),
+    radial-gradient(
+      120% 60% at 30% 0%,
+      rgba(255, 210, 160, 0.12),
+      transparent 60%
+    ), linear-gradient(180deg, var(--wal-1), var(--wal-2));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 180, 0.22),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.45),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.vxm-screw {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #d8cdb4, #7c6c55 60%, #3c3126);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+}
+.vxm-screw::after {
+  content: "";
+  position: absolute;
+  inset: 4px 1px;
+  background: rgba(40, 30, 22, 0.75);
+  transform: rotate(35deg);
+}
+.vxm-screw.tl {
+  top: 5px;
+  left: 5px;
+}
+.vxm-screw.tr {
+  top: 5px;
+  right: 5px;
+}
+.vxm-screw.bl {
+  bottom: 5px;
+  left: 5px;
+}
+.vxm-screw.br {
+  bottom: 5px;
+  right: 5px;
+}
+
+/* ── top: cassette window, counter, eject ── */
+.vxm-top {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+.vxm-window {
+  position: relative;
+  flex: 1;
+  height: 64px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.08),
+      rgba(255, 255, 255, 0) 40%
+    ), linear-gradient(180deg, #1b1411, #0d0907);
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.85),
+    0 1px 0 rgba(255, 220, 180, 0.12);
+  overflow: hidden;
+}
+.vxm-window::after {
+  /* glass glare */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.07) 42%,
+    transparent 52%
+  );
+  pointer-events: none;
+}
+.vxm-reel {
+  width: 46px;
+  height: 46px;
+  z-index: 1;
+}
+.vxm-reel .pack {
+  fill: #4a2f1c;
+  stroke: #2a190e;
+  stroke-width: 1;
+  transition: r 0.6s ease;
+}
+.vxm-reel .hubring {
+  fill: #e7dcc1;
+}
+.vxm-reel .tooth {
+  fill: #b9ab8e;
+}
+.vxm-reel .axle {
+  fill: #1c1410;
+}
+.vxm-reel .hub {
+  transform-origin: 0 0;
+}
+.vxm-window.is-spinning .vxm-reel .hub {
+  animation: vxm-spin 2.4s linear infinite;
+}
+.vxm-window.is-fast .vxm-reel .hub {
+  animation-duration: 0.7s;
+}
+.vxm-window.is-spinning .vxm-reel--r .hub {
+  animation-direction: normal;
+}
+@keyframes vxm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.vxm-tapepath {
+  position: absolute;
+  left: 40px;
+  right: 40px;
+  bottom: 14px;
+  height: 3px;
+  background: #3f2817;
+  border-radius: 2px;
+}
+.vxm-label {
+  position: absolute;
+  left: 50%;
+  top: 7px;
+  transform: translateX(-50%) rotate(-1.5deg);
+  padding: 1px 8px 2px;
+  background: var(--cream);
+  color: #3a2a1d;
+  font-family: var(--font-marker), "Marker Felt", cursive;
+  font-size: 11px;
+  border-radius: 2px;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.vxm-counter {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: #0f0b08;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+.vxm-counter span {
+  width: 15px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  font-family: "VT323", monospace;
+  font-size: 22px;
+  color: var(--cream-2);
+  background: linear-gradient(
+    180deg,
+    #2a221c,
+    #15100c 48%,
+    #241c16 52%,
+    #15100c
+  );
+  border-radius: 2px;
+}
+.vxm-eject {
+  width: 34px;
+  border: none;
+  border-radius: 7px;
+  background: linear-gradient(180deg, var(--cream-2), #d8ccad);
+  color: #4a3a2a;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow:
+    0 2px 0 #8d7d61,
+    inset 0 1px 0 #fff;
+}
+.vxm-eject:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 #8d7d61;
+}
+.vxm-eject:focus-visible,
+.vxm .key:focus-visible,
+.vxm-dial .pos:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+/* ── VFD + VU ── */
+.vxm-vfdrow {
+  display: flex;
+  gap: 8px;
+  margin-top: 9px;
+}
+.vxm-vfd {
+  position: relative;
+  flex: 1;
+  height: 30px;
+  border-radius: 6px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  background: linear-gradient(180deg, #120c08, #1b120c);
+  box-shadow: inset 0 1px 5px rgba(0, 0, 0, 0.9);
+  font-family: "VT323", monospace;
+  font-size: 19px;
+  letter-spacing: 1.5px;
+}
+.vxm-vfd .ghost {
+  position: absolute;
+  left: 10px;
+  color: var(--amber-dim);
+  white-space: nowrap;
+}
+.vxm-vfd .txt {
+  position: relative;
+  color: var(--amber);
+  text-shadow: 0 0 6px rgba(255, 179, 71, 0.65);
+  white-space: nowrap;
+}
+.vxm.is-serious .vxm-vfd .txt {
+  color: #ffd59a;
+}
+.vxm-vu {
+  display: flex;
+  gap: 4px;
+}
+.vxm-vu .meter {
+  position: relative;
+  width: 44px;
+  height: 30px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: radial-gradient(120% 100% at 50% 100%, #f9efd2, #e3d4ad);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.vxm-vu .meter::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 7px;
+  height: 14px;
+  border-top: 1px solid rgba(60, 40, 20, 0.45);
+  border-radius: 50% 50% 0 0;
+  background: linear-gradient(
+    90deg,
+    transparent 70%,
+    rgba(181, 83, 60, 0.35) 70%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) top / 100% 3px no-repeat;
+}
+.vxm-vu i {
+  position: absolute;
+  left: 50%;
+  bottom: -3px;
+  width: 1.5px;
+  height: 27px;
+  margin-left: -0.75px;
+  background: #2b1d12;
+  transform-origin: 50% 100%;
+  transition: transform 0.12s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.vxm-vu b {
+  position: absolute;
+  left: 4px;
+  bottom: 1px;
+  font:
+    700 7px / 1 "Share Tech Mono",
+    monospace;
+  color: #7a6447;
+}
+
+/* ── mounts ── */
+.vxm-mounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+  align-items: center;
+}
+.vxm-cart {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: none;
+  background: linear-gradient(180deg, #2b211a, #1d1611);
+  color: var(--cream);
+  font:
+    11px / 1.2 "Share Tech Mono",
+    monospace;
+  letter-spacing: 0.4px;
+  box-shadow: inset 0 0 0 1px rgba(255, 220, 180, 0.12);
+}
+.vxm-cart .nm {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 150px;
+}
+.vxm-cart button {
+  background: none;
+  border: none;
+  color: #c9b896;
+  cursor: pointer;
+  padding: 0 0 0 2px;
+}
+.vxm-cart.is-ghost {
+  cursor: pointer;
+  background: transparent;
+  color: #d8c7a3;
+  box-shadow: inset 0 0 0 1px rgba(232, 214, 176, 0.3);
+  border-style: dashed;
+}
+.vxm-cart.is-ghost:hover {
+  color: var(--amber);
+}
+.vxm-scope {
+  margin-left: auto;
+  font:
+    10px "Share Tech Mono",
+    monospace;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #a8916f;
+}
+.vxm-picker {
+  margin-top: 6px;
+  padding: 6px;
+  border-radius: 7px;
+  background: #1a130e;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+.vxm-picker-q {
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 4px;
+  border: none;
+  background: var(--cream-2);
+  color: var(--ink);
+  font:
+    12px "Share Tech Mono",
+    monospace;
+}
+.vxm-picker-list {
+  max-height: 140px;
+  overflow: auto;
+  margin-top: 5px;
+  display: grid;
+  gap: 2px;
+}
+.vxm-picker-list button {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--cream);
+  font:
+    12px "Share Tech Mono",
+    monospace;
+  text-align: left;
+  cursor: pointer;
+}
+.vxm-picker-list button:hover {
+  background: rgba(255, 179, 71, 0.1);
+}
+.vxm-picker-list button.is-on {
+  color: var(--amber);
+}
+.vxm-picker-list .nm {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vxm-picker-list .st {
+  font-size: 10px;
+  opacity: 0.7;
+  text-transform: uppercase;
+}
+.vxm-picker-list .empty {
+  color: #a8916f;
+  font:
+    12px "Share Tech Mono",
+    monospace;
+  padding: 4px;
+}
+
+/* ── the paper tray ── */
+.vxm-tray {
+  flex: 1;
+  min-height: 170px;
+  margin-top: 9px;
+  padding: 12px 10px 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-radius: 8px;
+  background:
+    radial-gradient(
+      140% 90% at 50% 0%,
+      rgba(255, 190, 120, 0.06),
+      transparent 60%
+    ), linear-gradient(180deg, #1c1510, #140f0b);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.85);
+  scrollbar-width: thin;
+  scrollbar-color: #5a4430 transparent;
+}
+
+/* his strips: amber thermal paper with torn edges */
+.vxm-strip {
+  --edge: 5px;
+  position: relative;
+  align-self: flex-start;
+  max-width: 92%;
+  padding: 8px 12px 10px;
+  background: var(--thermal);
+  color: var(--thermal-ink);
+  font-family: "VT323", monospace;
+  font-size: 18px;
+  line-height: 1.12;
+  letter-spacing: 0.2px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  -webkit-mask:
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg)
+    50% / 8px 100%,
+    linear-gradient(#000 0 0) top / 100% calc(100% - var(--edge)) no-repeat;
+  -webkit-mask-composite: source-over;
+  mask:
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg)
+    bottom / 8px var(--edge) repeat-x,
+    linear-gradient(#000 0 0) top / 100% calc(100% - var(--edge) + 1px)
+    no-repeat;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+  transform: rotate(-0.4deg);
+  animation: vxm-print 0.5s steps(8, end) both;
+  text-shadow: 0.3px 0 0 rgba(59, 42, 18, 0.35);
+}
+.vxm-strip:nth-child(even) {
+  transform: rotate(0.35deg);
+}
+@keyframes vxm-print {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+.vxm-strip.is-instant {
+  animation: vxm-slam 0.22s cubic-bezier(0.3, 1.8, 0.5, 1) both;
+}
+@keyframes vxm-slam {
+  from {
+    transform: scale(1.12);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) rotate(-0.4deg);
+    opacity: 1;
+  }
+}
+.vxm-strip-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+  font-family: "Share Tech Mono", monospace;
+  font-size: 9.5px;
+  letter-spacing: 1.6px;
+  color: rgba(59, 42, 18, 0.85);
+}
+.vxm-strip-head .stamp {
+  margin-left: auto;
+  padding: 0 4px;
+  border: 1px solid rgba(181, 83, 60, 0.6);
+  color: rgba(181, 83, 60, 0.85);
+  font-size: 8.5px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  transform: rotate(-3deg);
+}
+.vxm-strip.has-glitch {
+  animation:
+    vxm-print 0.5s steps(8, end) both,
+    vxm-jerk 0.3s 0.6s steps(2) 2;
+}
+@keyframes vxm-jerk {
+  50% {
+    translate: 0 -2px;
+  }
+}
+.vxm-glitch {
+  display: inline-block;
+  padding: 0 2px;
+  color: var(--rust);
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(181, 83, 60, 0.12) 0 1px,
+    transparent 1px 3px
+  );
+  animation: vxm-glitch 1.4s steps(3) infinite;
+}
+@keyframes vxm-glitch {
+  0%,
+  70% {
+    transform: none;
+    filter: none;
+  }
+  75% {
+    transform: translateX(1px) skewX(-8deg);
+  }
+  85% {
+    transform: translateX(-1px);
+    filter: blur(0.4px);
+  }
+}
+.vxm-strip.is-hint {
+  opacity: 0.92;
+}
+.vxm-strip.is-sys {
+  background: #ecdcb3;
+}
+.vxm-strip.is-live {
+  animation: none;
+}
+.vxm-strip.is-serious {
+  background: var(--cream-2);
+  color: #2a1f17;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  max-width: 96%;
+  transform: none;
+  -webkit-mask: none;
+  mask: none;
+  border-radius: 3px;
+  box-shadow:
+    0 0 0 1px rgba(255, 179, 71, 0.35),
+    0 0 22px rgba(255, 179, 71, 0.12);
+}
+.vxm-strip.is-other {
+  align-self: center;
+  background: #cfe3e2;
+  color: #12302f;
+  letter-spacing: 2px;
+  transform: rotate(0.8deg);
+}
+.vxm-strip.is-other.is-no {
+  align-self: flex-start;
+  background: var(--thermal);
+  color: var(--thermal-ink);
+  letter-spacing: 0.2px;
+}
+.vxm-strip.is-other.is-child {
+  font-style: italic;
+}
+.vxm-strip.is-rec {
+  background: #efdcae;
+}
+.vxm-strip.is-rec .vxm-strip-head {
+  color: var(--rust);
+}
+.vxm-strip.is-from-radio {
+  background: #e8dcc0;
+  font-style: italic;
+}
+.vxm-strip.is-from-static {
+  background: #d9d2c0;
+  color: #5b5244;
+  letter-spacing: 1.5px;
+}
+.vxm-strip.is-cheap {
+  background: #f6ead0;
+}
+.vxm-strip.is-faded {
+  background: #f2e9d6;
+}
+.vxm-faded-note {
+  font-family: "Share Tech Mono", monospace;
+  font-size: 11px;
+  color: rgba(59, 42, 18, 0.35);
+}
+.vxm-fadetext span {
+  transition:
+    opacity 0.9s ease var(--d),
+    filter 0.9s ease var(--d);
+}
+.vxm-fadetext.is-fading span {
+  opacity: 0;
+  filter: blur(1px);
+}
+.vxm-dots {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px 0;
+}
+.vxm-dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--thermal-ink);
+  animation: vxm-dot 1s infinite;
+}
+.vxm-dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.vxm-dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes vxm-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+/* your strips: typed labels with tape */
+.vxm-label-msg {
+  position: relative;
+  align-self: flex-end;
+  max-width: 86%;
+  padding: 7px 11px;
+  background: var(--cream-2);
+  color: #2b2219;
+  font-family: "Share Tech Mono", monospace;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  transform: rotate(0.6deg);
+  animation: vxm-stick 0.25s cubic-bezier(0.2, 1.4, 0.5, 1) both;
+}
+.vxm-label-msg:nth-child(4n) {
+  transform: rotate(-0.5deg);
+}
+@keyframes vxm-stick {
+  from {
+    transform: translateY(6px) rotate(3deg);
+    opacity: 0;
+  }
+}
+.vxm-label-msg .tape {
+  position: absolute;
+  top: -5px;
+  width: 22px;
+  height: 9px;
+  background: rgba(240, 225, 180, 0.55);
+  box-shadow: 0 0 0 0.5px rgba(120, 100, 60, 0.25);
+}
+.vxm-label-msg .tape.tl {
+  left: -6px;
+  transform: rotate(-35deg);
+}
+.vxm-label-msg .tape.tr {
+  right: -6px;
+  transform: rotate(35deg);
+}
+
+.vxm-silence {
+  align-self: center;
+  font:
+    12px "Share Tech Mono",
+    monospace;
+  color: #a8916f;
+  letter-spacing: 0.5px;
+}
+.vxm-silence span {
+  letter-spacing: 4px;
+  color: var(--amber);
+  margin-right: 4px;
+}
+.vxm-error {
+  align-self: center;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: rgba(181, 83, 60, 0.18);
+  color: #f0b39f;
+  font:
+    12px "Share Tech Mono",
+    monospace;
+}
+
+/* chips */
+.vxm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  margin: 0 2px;
+  padding: 0 6px;
+  border: 1px solid rgba(59, 42, 18, 0.45);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.35);
+  color: var(--thermal-ink);
+  font:
+    13px / 1.5 "Share Tech Mono",
+    monospace;
+  vertical-align: 1px;
+  cursor: pointer;
+}
+.vxm-chip b {
+  font-weight: 700;
+  color: var(--rust);
+}
+.vxm-chip .nm {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+}
+.vxm-chip:hover {
+  background: rgba(255, 179, 71, 0.35);
+}
+.vxm-chip.is-gone {
+  text-decoration: line-through;
+  opacity: 0.55;
+  cursor: default;
+}
+.vxm-chip.is-loading {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* voice tape */
+.vxm-tape {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 6px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: #2a1f17;
+  color: var(--cream);
+}
+.vxm-tape-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: var(--rust);
+  color: #fff;
+  font-size: 10px;
+  cursor: pointer;
+}
+.vxm-tape-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.vxm-tape-wave {
+  flex: 1;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.vxm-tape-wave i {
+  flex: 1;
+  background: #6d5a45;
+  border-radius: 1px;
+  min-height: 2px;
+}
+.vxm-tape-wave i.on {
+  background: var(--amber);
+}
+.vxm-tape.is-playing .vxm-tape-wave i {
+  animation: vxm-bar 0.5s ease-in-out infinite alternate;
+}
+@keyframes vxm-bar {
+  to {
+    transform: scaleY(0.55);
+  }
+}
+.vxm-tape-len {
+  font:
+    11px "Share Tech Mono",
+    monospace;
+  color: #c9b896;
+}
+.vxm-transcript {
+  font-size: 15px;
+  opacity: 0.85;
+}
+
+/* the contract (G-01) */
+.vxm-contract {
+  position: relative;
+  align-self: flex-start;
+  width: 92%;
+  padding: 10px 12px 11px;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 17px,
+      rgba(90, 120, 160, 0.12) 17px 18px
+    ), #f7f0de;
+  color: #2a2016;
+  font-family: "Share Tech Mono", monospace;
+  font-size: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  transform: rotate(-0.8deg);
+  animation: vxm-stick 0.3s cubic-bezier(0.2, 1.4, 0.5, 1) both;
+}
+.vxm-contract-h {
+  font-size: 9.5px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #7a6447;
+  border-bottom: 1px solid rgba(42, 32, 22, 0.3);
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+}
+.vxm-contract-diff {
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 4px 0;
+  padding: 0;
+  list-style: none;
+  max-height: 220px;
+  overflow: auto;
+}
+.vxm-contract-diff li {
+  padding: 1px 0;
+}
+.vxm-contract-diff li.is-ok {
+  opacity: 0.65;
+}
+.vxm-contract-diff li.is-fail {
+  color: var(--rust);
+}
+.vxm-contract-diff .res {
+  font-weight: 400;
+}
+.vxm-contract-diff .sg-chg {
+  color: var(--amber, #c8962e);
+}
+.vxm-contract-diff .sg {
+  font-weight: 700;
+}
+.vxm-contract-diff .sg-add {
+  color: var(--olive);
+}
+.vxm-contract-diff .sg-rm {
+  color: var(--rust);
+}
+.vxm-contract-fine {
+  margin-top: 6px;
+  font-size: 9.5px;
+  color: #8a7457;
+  line-height: 1.35;
+}
+.vxm-contract-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 9px;
+  flex-wrap: wrap;
+}
+.vxm-contract .sign {
+  position: relative;
+  padding: 2px 4px 6px;
+  border: none;
+  background: none;
+  color: #1d2f56;
+  font-family: var(--font-marker), cursive;
+  font-size: 16px;
+  cursor: pointer;
+}
+.vxm-contract .sign .line {
+  position: absolute;
+  left: -6px;
+  right: -40px;
+  bottom: 2px;
+  height: 1px;
+  background: #2a2016;
+}
+.vxm-contract .sign:hover {
+  color: var(--rust);
+}
+.vxm-contract .tear {
+  margin-left: auto;
+  border: none;
+  background: none;
+  font:
+    11px "Share Tech Mono",
+    monospace;
+  color: #8a7457;
+  text-decoration: underline dotted;
+  cursor: pointer;
+}
+.vxm-contract .err {
+  flex-basis: 100%;
+  color: var(--rust);
+  font-size: 11px;
+}
+.vxm-contract-state {
+  margin-top: 8px;
+  color: #7a6447;
+}
+.vxm-contract.is-torn {
+  clip-path: polygon(0 0, 100% 0, 100% 46%, 70% 52%, 45% 44%, 20% 55%, 0 48%);
+  opacity: 0.55;
+  transition:
+    clip-path 0.4s ease,
+    opacity 0.4s ease;
+}
+.vxm-stamp-done {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  padding: 2px 8px;
+  border: 2px solid var(--rust);
+  border-radius: 3px;
+  color: var(--rust);
+  font:
+    700 14px "Share Tech Mono",
+    monospace;
+  letter-spacing: 3px;
+  transform: rotate(-8deg);
+  opacity: 0.85;
+  animation: vxm-stamp 0.32s cubic-bezier(0.3, 1.8, 0.5, 1) both;
+}
+@keyframes vxm-stamp {
+  from {
+    transform: scale(2.2) rotate(-8deg);
+    opacity: 0;
+  }
+}
+
+/* ── the deck: dial, label input, keys ── */
+.vxm-deck {
+  display: grid;
+  grid-template-columns: 74px 1fr;
+  grid-template-rows: auto auto;
+  gap: 8px 10px;
+  margin-top: 10px;
+  align-items: center;
+}
+.vxm-dial {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  grid-row: 1 / span 2;
+  position: relative;
+  width: 74px;
+  height: 74px;
+}
+.vxm-dial .knob {
+  position: absolute;
+  left: 17px;
+  top: 19px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background:
+    repeating-conic-gradient(
+      from 0deg,
+      rgba(0, 0, 0, 0.18) 0 4deg,
+      rgba(255, 255, 255, 0.05) 4deg 8deg
+    ), radial-gradient(circle at 35% 30%, #f2e7cd, #b8a683 70%, #6f6048);
+  box-shadow:
+    0 3px 5px rgba(0, 0, 0, 0.6),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.28s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+.vxm-dial .knob i {
+  position: absolute;
+  left: 50%;
+  top: 3px;
+  width: 3px;
+  height: 12px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--rust);
+}
+.vxm-dial .pos {
+  position: absolute;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #bfa984;
+  font:
+    8.5px / 1 "Share Tech Mono",
+    monospace;
+  letter-spacing: 0.8px;
+  cursor: pointer;
+}
+.vxm-dial .pos.is-on {
+  color: var(--amber);
+  text-shadow: 0 0 5px rgba(255, 179, 71, 0.6);
+}
+.vxm-dial .pos:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.vxm-dial .p0 {
+  left: 0;
+  top: 4px;
+}
+.vxm-dial .p1 {
+  left: 22px;
+  top: -2px;
+}
+.vxm-dial .p2 {
+  right: -2px;
+  top: 4px;
+}
+.vxm-dial .p3 {
+  right: 4px;
+  bottom: 0;
+}
+.vxm-dial.is-locked .knob {
+  filter: grayscale(0.6) brightness(0.9);
+}
+.vxm-input input {
+  width: 100%;
+  padding: 8px 11px;
+  border: none;
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.4), transparent 50%),
+    var(--cream-2);
+  color: var(--ink);
+  font:
+    13px "Share Tech Mono",
+    monospace;
+  box-shadow:
+    inset 0 1px 3px rgba(0, 0, 0, 0.35),
+    0 1px 0 rgba(255, 220, 180, 0.15);
+  outline: none;
+}
+.vxm-input input::placeholder {
+  color: #9c8b6e;
+}
+.vxm-input input:focus {
+  box-shadow:
+    inset 0 1px 3px rgba(0, 0, 0, 0.35),
+    0 0 0 2px rgba(255, 179, 71, 0.55);
+}
+.vxm-keys {
+  display: flex;
+  gap: 6px;
+}
+.vxm .key {
+  flex: 1;
+  height: 30px;
+  border: none;
+  border-radius: 5px;
+  background: linear-gradient(180deg, var(--cream-2), #d6c8a6);
+  color: #4a3a2a;
+  font:
+    700 10.5px "Share Tech Mono",
+    monospace;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow:
+    0 3px 0 #85745a,
+    inset 0 1px 0 #fff;
+  transition:
+    transform 0.06s,
+    box-shadow 0.06s;
+}
+.vxm .key:active,
+.vxm .key.is-down {
+  transform: translateY(2px);
+  box-shadow:
+    0 1px 0 #85745a,
+    inset 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.vxm .key:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.vxm .key.rec {
+  background: linear-gradient(180deg, #c76148, #9c4330);
+  color: #fff3e6;
+  box-shadow:
+    0 3px 0 #5e2618,
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.vxm .key.rec .dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: #ffd9cc;
+  vertical-align: 0;
+}
+.vxm .key.is-listening {
+  background: linear-gradient(180deg, #ffcf8a, #e0a650);
+  animation: vxm-listen 1s ease-in-out infinite;
+}
+@keyframes vxm-listen {
+  50% {
+    filter: brightness(1.15);
+  }
+}
+.vxm-grille {
+  height: 14px;
+  margin: 10px 6px 0;
+  border-radius: 4px;
+  background:
+    radial-gradient(circle, #120c08 1.3px, transparent 1.6px) 0 0 / 7px 7px;
+  opacity: 0.8;
+}
+
+/* ── phone: a walkman, full screen ── */
+.vxm--full {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: 0;
+  width: auto;
+  max-height: none;
+  padding: 10px;
+  background: rgba(14, 9, 6, 0.55);
+  backdrop-filter: blur(3px);
+}
+.vxm--full .vxm-case {
+  border-radius: 20px;
+}
+.vxm--full .vxm-tray {
+  min-height: 0;
+}
+.vxm--full .vxm .key,
+.vxm--full .key {
+  height: 38px;
+  font-size: 12px;
+}
+.vxm--full .vxm-input input {
+  font-size: 16px;
+  padding: 10px 12px;
+}
+
+/* G-15 · the devil's contract */
+.vxm-contract.is-faust {
+  background:
+    radial-gradient(
+      ellipse at 30% 20%,
+      rgba(120, 20, 20, 0.12),
+      transparent 60%
+    ), #e8d9b5;
+  border-color: #6b1a1a;
+  box-shadow: inset 0 0 30px rgba(90, 30, 10, 0.25);
+}
+.vxm-contract.is-faust .vxm-contract-h {
+  color: #8a1a1a;
+  font-family: Georgia, serif;
+  font-style: italic;
+}
+.vxm-contract.is-faust .vxm-contract-fine {
+  font-size: 9px;
+  line-height: 1.25;
+}
+.vxm-contract.is-faust .sign {
+  color: #8a1a1a;
+}
+.vxm-contract-state.is-price {
+  color: #8a1a1a;
+  font-style: italic;
+}
+
+/* S-03 · thumbs on the thermal strip */
+.vxm-thumbs {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  margin: -6px 6px 6px 0;
+  opacity: 0.35;
+  transition: opacity 0.2s;
+}
+.vxm-thumbs:hover,
+.vxm-thumbs:focus-within {
+  opacity: 1;
+}
+.vxm-thumbs button {
+  border: 0;
+  background: none;
+  color: inherit;
+  font:
+    10px ui-monospace,
+    monospace;
+  padding: 0 3px;
+  cursor: pointer;
+}
+.vxm-thumbs button[aria-pressed="true"] {
+  color: #c2272d;
+}
+.vxm-thumbs button:disabled:not([aria-pressed="true"]) {
+  opacity: 0.3;
+  cursor: default;
+}

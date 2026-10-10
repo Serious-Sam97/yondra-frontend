@@ -22,6 +22,7 @@ import {
   isRecording,
   timeAgo,
 } from "@/lib/ui";
+import { GhostBoxSet } from "@/vortex/world/GhostBoxSet";
 
 // Drop-target ID for a project spine; the page's handleDragEnd parses this to
 // move the dragged board into project <id> (YON-125).
@@ -493,6 +494,8 @@ export default function ProjectRail({
                 : "No projects yet."}
           </p>
         )}
+        {/* C-10 · Vortex keeps his own tape on your shelf */}
+        {!collapsed && tab === "owned" && !q && <GhostBoxSet />}
       </div>
 
       {!collapsed && current && (

@@ -1,0 +1,274 @@
+/* biome-ignore-all lint/complexity/noImportantStyles: cursor/motion overrides must beat inline and app styles */
+/* E · effects on the system around him (all visual, all temporary) */
+
+/* E-03 · orphan cards adopted: his face where an owner should be */
+.mt-jx.vxr-adopted .mt-who.empty .nm {
+  font-size: 0;
+}
+.mt-jx.vxr-adopted .mt-who.empty .nm::after {
+  content: "vortex";
+  font-size: 10px;
+  color: #b5533c;
+}
+.mt-jx.vxr-adopted .mt-who.empty::before {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 3px;
+  border-radius: 50%;
+  vertical-align: -2px;
+  background:
+    radial-gradient(circle at 36% 45%, #fff 0 14%, transparent 15%),
+    radial-gradient(circle at 64% 45%, #fff 0 14%, transparent 15%),
+    radial-gradient(circle at 40% 32%, #ff7ac8, #3d0c5c 70%);
+  box-shadow: 0 0 0 1px #00e5d0;
+}
+
+/* E-05 · he's inside this card: it bulges, two eyes peek from the art */
+.mt-jx.vxr-inhabited {
+  animation: vxr-bulge 2.6s ease-in-out infinite;
+  position: relative;
+}
+.mt-jx.vxr-inhabited .art::after {
+  content: "";
+  position: absolute;
+  right: 14px;
+  bottom: 8px;
+  width: 26px;
+  height: 12px;
+  background:
+    radial-gradient(
+      circle at 25% 50%,
+      #1a0033 0 18%,
+      #fff 20% 38%,
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 75% 50%,
+      #1a0033 0 18%,
+      #fff 20% 38%,
+      transparent 40%
+    );
+  animation: vxr-peek 3s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes vxr-bulge {
+  50% {
+    transform: scale(1.012, 0.992) rotate(-0.3deg);
+  }
+}
+@keyframes vxr-peek {
+  0%,
+  70%,
+  100% {
+    transform: translateY(0);
+  }
+  80% {
+    transform: translateY(-5px);
+  }
+}
+
+/* E-07 · the rack slips off the wall */
+[data-vx-rack].vxr-rack-slip {
+  animation: vxr-slip 2.2s cubic-bezier(0.3, 1.5, 0.5, 1);
+  transform-origin: 50% 0;
+}
+@keyframes vxr-slip {
+  15% {
+    transform: rotate(3deg) translateY(10px);
+  }
+  30% {
+    transform: rotate(-2.5deg) translateY(16px);
+  }
+  55% {
+    transform: rotate(1deg) translateY(4px);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* E-12 · doodles on the report */
+.vxr-doodle {
+  position: fixed;
+  z-index: 46;
+  overflow: visible;
+  cursor: pointer;
+}
+.vxr-doodle path {
+  fill: none;
+  stroke: #b5533c;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+  animation: vxr-draw 1.4s ease forwards;
+}
+.vxr-doodle text {
+  fill: #b5533c;
+  font:
+    28px var(--font-marker),
+    cursive;
+}
+@keyframes vxr-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* E-13 / E-15 · sticky notes */
+.vxr-sticky {
+  position: fixed;
+  z-index: 46;
+  max-width: 220px;
+  padding: 8px 10px 10px;
+  border: 0;
+  background: #ffd36a;
+  color: #3b2a12;
+  font:
+    15px / 1.25 var(--font-marker),
+    cursive;
+  text-align: left;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.35);
+  transform: rotate(-3deg);
+  cursor: pointer;
+  animation: vxr-stick 0.3s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.vxr-sticky.is-note {
+  max-width: 140px;
+}
+.vxr-sticky.is-back {
+  background: #f3e4bd;
+  transform: rotate(2deg);
+}
+.vxr-sticky.is-torn {
+  clip-path: polygon(0 0, 100% 0, 100% 60%, 60% 72%, 30% 58%, 0 70%);
+  opacity: 0;
+  transition:
+    clip-path 0.3s ease,
+    opacity 0.3s ease;
+}
+@keyframes vxr-stick {
+  from {
+    transform: translateY(-8px) rotate(6deg);
+    opacity: 0;
+  }
+}
+
+/* E-14 · cursor games */
+body.vxr-stolen,
+body.vxr-stolen * {
+  cursor: none !important;
+}
+.vxr-fakecursor {
+  position: fixed;
+  z-index: 2147482600;
+  width: 14px;
+  height: 20px;
+  pointer-events: none;
+  background: #f3e4bd;
+  clip-path: polygon(0 0, 0 85%, 28% 65%, 48% 100%, 62% 94%, 42% 60%, 78% 60%);
+  animation: vxr-wiggle 0.3s steps(2) infinite;
+}
+@keyframes vxr-wiggle {
+  50% {
+    transform: translate(2px, -1px) rotate(-6deg);
+  }
+}
+body.vxr-bitten,
+body.vxr-bitten * {
+  cursor:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><path d='M4 3 L4 19 L8.5 14.5 L11.5 21 L14 20 L11 13.5 L17 13.5 Z' fill='white' stroke='black'/><circle cx='15' cy='16' r='5' fill='%23000' fill-opacity='0'/><path d='M12 11 q3 3 6 0 q-1 4 -3 4' fill='%233d0c5c'/></svg>")
+    4 3,
+    auto !important;
+}
+body.vxr-heavy,
+body.vxr-heavy * {
+  cursor: wait !important;
+}
+
+/* E-19 · dusted box sets */
+.pr-spine.vxr-dusted {
+  animation: vxr-dust 0.8s ease;
+}
+@keyframes vxr-dust {
+  40% {
+    filter: brightness(1.25);
+    transform: translateX(2px);
+  }
+}
+
+/* E-06 · the card he's holding behind his back */
+.mt-jx.vxr-hidden-by-him {
+  opacity: 0;
+  transform: scale(0.9);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+/* E-08 · the fake result in the command palette */
+.vxr-palette-me {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 16px;
+  border: 0;
+  border-top: 1px dashed rgba(255, 179, 71, 0.25);
+  background: transparent;
+  color: #ffb347;
+  font:
+    13px "Share Tech Mono",
+    monospace;
+  text-align: left;
+  cursor: pointer;
+}
+.vxr-palette-me:hover {
+  background: rgba(255, 179, 71, 0.1);
+}
+.vxr-palette-me b {
+  color: #ff8fd4;
+}
+
+/* E-24 · he waves next to what you pasted */
+.vxr-paste-ghost {
+  position: fixed;
+  z-index: 47;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 36% 45%, #fff 0 14%, transparent 15%),
+    radial-gradient(circle at 64% 45%, #fff 0 14%, transparent 15%),
+    radial-gradient(circle at 40% 32%, #ff7ac8, #3d0c5c 70%);
+  pointer-events: none;
+  animation: vxr-wave 1.6s ease forwards;
+}
+@keyframes vxr-wave {
+  0% {
+    transform: scale(0);
+  }
+  20% {
+    transform: scale(1.2);
+  }
+  40%,
+  60% {
+    transform: rotate(-12deg);
+  }
+  50% {
+    transform: rotate(12deg);
+  }
+  100% {
+    transform: scale(0);
+    opacity: 0;
+  }
+}
+
+/* H-11 · his notes while the twin wears his place */
+.vxr-sticky.is-trapped {
+  background: #cfe3e2;
+  color: #12302f;
+  transform: rotate(4deg);
+}

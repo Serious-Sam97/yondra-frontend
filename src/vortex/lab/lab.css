@@ -1,0 +1,583 @@
+/* LADO D · the gadgets */
+
+/* D-03 gravity */
+.vxd-grav {
+  transition: transform 0.5s cubic-bezier(0.3, 1.8, 0.4, 1);
+  transform: translateY(var(--gy)) rotate(var(--gr));
+  transform-origin: 50% 0;
+}
+.vxd-grav:hover {
+  transform: translateY(calc(var(--gy) * 2)) rotate(calc(var(--gr) * -2));
+}
+
+/* D-04 telescope · D-06 time machine · D-08 magnet · D-15 compass: panels */
+.vxd-scope,
+.vxd-tm,
+.vxd-magnet,
+.vxd-compass {
+  position: fixed;
+  z-index: 85;
+  background: #0d0905;
+  color: #f3e4bd;
+  border: 1px solid #5a4a34;
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  font:
+    12px "Share Tech Mono",
+    ui-monospace,
+    monospace;
+}
+.vxd-scope {
+  left: 50%;
+  top: 90px;
+  transform: translateX(-50%);
+  width: min(720px, calc(100vw - 32px));
+  padding: 12px;
+}
+.vxd-scope .lens {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 160px;
+  padding: 10px;
+  border-radius: 80px / 50px;
+  background: radial-gradient(ellipse, #1d2a2a, #050808 75%);
+  overflow: hidden;
+  position: relative;
+}
+.vxd-scope .col {
+  flex: 1;
+  height: 100%;
+  border: 0;
+  background: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+}
+.vxd-scope .col i {
+  display: block;
+  height: var(--h);
+  min-height: 4px;
+  border-radius: 3px 3px 0 0;
+  background: color-mix(in srgb, #b5533c calc(var(--heat) * 100%), #6f8a4a);
+}
+.vxd-scope .col span {
+  font-size: 9px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vxd-scope .ghost {
+  width: 10px;
+  height: 40px;
+  margin-left: 6px;
+  border-radius: 6px 6px 2px 2px;
+  background: rgba(220, 220, 220, 0.25);
+  filter: blur(0.6px);
+  flex: none;
+}
+.vxd-scope .x,
+.vxd-tm .x,
+.vxd-magnet .x,
+.vxd-compass .x {
+  border: 0;
+  background: none;
+  color: #c8962e;
+  font: inherit;
+  cursor: pointer;
+  margin-top: 8px;
+}
+.vxd-magnet .x,
+.vxd-compass .x {
+  position: absolute;
+  right: 6px;
+  top: 2px;
+  margin: 0;
+}
+.vxd-tm {
+  inset: 80px 24px 24px;
+  padding: 14px;
+  overflow: auto;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.03) 0 1px,
+      transparent 1px 3px
+    ), #0d0905;
+}
+.vxd-tm.is-rewinding {
+  animation: vxd-rw 0.4s steps(3) infinite;
+}
+@keyframes vxd-rw {
+  50% {
+    filter: hue-rotate(60deg) contrast(1.6);
+    transform: translateX(-3px);
+  }
+}
+.vxd-tm .head {
+  display: inline-block;
+  padding: 4px 10px;
+  margin-bottom: 12px;
+  background: #b5533c;
+  color: #fff;
+  letter-spacing: 0.15em;
+  font-size: 11px;
+}
+.vxd-tm .cols {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+}
+.vxd-tm section {
+  min-width: 180px;
+  padding: 8px;
+  border-radius: 6px;
+  background: #1b140f;
+}
+.vxd-tm h4 {
+  margin: 0 0 6px;
+  font-weight: 400;
+  color: #ffb547;
+}
+.vxd-tm p {
+  margin: 0 0 5px;
+  padding: 5px 7px;
+  border-radius: 3px;
+  background: #e9dcbc;
+  color: #2a1f17;
+  opacity: 0.85;
+}
+.vxd-tm p.ghost {
+  background: #0d1a1c;
+  color: #8fe3e3;
+  border: 1px dashed #8fe3e3;
+}
+.vxd-magnet {
+  right: 24px;
+  top: 100px;
+  width: 260px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+}
+.vxd-magnet a {
+  color: #ffd27a;
+  text-decoration: none;
+}
+.vxd-magnet .jab {
+  color: #ff8fd4;
+  margin: 0;
+}
+.vxd-compass {
+  right: 24px;
+  bottom: 90px;
+  width: 220px;
+  padding: 12px 12px 12px 76px;
+  min-height: 60px;
+}
+.vxd-compass .needle {
+  position: absolute;
+  left: 14px;
+  top: 12px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 2px solid #c8962e;
+  background:
+    linear-gradient(#b5533c, #b5533c) 50% 6px / 4px 20px no-repeat,
+    linear-gradient(#f3e4bd, #f3e4bd) 50% 26px / 4px 18px no-repeat,
+    #1b140f;
+  transition: rotate 0.4s ease;
+}
+.vxd-compass.is-spinning .needle {
+  animation: vxd-spin 0.6s linear infinite;
+}
+@keyframes vxd-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+.vxd-compass a {
+  color: #ffd27a;
+  display: block;
+}
+.vxd-compass small {
+  color: #8a7a5c;
+}
+
+/* D-05 geiger: radioactive cards */
+.mt-jx.vxd-hot {
+  box-shadow:
+    0 0 0 2px rgba(181, 83, 60, 0.7),
+    0 0 18px rgba(181, 83, 60, 0.45);
+}
+
+/* D-07 shrinker */
+html.vxd-shrunk body > *:not(.vxa-layer):not(.vxa-root) {
+  scale: 0.7;
+  transform-origin: 50% 0;
+  transition: scale 0.6s ease;
+}
+html.vxd-shrunk body {
+  background-image: radial-gradient(
+    ellipse at center,
+    transparent 50%,
+    rgba(0, 0, 0, 0.7)
+  );
+}
+
+/* D-09 translator tip */
+.vxd-tip {
+  position: fixed;
+  z-index: 86;
+  max-width: 260px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: #0d0905;
+  color: #ffd27a;
+  font:
+    12px "Share Tech Mono",
+    monospace;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+/* D-11 x-ray */
+html.vxd-xray .mt-jx {
+  filter: grayscale(1) invert(0.85) sepia(1) hue-rotate(5deg) saturate(2);
+}
+.vxd-xtag {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  z-index: 3;
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: rgba(13, 9, 5, 0.85);
+  color: #ffb547;
+  font:
+    10px "Share Tech Mono",
+    monospace;
+  pointer-events: none;
+}
+
+/* D-12 night vision */
+html.vxd-night body {
+  filter: sepia(1) hue-rotate(55deg) saturate(1.6) contrast(1.25)
+    brightness(0.85);
+}
+.vxd-shadow,
+.vxd-steps {
+  position: fixed;
+  z-index: 84;
+  pointer-events: none;
+  animation: vxd-fade 2.2s ease both;
+}
+.vxd-shadow {
+  width: 40px;
+  height: 120px;
+  border-radius: 20px 20px 4px 4px;
+  background: rgba(0, 0, 0, 0.6);
+  filter: blur(3px);
+}
+.vxd-steps {
+  width: 60px;
+  height: 20px;
+  background:
+    radial-gradient(circle, rgba(220, 220, 220, 0.5) 3px, transparent 4px) 0 0 /
+    20px 20px;
+}
+@keyframes vxd-fade {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  30%,
+  70% {
+    opacity: 1;
+  }
+}
+
+/* D-13 clones */
+.vxd-clone {
+  position: fixed;
+  z-index: 83;
+  width: 40px;
+  height: 40px;
+  transition:
+    left var(--d) ease,
+    top var(--d) ease;
+  pointer-events: auto;
+}
+.vxd-clone svg {
+  width: 100%;
+  height: 100%;
+}
+.vxd-clone .say {
+  position: absolute;
+  left: 36px;
+  top: -6px;
+  white-space: nowrap;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: #fffaf0;
+  color: #1a1a1a;
+  font:
+    10px "Share Tech Mono",
+    monospace;
+}
+.vxd-clone .say:empty {
+  display: none;
+}
+
+/* D-16 ego amplifier */
+html.vxd-aiming .mt-jx {
+  cursor: crosshair;
+  outline: 1px dashed #ffd27a;
+}
+.vxd-legend {
+  position: fixed;
+  left: 50%;
+  top: 30%;
+  z-index: 9200;
+  transform: translate(-50%, -50%);
+  display: grid;
+  justify-items: center;
+  padding: 18px 30px;
+  border-radius: 8px;
+  background: #0d0905;
+  box-shadow: 0 0 60px rgba(255, 181, 71, 0.4);
+  pointer-events: none;
+}
+.vxd-legend b {
+  color: #ffb547;
+  font:
+    54px "Share Tech Mono",
+    monospace;
+  letter-spacing: 0.3em;
+  text-shadow: 0 0 18px rgba(255, 181, 71, 0.9);
+}
+.vxd-legend .who {
+  color: #f3e4bd;
+  font:
+    14px "Share Tech Mono",
+    monospace;
+}
+.vxd-confetti {
+  position: fixed;
+  top: -10px;
+  z-index: 9201;
+  width: 7px;
+  height: 11px;
+  pointer-events: none;
+  animation: vxd-fall 2.6s ease-in forwards;
+}
+@keyframes vxd-fall {
+  to {
+    transform: translateY(105vh) rotate(720deg);
+  }
+}
+
+/* D-17 teleporter swirl */
+html.vxd-swirl body {
+  animation: vxd-swirl 0.65s ease-in forwards;
+}
+@keyframes vxd-swirl {
+  to {
+    transform: rotate(540deg) scale(0.05);
+    opacity: 0;
+  }
+}
+
+/* the gadget belt */
+.vxd-belt-btn {
+  position: fixed;
+  right: 18px;
+  bottom: 74px;
+  z-index: 69;
+  border: 1px solid #5a4a34;
+  background: #2b1d12;
+  color: #ffd27a;
+  border-radius: 20px;
+  padding: 6px 12px;
+  font:
+    12px "Share Tech Mono",
+    monospace;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.vxd-belt {
+  position: fixed;
+  right: 18px;
+  bottom: 116px;
+  z-index: 88;
+  width: min(380px, calc(100vw - 32px));
+  max-height: calc(100vh - 160px);
+  overflow: auto;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #1d1712;
+  border: 2px solid #7a6a52;
+  color: #f3e4bd;
+  font:
+    12px "Share Tech Mono",
+    monospace;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  display: grid;
+  gap: 10px;
+}
+.vxd-belt h4 {
+  margin: 0;
+  font-weight: 400;
+  color: #c8962e;
+  letter-spacing: 0.2em;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.vxd-belt .bench {
+  padding: 8px;
+  border-radius: 6px;
+  background: #0d0905;
+}
+.vxd-belt .bar {
+  height: 6px;
+  border-radius: 3px;
+  background: #2a2118;
+  margin-top: 6px;
+  overflow: hidden;
+}
+.vxd-belt .bar i {
+  display: block;
+  height: 100%;
+  background: #ffb547;
+}
+.vxd-belt .tools {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.vxd-belt .tools button,
+.vxd-belt .row button,
+.vxd-belt textarea,
+.vxd-belt select {
+  border: 1px solid #5a4a34;
+  background: #2a2118;
+  color: #f3e4bd;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.vxd-belt .tools button.is-on {
+  background: #c8962e;
+  color: #1a120a;
+}
+.vxd-belt .blue {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.vxd-belt .blue span {
+  padding: 2px 6px;
+  border: 1px dashed #5a8aa8;
+  color: #8fbfe3;
+  border-radius: 2px;
+  font-size: 10px;
+}
+.vxd-belt .blue .forbidden {
+  border-color: #6b2a35;
+  color: #ff8a7d;
+  text-decoration: line-through;
+}
+.vxd-belt .row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.vxd-belt textarea {
+  width: 100%;
+  min-height: 90px;
+  cursor: text;
+}
+.vxd-belt .out p {
+  margin: 4px 0;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: #0d0905;
+}
+.vxd-belt .out .k {
+  color: #c8962e;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vxd-grav,
+  .vxd-tm.is-rewinding,
+  .vxd-compass.is-spinning .needle,
+  html.vxd-swirl body,
+  .vxd-confetti,
+  .vxd-clone {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* his body under the gadgets */
+.vxa-giant .vxr-phys {
+  scale: 2.2;
+  transform-origin: 30% 90%;
+  transition: scale 0.6s ease;
+}
+.vxa-bones .vxr-phys {
+  filter: invert(1) grayscale(1) contrast(1.4) drop-shadow(0 0 6px #ffb547);
+}
+.vxa-singed .vxr-phys {
+  filter: sepia(0.6) brightness(0.7) contrast(1.2);
+}
+
+.vxd-lost {
+  position: fixed;
+  z-index: 60;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  animation: vxd-lost 3s ease-in-out infinite;
+}
+.vxd-lost svg {
+  width: 100%;
+  height: 100%;
+}
+@keyframes vxd-lost {
+  50% {
+    transform: translateY(-4px) rotate(8deg);
+  }
+}
+/* D-20 · the bench blew up */
+html.vxd-boom body {
+  animation: vxd-boom 0.9s ease-out;
+}
+@keyframes vxd-boom {
+  10% {
+    transform: translate(3px, -2px);
+    filter: brightness(1.6) sepia(0.6);
+  }
+  30% {
+    transform: translate(-3px, 2px);
+  }
+  60% {
+    transform: translate(1px, 0);
+    filter: sepia(0.3);
+  }
+}

@@ -1,18 +1,12 @@
 "use client";
 
 import {
-  faBorderAll,
-  faList,
-  faMagnifyingGlass,
-  faRotateLeft,
-} from "@fortawesome/free-solid-svg-icons";
-import {
   type CollisionDetection,
   closestCenter,
   DndContext,
   type DragEndEvent,
-  type DragStartEvent,
   DragOverlay,
+  type DragStartEvent,
   MouseSensor,
   pointerWithin,
   TouchSensor,
@@ -24,14 +18,20 @@ import {
   rectSortingStrategy,
   SortableContext,
 } from "@dnd-kit/sortable";
+import {
+  faBorderAll,
+  faList,
+  faMagnifyingGlass,
+  faRotateLeft,
+} from "@fortawesome/free-solid-svg-icons";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import BoardCard from "@/components/projects/BoardCard";
 import BoardSpineRow from "@/components/projects/BoardSpineRow";
 import ProjectDeck from "@/components/projects/ProjectDeck";
 import ProjectRail from "@/components/projects/ProjectRail";
-import SortableBoardCard from "@/components/projects/SortableBoardCard";
 import { useProjects } from "@/components/projects/ProjectsProvider";
+import SortableBoardCard from "@/components/projects/SortableBoardCard";
 import Modal from "@/components/shared/Modal";
 import {
   type BoardFormData,
@@ -61,6 +61,7 @@ import {
   PROJECT_COLORS,
 } from "@/lib/ui";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
+import ProjectSpirit from "@/vortex/social/ProjectSpirit";
 
 type SortKey = "manual" | "recent" | "name" | "progress" | "cards";
 
@@ -567,6 +568,7 @@ export default function ProjectPage() {
       className="pj-page flex overflow-hidden"
       style={{ height: "calc(100dvh - var(--app-header-h, 56px))" }}
     >
+      <ProjectSpirit projectId={projectId} />
       <DndContext
         sensors={sensors}
         collisionDetection={collisionDetection}

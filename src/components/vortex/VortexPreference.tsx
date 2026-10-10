@@ -1,20 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { ModuleHead, StatusLcd, Toggle } from "@/components/ui/ConsoleModule";
+import { ModuleHead, StatusLcd } from "@/components/ui/ConsoleModule";
 import { SvgArt } from "@/components/ui/SvgArt";
-import {
-  setVortexEnabled,
-  setVortexHeadGames,
-  setVortexIntensity,
-  setVortexSound,
-  useVortexEnabled,
-  useVortexHeadGames,
-  useVortexIntensity,
-  useVortexSound,
-  type VortexIntensity,
-} from "@/lib/vortex";
-import { vortexSvg } from "@/lib/vortexArt";
 import {
   ACHIEVEMENTS,
   type Costume,
@@ -23,6 +11,12 @@ import {
   updateProgress,
   useProgress,
 } from "@/components/vortex/mk4/progress";
+import { useVortexEnabled, useVortexIntensity } from "@/lib/vortex";
+import { vortexSvg } from "@/lib/vortexArt";
+import Rack from "@/vortex/core/Rack";
+import CreatorPanel from "@/vortex/creator/CreatorPanel";
+import OutsidePanel from "@/vortex/outside/OutsidePanel";
+import WeirdPanel from "@/vortex/weird/WeirdPanel";
 
 /** Streak, achievements, wardrobe and birthday — all local to this device. */
 function VortexTrophies({ disabled }: { disabled: boolean }) {
@@ -110,23 +104,14 @@ function VortexTrophies({ disabled }: { disabled: boolean }) {
   );
 }
 
-const LEVELS: { key: VortexIntensity; label: string; hint: string }[] = [
-  { key: "polite", label: "Polite", hint: "reactions & tips only" },
-  { key: "mischief", label: "Mischief", hint: "rituals + the odd prank" },
-  { key: "unhinged", label: "Unhinged", hint: "everything, often" },
-];
-
 /**
- * Profile console module for Vortex: the on/off switch that pairs with the × on
- * the sprite, how much chaos he's allowed (intensity) and a kill switch for the
- * head games that mess with the page. All stored on this device and applied
- * everywhere instantly.
+ * Profile console module for Vortex: who he is, then the effects rack (T-01)
+ * with every switch, then the deeper panels (outside, weird, creator) and his
+ * trophies.
  */
 export default function VortexPreference() {
   const enabled = useVortexEnabled();
   const intensity = useVortexIntensity();
-  const headGames = useVortexHeadGames();
-  const sound = useVortexSound();
   const face = useMemo(
     () =>
       vortexSvg(
@@ -177,92 +162,15 @@ export default function VortexPreference() {
               his own. Stored on this device.
             </p>
           </div>
-          <Toggle
-            on={enabled}
-            onChange={() => setVortexEnabled(!enabled)}
-            label="Show Vortex, the assistant"
-          />
         </div>
 
-        <fieldset
-          aria-label="Vortex intensity"
-          className="grid grid-cols-3 gap-2 border-0 p-0 m-0 min-w-0"
-          style={{ opacity: enabled ? 1 : 0.5 }}
-        >
-          {LEVELS.map((l) => {
-            const on = l.key === intensity;
-            return (
-              <button
-                key={l.key}
-                type="button"
-                aria-pressed={on}
-                disabled={!enabled}
-                onClick={() => setVortexIntensity(l.key)}
-                className="btn-physical cf-mono text-left rounded-lg px-3 py-2"
-                style={{
-                  border: `1.5px solid ${on ? "var(--cf-phosphor)" : "var(--cf-edge)"}`,
-                  background: on ? "rgba(154,166,126,0.14)" : "transparent",
-                  color: on ? "var(--cf-text)" : "var(--cf-text-muted)",
-                }}
-              >
-                <span className="block text-xs tracking-[0.18em] uppercase">
-                  {l.label}
-                </span>
-                <span
-                  className="block text-[10px] mt-0.5"
-                  style={{ color: "var(--cf-text-dim)" }}
-                >
-                  {l.hint}
-                </span>
-              </button>
-            );
-          })}
-        </fieldset>
+        <Rack />
 
-        <div
-          className="flex items-center gap-4"
-          style={{ opacity: enabled && intensity !== "polite" ? 1 : 0.5 }}
-        >
-          <div className="flex-1 min-w-0">
-            <p className="text-sm cf-mono" style={{ color: "var(--cf-text)" }}>
-              Head games
-            </p>
-            <p
-              className="text-xs cf-mono"
-              style={{ color: "var(--cf-text-dim)" }}
-            >
-              Tilting pages, ghost cursors, eyes in the dark, the lying clock.
-              Harmless and gone in seconds — off if you'd rather not.
-            </p>
-          </div>
-          <Toggle
-            on={headGames}
-            onChange={() => setVortexHeadGames(!headGames)}
-            label="Let Vortex play head games"
-          />
-        </div>
-        <div
-          className="flex items-center gap-4"
-          style={{ opacity: enabled ? 1 : 0.5 }}
-        >
-          <div className="flex-1 min-w-0">
-            <p className="text-sm cf-mono" style={{ color: "var(--cf-text)" }}>
-              Tape noises
-            </p>
-            <p
-              className="text-xs cf-mono"
-              style={{ color: "var(--cf-text-dim)" }}
-            >
-              Hiss when he flies, a deck click when he lands, a rewind for a
-              finished card, whispers when possessed. Quiet by default.
-            </p>
-          </div>
-          <Toggle
-            on={sound}
-            onChange={() => setVortexSound(!sound)}
-            label="Let Vortex make tape noises"
-          />
-        </div>
+        <OutsidePanel disabled={!enabled} />
+
+        <WeirdPanel disabled={!enabled} />
+
+        <CreatorPanel disabled={!enabled} />
 
         <VortexTrophies disabled={!enabled} />
       </div>

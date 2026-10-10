@@ -1,0 +1,95 @@
+/* LADO Q · outside panel (vxu) */
+.vxu {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--cf-edge);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.vxu-head {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: #ff7a6e; /* T-02 · AA on the panel */
+}
+.vxu-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.vxu-text {
+  flex: 1;
+  min-width: 0;
+}
+.vxu-title {
+  font-size: 14px;
+  color: var(--cf-text);
+}
+.vxu-hint {
+  font-size: 12px;
+  color: #a9a08a; /* T-02 · --cf-text-dim is below AA on this panel */
+}
+.vxu-state {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--cf-phosphor);
+}
+.vxu-copy {
+  display: flex;
+  gap: 8px;
+}
+.vxu-copy input {
+  flex: 1;
+  min-width: 0;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--cf-edge);
+  color: var(--cf-phosphor);
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 8px;
+}
+.vxu-copy button,
+.vxu-out button,
+.vxu-out select,
+.vxu-out a {
+  background: transparent;
+  border: 1px solid var(--cf-edge);
+  color: var(--cf-text);
+  font: inherit;
+  font-size: 11px;
+  padding: 5px 10px;
+  cursor: pointer;
+  text-decoration: none;
+}
+.vxu-copy button:hover,
+.vxu-out button:hover,
+.vxu-out a:hover {
+  border-color: var(--cf-phosphor);
+  color: var(--cf-phosphor);
+}
+.vxu-out {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #a9a08a;
+}
+.vxu-out button:disabled {
+  opacity: 0.4;
+  cursor: wait;
+}
+.vxu-msg {
+  font-size: 12px;
+  color: var(--cf-phosphor);
+}
+.vxu-fold {
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  cursor: pointer;
+}

@@ -33,6 +33,7 @@ import {
   splitPhone,
 } from "@/lib/inputMasks";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
+import VortexDrawer from "@/vortex/world/Drawer";
 
 // Turn an ApiError into something a human can read: prefer Laravel's
 // validation messages, never show raw status codes or JSON.
@@ -818,6 +819,7 @@ export default function ProfilePage() {
 
           {/* COMPANION — the Vortex mascot assistant on/off switch */}
           <VortexPreference />
+          <VortexDrawer />
 
           {/* SESSION */}
           <section className="glass-panel relative overflow-hidden flex items-center gap-5 p-5">

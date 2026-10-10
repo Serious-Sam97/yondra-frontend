@@ -13,6 +13,7 @@ import {
   Spectrum,
 } from "@/components/dashboard/HiFiPanels";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
+import { HiddenLine } from "@/vortex/mysteries/PageEchoes";
 
 // "Home hi-fi" dashboard (design/dashboard-suggestion.png). The side panel and
 // data live in DashboardShell (app/dashboard/layout.tsx); styles in hifi.css.
@@ -32,6 +33,8 @@ export default function DashboardPage() {
 
   return (
     <main className={`hf-main${crm ? "" : " no-crm"}`}>
+      {/* K-07 · amber on amber */}
+      <HiddenLine text="is the tea still warm?" />
       <Receiver
         name={user?.name ?? null}
         vitals={data?.vitals}

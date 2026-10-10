@@ -1,0 +1,211 @@
+/* LADO L · the series: VFD cards, the cut, the flatline, the teaser frame */
+.vxl-vfd {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  z-index: 9000;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 32px));
+  display: grid;
+  gap: 6px;
+  padding: 14px 18px 12px;
+  border: 1px solid #3c2d18;
+  border-radius: 6px;
+  background:
+    radial-gradient(
+      ellipse at 50% 0%,
+      rgba(255, 170, 60, 0.08),
+      transparent 70%
+    ), #0d0905;
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.6),
+    inset 0 0 24px rgba(0, 0, 0, 0.8);
+  color: #ffb547;
+  font-family: "Share Tech Mono", ui-monospace, monospace;
+  text-align: left;
+  text-shadow: 0 0 8px rgba(255, 181, 71, 0.65);
+  cursor: pointer;
+  animation: vxl-in 0.4s ease both;
+}
+.vxl-vfd b {
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  opacity: 0.7;
+  font-weight: 400;
+}
+.vxl-vfd span {
+  font-size: 15px;
+  line-height: 1.45;
+}
+.vxl-vfd i {
+  justify-self: end;
+  font-style: normal;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  opacity: 0.45;
+}
+.vxl-vfd.is-title span {
+  font-size: 22px;
+  letter-spacing: 0.18em;
+}
+.vxl-vfd.is-credits {
+  color: #8fe3e3;
+  text-shadow: 0 0 8px rgba(143, 227, 227, 0.6);
+}
+.vxl-vfd.is-out {
+  animation: vxl-out 0.35s ease both;
+}
+.vxl-vfd:focus-visible {
+  outline: 2px solid #ffb547;
+  outline-offset: 3px;
+}
+@keyframes vxl-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+    filter: brightness(3);
+  }
+}
+@keyframes vxl-out {
+  to {
+    opacity: 0;
+    transform: translate(-50%, 6px) scaleY(0.2);
+  }
+}
+
+.vxl-teaser {
+  position: fixed;
+  inset: 0;
+  z-index: 9001;
+  display: grid;
+  place-items: center;
+  background: #000;
+  color: #f3e4bd;
+  font:
+    28px / 1.2 "Share Tech Mono",
+    monospace;
+  letter-spacing: 0.1em;
+  pointer-events: none;
+}
+
+.vxl-radio {
+  position: fixed;
+  right: 24px;
+  top: 90px;
+  z-index: 9000;
+  padding: 6px 10px;
+  border-radius: 3px;
+  background: #0d0905;
+  color: #ffb547;
+  font:
+    12px "Share Tech Mono",
+    monospace;
+  letter-spacing: 0.2em;
+  animation: vxl-radio 2.6s steps(8) both;
+}
+@keyframes vxl-radio {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  20%,
+  80% {
+    opacity: 1;
+  }
+}
+
+html.vxl-static body {
+  animation: vxl-static 0.7s steps(5) both;
+}
+@keyframes vxl-static {
+  50% {
+    filter: contrast(1.6) saturate(0) brightness(1.3);
+    transform: translateX(2px);
+  }
+}
+html.vxl-cut body {
+  filter: brightness(0);
+}
+html.vxl-flatline body {
+  filter: saturate(0) brightness(0.7);
+  transition: filter 1.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vxl-vfd,
+  .vxl-vfd.is-out,
+  .vxl-radio,
+  html.vxl-static body {
+    animation: none;
+  }
+}
+
+/* L-14 · the Videoteca shelf */
+.vxl-shelf {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.vxl-vhs {
+  width: 100%;
+  min-height: 92px;
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 4px;
+  background:
+    linear-gradient(#f3e4bd, #f3e4bd) 10px 26px / calc(100% - 20px) 30px
+    no-repeat,
+    #1b1610;
+  color: #2a1f17;
+  font:
+    12px "Share Tech Mono",
+    monospace;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.4);
+}
+.vxl-vhs .lbl {
+  color: #c8962e;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+}
+.vxl-vhs b {
+  padding: 0 4px;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+}
+.vxl-vhs small {
+  color: #d97f8a;
+  font-size: 10px;
+}
+.vxl-vhs i {
+  color: #8a7a5c;
+  font-style: normal;
+  font-size: 10px;
+}
+.vxl-vhs.is-finale {
+  box-shadow:
+    inset 0 -6px 0 rgba(0, 0, 0, 0.4),
+    0 0 0 1px #c8962e;
+}
+.vxl-vhs:hover i,
+.vxl-vhs:focus-visible i {
+  color: #ffb547;
+}
+
+/* L-11 · choices with real sentences: stack them, full width */
+.vxa-actions--choices {
+  flex-wrap: wrap;
+}
+.vxa-actions--choices .vxa-btn {
+  flex: 1 1 100%;
+  text-align: left;
+  padding: 5px 11px;
+}
