@@ -3,7 +3,6 @@
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
 import { getProgress } from "@/components/vortex/mk4/progress";
-import { useVortexEnabled } from "@/lib/vortex";
 import { useLado } from "./flags";
 import { syncMk4 } from "./mk4sync";
 import { flushTelemetry } from "./telemetry";
@@ -35,7 +34,6 @@ const Creator = dynamic(() => import("@/vortex/creator/Creator"), {
 });
 
 export default function Extras() {
-  const enabled = useVortexEnabled();
   const radio = useLado("radio");
   const econ = useLado("economia");
   const arcade = useLado("arcade");
@@ -46,14 +44,13 @@ export default function Extras() {
   const criador = useLado("criador");
   // T-07 / T-12 · once per session: yesterday's counts (with consent), MK-IV sync
   useEffect(() => {
-    if (!enabled || !localStorage.getItem("token")) return;
+    if (!localStorage.getItem("token")) return;
     const t = setTimeout(() => {
       void flushTelemetry();
       void syncMk4(getProgress());
     }, 15_000);
     return () => clearTimeout(t);
-  }, [enabled]);
-  if (!enabled) return null;
+  }, []);
   return (
     <>
       {radio && <Walkman />}

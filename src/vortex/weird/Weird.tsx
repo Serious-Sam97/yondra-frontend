@@ -6,7 +6,6 @@ import type { WeirdMode } from "@/components/vortex/mk4/chat";
 import {
   getVortexHeadGames,
   getVortexIntensity,
-  useVortexEnabled,
   useVortexFlag,
 } from "@/lib/vortex";
 import { rare, say, setWeird } from "./bridge";
@@ -54,7 +53,6 @@ const every = (min: number, max: number, fn: () => void) => {
 
 export default function Weird() {
   useVxLang(); // T-13 · re-render on language change
-  const enabled = useVortexEnabled();
   const torus = useVortexFlag("weird-torus");
   const tabs = useVortexFlag("weird-tabs");
   const mic = useVortexFlag("weird-mic");
@@ -75,26 +73,17 @@ export default function Weird() {
 
   /* simple senses */
   useEffect(
-    () => (enabled && torus ? every(4, 9, () => void wrapAround()) : undefined),
-    [enabled, torus],
+    () => (torus ? every(4, 9, () => void wrapAround()) : undefined),
+    [torus],
   );
-  useEffect(() => (enabled && tabs ? startTabs() : undefined), [enabled, tabs]);
-  useEffect(
-    () => (enabled && battery ? startBattery() : undefined),
-    [enabled, battery],
-  );
-  useEffect(
-    () => (enabled && motion ? startMotion() : undefined),
-    [enabled, motion],
-  );
-  useEffect(
-    () => (enabled && weather ? startWeather() : undefined),
-    [enabled, weather],
-  );
+  useEffect(() => (tabs ? startTabs() : undefined), [tabs]);
+  useEffect(() => (battery ? startBattery() : undefined), [battery]);
+  useEffect(() => (motion ? startMotion() : undefined), [motion]);
+  useEffect(() => (weather ? startWeather() : undefined), [weather]);
 
   /* R-04 · microphone */
   useEffect(() => {
-    if (!enabled || !mic) return;
+    if (!mic) return;
     let stop: (() => void) | null = null;
     let cancelled = false;
     void startMic((l) => setLevel(l.rms)).then((s) => {
@@ -107,11 +96,11 @@ export default function Weird() {
       stop?.();
       setLevel(0);
     };
-  }, [enabled, mic]);
+  }, [mic]);
 
   /* R-06 · camera */
   useEffect(() => {
-    if (!enabled || !camera) return;
+    if (!camera) return;
     let stop: (() => void) | null = null;
     let cancelled = false;
     setGaze("looking");
@@ -128,11 +117,10 @@ export default function Weird() {
       stop?.();
       setGaze(null);
     };
-  }, [enabled, camera]);
+  }, [camera]);
 
   /* the rare ones, on budgets */
   useEffect(() => {
-    if (!enabled) return;
     return every(8, 12, () => {
       if (mode) return;
       if (
@@ -151,7 +139,7 @@ export default function Weird() {
       else if (cursor && getVortexHeadGames() && Math.random() < 0.25)
         setMode("cursor");
     });
-  }, [enabled, broadcast, maintenance, fork, cursor, mode]);
+  }, [broadcast, maintenance, fork, cursor, mode]);
 
   /* modes asked for in chat */
   useEffect(() => {
@@ -174,7 +162,6 @@ export default function Weird() {
   /* R-11 · portals: into the Below by any link, and on every dimension jump */
   const below = useRef(pathname.startsWith("/below"));
   useEffect(() => {
-    if (!enabled) return;
     const onClick = (e: MouseEvent) => {
       const a = (e.target as HTMLElement | null)?.closest<HTMLAnchorElement>(
         "a[href^='/below']",
@@ -206,17 +193,16 @@ export default function Weird() {
       document.removeEventListener("click", onClick, true);
       window.removeEventListener("vortex:dimension", onDim);
     };
-  }, [enabled, router]);
+  }, [router]);
   useEffect(() => {
     const now = pathname.startsWith("/below");
-    if (now && !below.current && enabled) {
+    if (now && !below.current) {
       settle();
       setTimeout(() => void portal("out", "below"), 250);
     }
     below.current = now;
-  }, [pathname, enabled]);
+  }, [pathname]);
 
-  if (!enabled) return null;
   return (
     <>
       {mic && (

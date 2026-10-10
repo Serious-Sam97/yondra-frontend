@@ -49,7 +49,7 @@ function Row({
   );
 }
 
-export default function OutsidePanel({ disabled }: { disabled: boolean }) {
+export default function OutsidePanel() {
   useVxLang(); // T-13 · re-render on language change
   const soul = useSoul();
   const [s, setS] = useState<Settings | null>(null);
@@ -141,7 +141,7 @@ export default function OutsidePanel({ disabled }: { disabled: boolean }) {
 
   if (!s) return null;
   return (
-    <div className="vxu" style={{ opacity: disabled ? 0.5 : 1 }}>
+    <div className="vxu">
       <p className="vxu-head">{tr("OUTSIDE THE APP · every channel opt-in")}</p>
 
       <Row

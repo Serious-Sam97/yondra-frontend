@@ -94,7 +94,6 @@ import {
   randomTip,
   subscribeVortexSay,
   useVortexCalm,
-  useVortexEnabled,
   useVortexHeadGames,
   useVortexIntensity,
   useVortexMounts,
@@ -206,7 +205,16 @@ const IDLE_AFTER = 30000; // user considered idle after this
 const IDLE_TIP_GAP = 75000; // min gap between unprompted idle tips
 const IDLE_CHECK = 12000; // how often the idle check runs
 
-const SPRITE = 136; // sprite box (px); the layer anchors at left:20 / bottom:50
+// sprite box (px); the layer anchors at left:20 / bottom:50. Narrow screens get a
+// smaller Vortex (CSS zooms .vxa-sprite to match below 640px).
+const SPRITE_FULL = 136;
+const SPRITE_SMALL = 88;
+const SMALL_VW = 640;
+function sprite(): number {
+  return typeof window !== "undefined" && window.innerWidth < SMALL_VW
+    ? SPRITE_SMALL
+    : SPRITE_FULL;
+}
 const ANCHOR_X = 20;
 const ANCHOR_B = 50;
 const HOME_KEY = "yd:vortex.home";
@@ -252,8 +260,8 @@ function onScreen(el: Element): boolean {
 
 /* layer offset that puts the sprite's centre on a viewport point */
 function clampOff(o: Pt): Pt {
-  const maxX = window.innerWidth - ANCHOR_X - SPRITE - 8;
-  const minY = -(window.innerHeight - ANCHOR_B - SPRITE - 150);
+  const maxX = window.innerWidth - ANCHOR_X - sprite() - 8;
+  const minY = Math.min(0, -(window.innerHeight - ANCHOR_B - sprite() - 150));
   return {
     x: Math.max(-6, Math.min(maxX, o.x)),
     y: Math.max(minY, Math.min(ANCHOR_B - 10, o.y)),
@@ -261,13 +269,12 @@ function clampOff(o: Pt): Pt {
 }
 function offFor(center: Pt): Pt {
   return clampOff({
-    x: center.x - SPRITE / 2 - ANCHOR_X,
-    y: center.y - SPRITE / 2 - (window.innerHeight - ANCHOR_B - SPRITE),
+    x: center.x - sprite() / 2 - ANCHOR_X,
+    y: center.y - sprite() / 2 - (window.innerHeight - ANCHOR_B - sprite()),
   });
 }
 
 const VortexAssistant: React.FC = () => {
-  const enabled = useVortexEnabled();
   const { isLogged } = useSystem();
   const pathname = usePathname() ?? "";
   const router = useRouter();
@@ -300,11 +307,12 @@ const VortexAssistant: React.FC = () => {
 
   const mounts = useVortexMounts();
   const replyRef = useRef<((t: string) => void) | null>(null);
-  const chat = useVortexChat(user?.id, enabled && isLogged, mounts, (t) =>
+  const chat = useVortexChat(user?.id, isLogged, mounts, (t) =>
     replyRef.current?.(t),
   );
 
-  const active = enabled && isLogged;
+  // Always on for a logged-in user (the × only hides him for a few seconds).
+  const active = isLogged;
   // T-03 · his feature modules arrive once the browser is idle
   useEffect(() => {
     if (active) warmFeatures();
@@ -627,12 +635,22 @@ const VortexAssistant: React.FC = () => {
     }
   }, []);
 
+  /* keep him on screen when the window shrinks (or the phone rotates) */
+  useEffect(() => {
+    const onResize = () => {
+      homeRef.current = clampOff(homeRef.current);
+      setOff((o) => clampOff(o));
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
   /* fly the layer to an offset; resolves when he lands */
   /* viewport centre of his sprite for a given layer offset */
   function centerFor(o: Pt): Pt {
     return {
-      x: ANCHOR_X + o.x + SPRITE / 2,
-      y: window.innerHeight - ANCHOR_B - SPRITE + o.y + SPRITE / 2,
+      x: ANCHOR_X + o.x + sprite() / 2,
+      y: window.innerHeight - ANCHOR_B - sprite() + o.y + sprite() / 2,
     };
   }
   /* squash on landing (CSS), deck-key click */
@@ -813,11 +831,11 @@ const VortexAssistant: React.FC = () => {
 
   /* a point beside a rect, preferring the side with room */
   function beside(r: DOMRect): { pt: Pt; side: "left" | "right" } {
-    const roomRight = window.innerWidth - r.right > SPRITE + 20;
+    const roomRight = window.innerWidth - r.right > sprite() + 20;
     const y = r.top + Math.min(r.height / 2, 90);
     return roomRight
-      ? { pt: { x: r.right + SPRITE / 2 - 14, y }, side: "right" }
-      : { pt: { x: r.left - SPRITE / 2 + 14, y }, side: "left" };
+      ? { pt: { x: r.right + sprite() / 2 - 14, y }, side: "right" }
+      : { pt: { x: r.left - sprite() / 2 + 14, y }, side: "left" };
   }
   function mouthPoint(): Pt {
     const r = spriteRef.current?.getBoundingClientRect();
@@ -900,8 +918,7 @@ const VortexAssistant: React.FC = () => {
   const suppressClick = useRef(false);
   const foundAt = useRef(0);
 
-  /* the × doesn't really work: he vanishes, then comes back 5s later.
-     (The real off switch lives in the profile — he admits it eventually.) */
+  /* the × doesn't really work: he vanishes, then comes back 5s later. */
   const [gone, setGone] = useState(false);
   const goneRef = useRef(false);
   const escapes = useRef(0);
@@ -930,7 +947,7 @@ const VortexAssistant: React.FC = () => {
               ? ["I live here now. the × is decorative."]
               : n === 4
                 ? [
-                    "ok, ok. if you REALLY want me gone, there's a switch in your profile. I'll sulk.",
+                    "ok, ok. you REALLY want me gone. too bad — there's no switch. I checked.",
                   ]
                 : [
                     "the × is a placebo. it makes you feel in control.",
@@ -1166,7 +1183,7 @@ const VortexAssistant: React.FC = () => {
     },
     tinySvg,
     evilSvg,
-    spriteSize: SPRITE,
+    spriteSize: sprite(),
   };
   // T-03 · the world itself lives in <WorldHost> (lazy); this is its front desk
   const worldRef = useRef<World | null>(null);
@@ -1327,7 +1344,7 @@ const VortexAssistant: React.FC = () => {
     setMood("judging");
     setPose("stomp");
     await travel(
-      offFor({ x: r.right - SPRITE / 2 + 10, y: r.top - SPRITE / 2 + 18 }),
+      offFor({ x: r.right - sprite() / 2 + 10, y: r.top - sprite() / 2 + 18 }),
     );
     flashClass(vu, "vxa-stomped", 1500);
     setTimeout(() => flashClass(vu, "vxa-stomped", 1500), 1700);
@@ -1378,7 +1395,9 @@ const VortexAssistant: React.FC = () => {
     const x = 140 + Math.random() * window.innerWidth * 0.38;
     setMood("curious");
     setFlip(x < (spriteRef.current?.getBoundingClientRect().left ?? 0));
-    await travel(offFor({ x, y: window.innerHeight - ANCHOR_B - SPRITE / 2 }));
+    await travel(
+      offFor({ x, y: window.innerHeight - ANCHOR_B - sprite() / 2 }),
+    );
     if (Math.random() < 0.35) speak({ text: line(LINES.wander) });
     await wait(3800);
     await goHome();
@@ -3183,8 +3202,8 @@ const VortexAssistant: React.FC = () => {
           break;
         case "place": {
           const o = {
-            x: d.x - SPRITE / 2 - ANCHOR_X,
-            y: d.y - SPRITE / 2 - (window.innerHeight - ANCHOR_B - SPRITE),
+            x: d.x - sprite() / 2 - ANCHOR_X,
+            y: d.y - sprite() / 2 - (window.innerHeight - ANCHOR_B - sprite()),
           };
           setDur(d.ms ?? 0);
           setOff(o);
@@ -3329,43 +3348,6 @@ const VortexAssistant: React.FC = () => {
         el.classList.toggle("vxr-lostbet", lost.has(el.dataset.vxKey ?? ""));
     }, 60_000);
     return () => clearInterval(minute);
-  }, [active]);
-
-  /* F-15 · the goodbye before the switch · F-16 · coming back after it */
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reads refs only
-  useEffect(() => {
-    if (!active) return;
-    try {
-      const days = localStorage.getItem("yd:vortex.returnedDays");
-      if (days !== null) {
-        localStorage.removeItem("yd:vortex.returnedDays");
-        report("returned", { days: Number(days) });
-        if (Number(days) < 30)
-          setTimeout(
-            () =>
-              speak({
-                text: `${days} day${days === "1" ? "" : "s"} in the dark. you switched me OFF. i'm not mad. i'm writing it down.`,
-              }),
-            3500,
-          );
-      }
-    } catch {}
-    const onBye = (e: Event) => {
-      const done = (e as CustomEvent<{ done: () => void }>).detail?.done;
-      const r = soulRef.current?.relation ?? 0;
-      const text =
-        r < -20
-          ? "finally. i'll be in the walls."
-          : r < 50
-            ? "fine. but the cards will miss me. they won't. i will. no i won't."
-            : "don't let her rewind you.";
-      setChatOpen(false);
-      speak({ text, ms: 3000 });
-      void animator.play(r >= 50 ? "love" : "sulk");
-      setTimeout(() => done?.(), 2600);
-    };
-    window.addEventListener("vortex:farewell", onBye);
-    return () => window.removeEventListener("vortex:farewell", onBye);
   }, [active]);
 
   /* F-14 · a letter arrived · F-16 · he forgot you */
@@ -3706,7 +3688,7 @@ const VortexAssistant: React.FC = () => {
   // Near the right edge the bubble/chat hang to the left of him instead.
   const rightSide =
     typeof window !== "undefined" &&
-    ANCHOR_X + off.x + SPRITE / 2 > window.innerWidth - 300;
+    ANCHOR_X + off.x + sprite() / 2 > window.innerWidth - 300;
 
   return (
     <>
@@ -3717,6 +3699,8 @@ const VortexAssistant: React.FC = () => {
           {
             transform: `translate(${off.x}px, ${off.y}px)`,
             "--vx-dur": `${dur}ms`,
+            // layer's left edge in the viewport: small screens clamp the bubble/chat with it
+            "--vx-x": `${ANCHOR_X + off.x}px`,
           } as React.CSSProperties
         }
       >

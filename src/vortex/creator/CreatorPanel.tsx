@@ -49,7 +49,7 @@ const reasonOf = (e: unknown) => {
   }
 };
 
-export default function CreatorPanel({ disabled }: { disabled: boolean }) {
+export default function CreatorPanel() {
   useVxLang(); // T-13 · re-render on language change
   const soul = useSoul();
   const [open, setOpen] = useState(false);
@@ -97,7 +97,7 @@ export default function CreatorPanel({ disabled }: { disabled: boolean }) {
   };
 
   return (
-    <div className="vxu" style={{ opacity: disabled ? 0.5 : 1 }}>
+    <div className="vxu">
       <button
         type="button"
         className="vxu-head vxu-fold"
@@ -163,9 +163,7 @@ export default function CreatorPanel({ disabled }: { disabled: boolean }) {
                 placeholder={tr("and say… (optional)")}
                 aria-label={tr("what he says")}
               />
-              <button type="submit" disabled={disabled}>
-                {tr("teach")}
-              </button>
+              <button type="submit">{tr("teach")}</button>
             </form>
             <ul className="vxcr-list">
               {d.tricks.map((t) => (
@@ -224,10 +222,7 @@ export default function CreatorPanel({ disabled }: { disabled: boolean }) {
                 placeholder={tr("something he'd say. or should.")}
                 aria-label={tr("a line for him")}
               />
-              <button
-                type="submit"
-                disabled={disabled || line.trim().length < 3}
-              >
+              <button type="submit" disabled={line.trim().length < 3}>
                 {tr("teach")}
               </button>
             </form>
@@ -327,7 +322,6 @@ export default function CreatorPanel({ disabled }: { disabled: boolean }) {
                 </label>
                 <button
                   type="button"
-                  disabled={disabled}
                   onClick={async () => {
                     const r = await post<{ say: string }>(
                       "/api/mascot/creator/costume",

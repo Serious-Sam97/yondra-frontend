@@ -2,7 +2,6 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { useVortexEnabled } from "@/lib/vortex";
 import { type VortexMood, vortexSvg } from "@/lib/vortexArt";
 import { subscribeVortex, type VortexEvent } from "@/lib/vortexBus";
 import { animNames } from "@/vortex/body/anims";
@@ -35,7 +34,6 @@ const TRIGGER_OF = (e: VortexEvent): string | null => {
 };
 
 export default function Creator() {
-  const enabled = useVortexEnabled();
   const soul = useSoul();
   const pathname = usePathname() ?? "";
   const tricks = useRef(soul?.tricks ?? []);
@@ -44,7 +42,6 @@ export default function Creator() {
 
   /* S-01 · tricks */
   useEffect(() => {
-    if (!enabled) return;
     let last = 0;
     const perform = async (trigger: string) => {
       const t = tricks.current.filter((x) => x.trigger === trigger);
@@ -78,12 +75,11 @@ export default function Creator() {
       off();
       clearTimeout(hello);
     };
-  }, [enabled]);
+  }, []);
 
   /* S-10 · behaviors on this page */
   const active = useRef<Behavior[]>([]);
   useEffect(() => {
-    if (!enabled) return;
     const list = behaviorsFor(pathname);
     active.current = list;
     const t = setTimeout(() => {
@@ -94,9 +90,8 @@ export default function Creator() {
       }
     }, 2500);
     return () => clearTimeout(t);
-  }, [enabled, pathname]);
+  }, [pathname]);
   useEffect(() => {
-    if (!enabled) return;
     const lastBy = new Map<string, number>();
     return subscribeVortex((e) => {
       for (const b of active.current) {
@@ -112,7 +107,7 @@ export default function Creator() {
         } catch {}
       }
     });
-  }, [enabled]);
+  }, []);
 
   /* S-09 · a visitor */
   useEffect(() => {
@@ -121,7 +116,7 @@ export default function Creator() {
     return () => window.removeEventListener("vortex:visitor", on);
   }, []);
 
-  if (!enabled || !visitor) return null;
+  if (!visitor) return null;
   return <Visitor g={visitor} onDone={() => setVisitor(null)} />;
 }
 

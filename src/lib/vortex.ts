@@ -3,74 +3,11 @@
 import { useSyncExternalStore } from "react";
 
 /**
- * "Vortex" — Yondra's mascot assistant (ported from VortexOS). This module owns his
- * enabled flag (persisted), a `say()` channel so any feature can make him speak, and
- * the catalogues of one-liners: greetings, workspace tips, and route-contextual quips.
+ * "Vortex" — Yondra's mascot assistant (ported from VortexOS), always on for logged-in
+ * users. This module owns his preferences (persisted), a `say()` channel so any
+ * feature can make him speak, and the catalogues of one-liners: greetings, workspace tips, and route-contextual quips.
  * Original character, no image asset — the sprite is drawn in VortexAssistant.tsx.
  */
-
-const ENABLED_KEY = "yd:vortex.enabled";
-const enabledListeners = new Set<() => void>();
-const notifyEnabled = () => {
-  for (const l of enabledListeners) l();
-};
-
-export function isVortexEnabled(): boolean {
-  // Default ON — Vortex greets first-timers. Easy to dismiss.
-  if (typeof window === "undefined") return false;
-  return localStorage.getItem(ENABLED_KEY) !== "0";
-}
-export function setVortexEnabled(on: boolean): void {
-  const was = isVortexEnabled();
-  localStorage.setItem(ENABLED_KEY, on ? "1" : "0");
-  // F-16 · remember how long he was switched off
-  if (was && !on) localStorage.setItem("yd:vortex.offAt", String(Date.now()));
-  if (!was && on) {
-    const off = Number(localStorage.getItem("yd:vortex.offAt") ?? 0);
-    if (off > 0)
-      localStorage.setItem(
-        "yd:vortex.returnedDays",
-        String(Math.floor((Date.now() - off) / 86_400_000)),
-      );
-  }
-  notifyEnabled();
-}
-
-/**
- * F-15 · switching him off: he gets a short, dramatic goodbye first (≤3s),
- * then the switch is respected — always. If he isn't on screen, it's instant.
- */
-export function farewellThenDisable(): void {
-  let handled = false;
-  window.dispatchEvent(
-    new CustomEvent("vortex:farewell", {
-      detail: {
-        done: () => {
-          if (!handled) {
-            handled = true;
-            setVortexEnabled(false);
-          }
-        },
-      },
-    }),
-  );
-  setTimeout(() => {
-    if (!handled) {
-      handled = true;
-      setVortexEnabled(false);
-    }
-  }, 3200);
-}
-export function useVortexEnabled(): boolean {
-  return useSyncExternalStore(
-    (cb) => {
-      enabledListeners.add(cb);
-      return () => enabledListeners.delete(cb);
-    },
-    isVortexEnabled,
-    () => false, // SSR: hidden until the client knows
-  );
-}
 
 /* -------------------------------------------------- intensity & head games */
 // How much chaos he's allowed: polite = reactions + tips only, mischief = the
@@ -163,7 +100,7 @@ export function useVortexFlag(name: string, fallback = false): boolean {
 
 /* ------------------------------------------------------------------ mounts */
 // Contexts the user "mounted" into Vortex's chat — a board (deep) or a project
-// (all its boards). Persisted per device, like the enabled flag. The cap
+// (all its boards). Persisted per device. The cap
 // mirrors the backend's mounts validation.
 export type VortexMountType = "project" | "board";
 export interface VortexMount {
@@ -246,9 +183,8 @@ export interface VortexSpeech {
   ms?: number;
 }
 const sayListeners = new Set<(s: VortexSpeech) => void>();
-/** Make Vortex speak (ignored while he's disabled). */
+/** Make Vortex speak. */
 export function vortexSay(s: VortexSpeech): void {
-  if (!isVortexEnabled()) return;
   for (const f of sayListeners) f(s);
 }
 export function subscribeVortexSay(fn: (s: VortexSpeech) => void): () => void {

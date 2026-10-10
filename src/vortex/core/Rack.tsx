@@ -4,15 +4,12 @@ import { useEffect, useState } from "react";
 import { setVortexVolume, vortexVolume } from "@/components/vortex/vortexSound";
 import { apiFetch } from "@/lib/api";
 import {
-  farewellThenDisable,
   setVortexCalm,
-  setVortexEnabled,
   setVortexFlag,
   setVortexHeadGames,
   setVortexIntensity,
   setVortexSound,
   useVortexCalm,
-  useVortexEnabled,
   useVortexFlag,
   useVortexHeadGames,
   useVortexIntensity,
@@ -30,8 +27,8 @@ import "./rack.css";
 
 // T-01 · THE EFFECTS RACK. Every group of Vortex settings is one 19" unit:
 // intensity, head games, tape noises, dark, sensors, social, outside, memory,
-// calm — and the real power switch under an acrylic cover. Switches show their
-// state with an LED; the rack reads and writes the same settings as before.
+// calm. Switches show their state with an LED; the rack reads and writes the
+// same settings as before.
 
 function Unit({
   label,
@@ -84,7 +81,6 @@ function Switch({
 export default function Rack() {
   const lang = useVxLang();
   const T = (k: VxKey) => t(k, lang);
-  const enabled = useVortexEnabled();
   const intensity = useVortexIntensity();
   const headGames = useVortexHeadGames();
   const sound = useVortexSound();
@@ -96,7 +92,6 @@ export default function Rack() {
   const motion = useVortexFlag("weird-motion");
   const weather = useVortexFlag("weird-weather");
   const consent = useVortexFlag("telemetry");
-  const [cover, setCover] = useState(false);
   const [vol, setVol] = useState(1);
   const [cap, setCap] = useState(5);
   const [paused, setPaused] = useState(0);
@@ -172,7 +167,6 @@ export default function Rack() {
     if (on) void enablePush(next.night).catch(() => {});
     else if (!next.night) void disablePush();
   };
-  const dim = !enabled;
   const fmtDate = (ms: number) =>
     new Date(ms).toLocaleString(lang === "pt" ? "pt-BR" : "en-GB", {
       weekday: "short",
@@ -181,7 +175,7 @@ export default function Rack() {
     });
 
   return (
-    <div className="vxrk" data-off={dim || undefined}>
+    <div className="vxrk">
       <header className="vxrk-top">
         <b>{T("rack")}</b>
         <span className="vxrk-lang">
@@ -200,32 +194,6 @@ export default function Rack() {
       </header>
       <p className="vxrk-hint">{T("rackHint")}</p>
 
-      <Unit label={T("power")} hint={T("powerHint")}>
-        <div className={`vxrk-cover${cover ? " is-open" : ""}`}>
-          <button
-            type="button"
-            className={`vxrk-red${enabled ? " is-on" : ""}`}
-            disabled={!cover}
-            onClick={() => {
-              if (enabled) farewellThenDisable();
-              else setVortexEnabled(true);
-              setCover(false);
-            }}
-            aria-label={enabled ? "turn Vortex off" : "turn Vortex on"}
-          >
-            {enabled ? T("on") : T("off")}
-          </button>
-          <button
-            type="button"
-            className="vxrk-lid"
-            onClick={() => setCover(!cover)}
-            aria-expanded={cover}
-          >
-            {cover ? T("close") : T("lift")}
-          </button>
-        </div>
-      </Unit>
-
       <Unit label={T("intensity")}>
         <fieldset className="vxrk-3pos" aria-label={T("intensity")}>
           {(["polite", "mischief", "unhinged"] as VortexIntensity[]).map(
@@ -234,7 +202,6 @@ export default function Rack() {
                 key={k}
                 type="button"
                 aria-pressed={intensity === k}
-                disabled={dim}
                 onClick={() => setVortexIntensity(k)}
               >
                 {T(k)}
@@ -249,7 +216,6 @@ export default function Rack() {
           on={headGames}
           onChange={() => setVortexHeadGames(!headGames)}
           label={headGames ? T("on") : T("off")}
-          disabled={dim}
         />
       </Unit>
 
@@ -258,7 +224,6 @@ export default function Rack() {
           on={sound}
           onChange={() => setVortexSound(!sound)}
           label={sound ? T("on") : T("off")}
-          disabled={dim}
         />
         <label className="vxrk-knob">
           {T("volume")}
@@ -268,7 +233,7 @@ export default function Rack() {
             max={1}
             step={0.05}
             value={vol}
-            disabled={dim || !sound}
+            disabled={!sound}
             onChange={(e) => {
               setVol(Number(e.target.value));
               setVortexVolume(Number(e.target.value));
@@ -283,7 +248,6 @@ export default function Rack() {
             else startSoundtrack();
           }}
           label={T("soundtrack")}
-          disabled={dim}
         />
       </Unit>
 
@@ -292,12 +256,10 @@ export default function Rack() {
           on={!noScares}
           onChange={() => setVortexFlag("noscares", !noScares)}
           label={T("scares")}
-          disabled={dim}
         />
         <button
           type="button"
           className="vxrk-btn"
-          disabled={dim}
           onClick={() => {
             pauseScares(86_400_000);
             setPaused(scaresPausedUntil());
@@ -308,7 +270,6 @@ export default function Rack() {
         <button
           type="button"
           className="vxrk-btn"
-          disabled={dim}
           onClick={() => {
             pauseScares(7 * 86_400_000);
             setPaused(scaresPausedUntil());
@@ -324,7 +285,6 @@ export default function Rack() {
             max={5}
             step={1}
             value={cap}
-            disabled={dim}
             onChange={(e) => {
               setCap(Number(e.target.value));
               setDarkCap(Number(e.target.value));
@@ -343,13 +303,11 @@ export default function Rack() {
           on={mic}
           onChange={() => setVortexFlag("weird-mic", !mic)}
           label={T("mic")}
-          disabled={dim}
         />
         <Switch
           on={camera}
           onChange={() => setVortexFlag("weird-camera", !camera)}
           label={T("camera")}
-          disabled={dim}
         />
         <Switch
           on={motion}
@@ -358,13 +316,11 @@ export default function Rack() {
             setVortexFlag("weird-motion", !motion);
           }}
           label={T("motion")}
-          disabled={dim}
         />
         <Switch
           on={weather}
           onChange={() => setVortexFlag("weird-weather", !weather)}
           label={T("location")}
-          disabled={dim}
         />
       </Unit>
 
@@ -373,13 +329,13 @@ export default function Rack() {
           on={!!social?.on}
           onChange={() => void socialSet({ on: !social?.on })}
           label={T("visits")}
-          disabled={dim || !social}
+          disabled={!social}
         />
         <Switch
           on={!!social?.contempt_on}
           onChange={() => void socialSet({ contempt: !social?.contempt_on })}
           label={T("rankings")}
-          disabled={dim || !social?.on}
+          disabled={!social?.on}
         />
       </Unit>
 
@@ -388,19 +344,18 @@ export default function Rack() {
           on={!!outside?.email}
           onChange={() => void outsideSet({ email: !outside?.email })}
           label={T("email")}
-          disabled={dim || !outside}
+          disabled={!outside}
         />
         <Switch
           on={pager.on}
           onChange={() => void pagerSet(!pager.on)}
           label={T("push")}
-          disabled={dim}
         />
         <Switch
           on={!!outside?.calendar}
           onChange={() => void outsideSet({ calendar: !outside?.calendar })}
           label={T("calendar")}
-          disabled={dim || !outside}
+          disabled={!outside}
         />
       </Unit>
 
@@ -437,8 +392,7 @@ export default function Rack() {
                 for (const k of Object.keys(localStorage))
                   if (
                     k.startsWith("yd:vortex.") &&
-                    !k.startsWith("yd:vortex.flag.") &&
-                    k !== "yd:vortex.enabled"
+                    !k.startsWith("yd:vortex.flag.")
                   )
                     localStorage.removeItem(k);
                 setMsg(T("forgotten"));
@@ -492,7 +446,6 @@ export default function Rack() {
           on={calm}
           onChange={() => setVortexCalm(!calm)}
           label={calm ? T("on") : T("off")}
-          disabled={dim}
         />
       </Unit>
       {msg && <output className="vxrk-msg">{msg}</output>}

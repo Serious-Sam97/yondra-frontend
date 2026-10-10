@@ -108,11 +108,11 @@ const MODES: [string, string][] = [
   ["fork", "fork him"],
 ];
 
-export default function WeirdPanel({ disabled }: { disabled: boolean }) {
+export default function WeirdPanel() {
   useVxLang(); // T-13 · re-render on language change
   const [open, setOpen] = useState(false);
   return (
-    <div className="vxu" style={{ opacity: disabled ? 0.5 : 1 }}>
+    <div className="vxu">
       <button
         type="button"
         className="vxu-head vxu-fold"
@@ -132,7 +132,6 @@ export default function WeirdPanel({ disabled }: { disabled: boolean }) {
               <button
                 key={m}
                 type="button"
-                disabled={disabled}
                 onClick={() =>
                   window.dispatchEvent(
                     new CustomEvent("vortex:weird", { detail: { mode: m } }),

@@ -6727,11 +6727,6 @@ emoji-picker.cm-emoji-picker {
   gap: 8px;
   pointer-events: none;
 }
-@media (max-width: 639px) {
-  .vxa-layer {
-    display: none;
-  }
-}
 
 .vxa-bubble {
   display: block; /* it's an <output>, inline by default */
@@ -7226,6 +7221,34 @@ emoji-picker.cm-emoji-picker {
 }
 .vxa-right .vxa-chat {
   margin-left: -184px;
+}
+
+/* Narrow screens: a smaller Vortex (88px, matches SPRITE_SMALL in VortexAssistant)
+   whose bubble and chat shrink to fit and slide to stay inside the viewport
+   (--vx-x is the layer's left edge, set inline). */
+@media (max-width: 639px) {
+  .vxa-sprite {
+    zoom: 0.647;
+  }
+  .vxa-layer .vxa-bubble {
+    --vx-w: min(250px, calc(100vw - 24px));
+  }
+  .vxa-layer .vxa-chat {
+    --vx-w: min(320px, calc(100vw - 24px));
+    width: var(--vx-w);
+    max-height: min(440px, 55vh);
+  }
+  .vxa-layer .vxa-bubble,
+  .vxa-layer .vxa-chat,
+  .vxa-layer.vxa-right .vxa-bubble,
+  .vxa-layer.vxa-right .vxa-chat {
+    max-width: var(--vx-w);
+    margin-left: clamp(
+      calc(12px - var(--vx-x, 20px)),
+      0px,
+      calc(100vw - 12px - var(--vx-w) - var(--vx-x, 20px))
+    );
+  }
 }
 
 /* stage effects (vortexEffects.ts) — a fixed overlay just under his layer */

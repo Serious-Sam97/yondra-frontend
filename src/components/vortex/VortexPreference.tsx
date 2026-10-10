@@ -11,7 +11,7 @@ import {
   updateProgress,
   useProgress,
 } from "@/components/vortex/mk4/progress";
-import { useVortexEnabled, useVortexIntensity } from "@/lib/vortex";
+import { useVortexIntensity } from "@/lib/vortex";
 import { vortexSvg } from "@/lib/vortexArt";
 import Rack from "@/vortex/core/Rack";
 import CreatorPanel from "@/vortex/creator/CreatorPanel";
@@ -19,7 +19,7 @@ import OutsidePanel from "@/vortex/outside/OutsidePanel";
 import WeirdPanel from "@/vortex/weird/WeirdPanel";
 
 /** Streak, achievements, wardrobe and birthday — all local to this device. */
-function VortexTrophies({ disabled }: { disabled: boolean }) {
+function VortexTrophies() {
   const p = useProgress();
   const streak = liveStreak(p);
   const wardrobe: (Costume | "auto")[] = ["auto", "none", ...p.costumes];
@@ -28,7 +28,6 @@ function VortexTrophies({ disabled }: { disabled: boolean }) {
       className="flex flex-col gap-3 pt-3"
       style={{
         borderTop: "1px dashed var(--cf-edge)",
-        opacity: disabled ? 0.5 : 1,
       }}
     >
       <div className="flex items-center gap-4 flex-wrap cf-mono text-xs">
@@ -46,7 +45,6 @@ function VortexTrophies({ disabled }: { disabled: boolean }) {
             placeholder="MM-DD"
             defaultValue={p.birthday ?? ""}
             maxLength={5}
-            disabled={disabled}
             className="glass-input"
             style={{ width: 76, padding: "3px 8px" }}
             onBlur={(e) => {
@@ -86,7 +84,6 @@ function VortexTrophies({ disabled }: { disabled: boolean }) {
           <button
             key={c}
             type="button"
-            disabled={disabled}
             aria-pressed={p.costume === c}
             onClick={() => updateProgress((q) => ({ ...q, costume: c }))}
             className="btn-physical rounded-md px-2 py-0.5"
@@ -105,12 +102,11 @@ function VortexTrophies({ disabled }: { disabled: boolean }) {
 }
 
 /**
- * Profile console module for Vortex: who he is, then the effects rack (T-01)
- * with every switch, then the deeper panels (outside, weird, creator) and his
- * trophies.
+ * Profile console module for Vortex (always on while logged in): who he is,
+ * then the effects rack (T-01) with every switch, then the deeper panels
+ * (outside, weird, creator) and his trophies.
  */
 export default function VortexPreference() {
-  const enabled = useVortexEnabled();
   const intensity = useVortexIntensity();
   const face = useMemo(
     () =>
@@ -129,10 +125,7 @@ export default function VortexPreference() {
   return (
     <section className="glass-panel">
       <ModuleHead label="Companion" sub="vortex mk-ii">
-        <StatusLcd
-          text={enabled ? intensity.toUpperCase() : "HIDDEN"}
-          tone={enabled ? "phosphor" : "amber"}
-        />
+        <StatusLcd text={intensity.toUpperCase()} tone="phosphor" />
       </ModuleHead>
       <div className="p-5 flex flex-col gap-4">
         <div className="flex items-center gap-4">
@@ -143,7 +136,6 @@ export default function VortexPreference() {
               width: 64,
               height: 64,
               flexShrink: 0,
-              opacity: enabled ? 1 : 0.45,
             }}
           />
           <div className="flex-1 min-w-0">
@@ -166,13 +158,13 @@ export default function VortexPreference() {
 
         <Rack />
 
-        <OutsidePanel disabled={!enabled} />
+        <OutsidePanel />
 
-        <WeirdPanel disabled={!enabled} />
+        <WeirdPanel />
 
-        <CreatorPanel disabled={!enabled} />
+        <CreatorPanel />
 
-        <VortexTrophies disabled={!enabled} />
+        <VortexTrophies />
       </div>
     </section>
   );
